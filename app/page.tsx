@@ -1,7 +1,8 @@
 'use client';
+
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { collection, getDocs, query, where, or } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import React, { useState, useEffect } from 'react';
 
@@ -25,7 +26,7 @@ const defaultDesign = {
 export default function PintuMasukSiKader() {
   const [design, setDesign] = useState(defaultDesign);
   
-  const [loginId, setLoginId] = useState(''); // Diganti namanya biar lebih universal (bukan cuma kader)
+  const [loginId, setLoginId] = useState(''); 
   const [password, setPassword] = useState('');
   const [jawabanCaptcha, setJawabanCaptcha] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -35,16 +36,22 @@ export default function PintuMasukSiKader() {
   const [captchaNum2, setCaptchaNum2] = useState(0);
 
   useEffect(() => {
-    setCaptchaNum1(Math.floor(Math.random() * 10) + 1);
-    setCaptchaNum2(Math.floor(Math.random() * 10) + 1);
+    generateCaptcha();
   }, []);
 
-  // --- LOGIKA SMART GATEKEEPER (Mendeteksi NIM atau Username) ---
+  const generateCaptcha = () => {
+    setCaptchaNum1(Math.floor(Math.random() * 10) + 1);
+    setCaptchaNum2(Math.floor(Math.random() * 10) + 1);
+    setJawabanCaptcha('');
+  };
+
+  // --- LOGIKA SMART GATEKEEPER ---
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (parseInt(jawabanCaptcha) !== (captchaNum1 + captchaNum2)) {
       alert("Jawaban matematika salah! Silakan hitung kembali.");
+      generateCaptcha();
       return;
     }
 
@@ -54,37 +61,43 @@ export default function PintuMasukSiKader() {
       let emailUntukLogin = "";
       let peranUser = "";
       let namaUser = "";
+      let statusUser = "";
 
-      // 1. Cek di Database, apakah ID yang dimasukkan adalah NIM (Kader) atau Username (Pengurus)
-      const q = query(
-        collection(db, "users"), 
-        or(
-          where("nim", "==", loginId),      // Jika dia Kader
-          where("username", "==", loginId), // Jika dia Pendamping / Rayon / Komisariat
-          where("nia", "==", loginId)       // Opsi tambahan jika pakai NIA
-        )
-      );
-      
-      const querySnapshot = await getDocs(q);
+      const amanLoginId = loginId.trim().toLowerCase();
+
+      // MENCARI DATA BERDASARKAN NIM ATAU USERNAME (PENDEKATAN LEBIH AMAN TANPA FUNGSI OR)
+      // 1. Coba cari sebagai NIM (Kader)
+      let q = query(collection(db, "users"), where("nim", "==", amanLoginId));
+      let querySnapshot = await getDocs(q);
+
+      // 2. Jika tidak ketemu sebagai NIM, coba cari sebagai Username (Pengurus)
+      if (querySnapshot.empty) {
+        q = query(collection(db, "users"), where("username", "==", amanLoginId));
+        querySnapshot = await getDocs(q);
+      }
 
       if (!querySnapshot.empty) {
         const userData = querySnapshot.docs[0].data();
-        emailUntukLogin = userData.email; // Ambil email asli di balik layarnya
+        emailUntukLogin = userData.email; 
         peranUser = userData.role;
         namaUser = userData.nama;
+        statusUser = userData.status;
       } else {
         throw new Error("Akun tidak ditemukan di sistem SIAKAD.");
       }
 
-      // 2. Lakukan proses Auth Firebase secara rahasia di backend
+      // 3. Cek Status Aktif/Pasif
+      if (statusUser === "Pasif") {
+        throw new Error("Akun Anda sedang dinonaktifkan. Silakan hubungi Admin Rayon.");
+      }
+
+      // 4. Lakukan proses Auth Firebase 
       await signInWithEmailAndPassword(auth, emailUntukLogin, password);
       
-      alert(`Alhamdulillah, Login Berhasil! Selamat datang, ${namaUser || loginId}.`);
-
-      // 3. Arahkan ke Dashboard sesuai jabatannya
+      // 5. Arahkan ke Dashboard sesuai jabatannya
       if (peranUser === 'komisariat') {
         router.push('/komisariat/dashboard');
-      } else if (peranUser === 'rayon') { // <--- DI SINI PERUBAHANNYA
+      } else if (peranUser === 'rayon') { 
         router.push('/rayon/dashboard');
       } else if (peranUser === 'pendamping') {
         router.push('/pendamping/dashboard');
@@ -93,11 +106,18 @@ export default function PintuMasukSiKader() {
       }
       
     } catch (error: any) {
-      const pesanError = error.message.includes("Akun tidak ditemukan") 
-        ? "NIM atau Username belum terdaftar. Pastikan ejaan sudah benar."
-        : "Password salah atau terjadi kesalahan sistem.";
+      let pesanError = "Password salah atau terjadi kesalahan sistem.";
       
-      alert(`Maaf, Akses Ditolak! ${pesanError}`);
+      if (error.message.includes("Akun tidak ditemukan")) {
+        pesanError = "NIM atau Username belum terdaftar. Pastikan ejaan sudah benar.";
+      } else if (error.message.includes("dinonaktifkan")) {
+        pesanError = error.message;
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        pesanError = "NIM/Username atau Password Anda salah!";
+      }
+
+      alert(`Maaf, Akses Ditolak!\n\n${pesanError}`);
+      generateCaptcha(); // Reset captcha jika gagal login
     } finally {
       setIsLoggingIn(false);
     }
@@ -184,8 +204,8 @@ export default function PintuMasukSiKader() {
                   required
                   value={loginId}
                   onChange={(e) => setLoginId(e.target.value)}
-                  placeholder="NIM / Username" 
-                  style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', boxSizing: 'border-box' }} 
+                  placeholder="Masukkan NIM atau Username" 
+                  style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center', fontWeight: 'bold', boxSizing: 'border-box', outline: 'none' }} 
                 />
               </div>
 
@@ -197,7 +217,7 @@ export default function PintuMasukSiKader() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••" 
-                  style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center', letterSpacing: '3px', boxSizing: 'border-box' }} 
+                  style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center', letterSpacing: '3px', boxSizing: 'border-box', outline: 'none' }} 
                 />
               </div>
 
@@ -212,7 +232,7 @@ export default function PintuMasukSiKader() {
                   value={jawabanCaptcha}
                   onChange={(e) => setJawabanCaptcha(e.target.value)}
                   placeholder="jawab disini..." 
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderTop: 'none', textAlign: 'center', fontSize: '0.9rem', boxSizing: 'border-box' }} 
+                  style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderTop: 'none', textAlign: 'center', fontSize: '0.9rem', boxSizing: 'border-box', outline: 'none' }} 
                 />
               </div>
 

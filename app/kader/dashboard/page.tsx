@@ -60,7 +60,7 @@ export default function DashboardKader() {
     const formData = new FormData();
     formData.append("file", file);
     // GANTI "nama_preset_kamu_disini" dan URL cloud name di bawah sesuai akun Cloudinary Anda!
-    formData.append("upload_preset", "nama_preset_kamu_disini"); 
+    formData.append("upload_preset", "siakad_upload"); 
     
     const res = await fetch("https://api.cloudinary.com/v1_1/your_cloud_name/auto/upload", {
       method: "POST",

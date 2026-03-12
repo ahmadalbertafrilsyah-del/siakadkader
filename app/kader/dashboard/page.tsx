@@ -387,7 +387,7 @@ export default function DashboardKader() {
         <header style={{ backgroundColor: '#fff', padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
           <button className="menu-burger" onClick={() => setIsSidebarOpen(true)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#0d1b2a' }}>☰</button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <h2 style={{ fontSize: '1.1rem', color: '#333', margin: 0 }}>Dashboard Anggota/Kader Jenjang {profil.jenjang}</h2>
+            <h2 style={{ fontSize: '1.1rem', color: '#333', margin: 0 }}>Dashboard Jenjang {profil.jenjang}</h2>
             <span style={{ fontSize: '0.75rem', color: profil.status === 'Aktif' ? '#1e824c' : '#c62828', backgroundColor: profil.status === 'Aktif' ? '#e8f5e9' : '#ffebee', padding: '5px 12px', borderRadius: '20px', fontWeight: 'bold' }}>Status: {profil.status || 'Aktif'}</span>
           </div>
         </header>

@@ -358,8 +358,8 @@ export default function DashboardKader() {
         <ul style={{ listStyle: 'none', padding: '10px 0', overflowY: 'auto', flex: 1, margin: 0 }}>
           {[
             { id: 'home', icon: '🏠', label: 'Beranda' },
-            { id: 'profil', icon: '👤', label: 'Profil Anggota' },
-            { id: 'raport', icon: '📊', label: 'KHS & Raport Saya' },
+            { id: 'profil', icon: '👤', label: 'Profil Saya' },
+            { id: 'raport', icon: '📊', label: 'Raport Kaderisasi' },
             { id: 'upload', icon: '📤', label: 'Tugas Rayon' },
             { id: 'surat', icon: '✉️', label: 'Layanan Surat' },
             { id: 'perpus', icon: '📚', label: 'Perpustakaan' },
@@ -482,7 +482,7 @@ export default function DashboardKader() {
           {activeMenu === 'raport' && (
             <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', minHeight: '500px' }}>
               <div style={{ backgroundColor: '#4a637d', padding: '15px 20px', color: 'white' }}>
-                <span style={{ fontSize: '0.95rem', fontWeight: 'bold', letterSpacing: '1px' }}>KARTU HASIL STUDI (KHS) KADERISASI</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 'bold', letterSpacing: '1px' }}>RAPORT KADERISASI</span>
               </div>
 
               <div style={{ padding: '20px' }}>

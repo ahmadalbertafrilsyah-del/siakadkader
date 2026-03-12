@@ -76,7 +76,7 @@ export default function DashboardAdminRayon() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", "siakad_upload"); // <-- Sesuaikan
-    const res = await fetch("https://api.cloudinary.com/v1_1/your_cloud_name/auto/upload", {
+    const res = await fetch("https://api.cloudinary.com/v1_1/dcmdaghbq/auto/upload", {
       method: "POST",
       body: formData,
     });

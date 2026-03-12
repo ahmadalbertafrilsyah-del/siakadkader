@@ -17,7 +17,8 @@ export default function DashboardKader() {
     fotoUrl: 'https://via.placeholder.com/200x250/e74c3c/fff?text=FOTO', 
     nama: 'Loading...', nim: '', nia: '-', angkatan: '',
     email: '', tempatLahir: '', tanggalLahir: '',
-    alamatAsal: '', alamatDomisili: '', id_rayon: '', jenjang: 'MAPABA'
+    alamatAsal: '', alamatDomisili: '', id_rayon: '', jenjang: 'MAPABA',
+    status: 'Aktif'
   });
   
   const [namaRayonAsli, setNamaRayonAsli] = useState('Memuat Rayon...');
@@ -99,7 +100,8 @@ export default function DashboardKader() {
               tempatLahir: dataDB.tempatLahir || '', tanggalLahir: dataDB.tanggalLahir || '',
               alamatAsal: dataDB.alamatAsal || '', alamatDomisili: dataDB.alamatDomisili || '',
               id_rayon: dataDB.id_rayon || '', 
-              jenjang: dataDB.jenjang || 'MAPABA'
+              jenjang: dataDB.jenjang || 'MAPABA',
+              status: 'Aktif'
             });
 
             // Tarik nama Rayon asli

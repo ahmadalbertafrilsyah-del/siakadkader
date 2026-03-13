@@ -42,13 +42,15 @@ export default function DashboardKader() {
   const [riwayatBerkas, setRiwayatBerkas] = useState<any[]>([]);
   const [listMasterTugas, setListMasterTugas] = useState<any[]>([]); 
   
-  // --- STATE RAPORT DINAMIS ---
+  // --- STATE RAPORT DINAMIS (UPDATE LINTAS JENJANG) ---
   const [tabRaport, setTabRaport] = useState('raport'); 
-  const [listKurikulum, setListKurikulum] = useState<any[]>([]);
+  const [filterRaport, setFilterRaport] = useState('MAPABA'); // State baru untuk dropdown filter jenjang
+  const [listKurikulum, setListKurikulum] = useState<Record<string, any[]>>({}); // Simpan seluruh jenjang
   const [nilaiKader, setNilaiKader] = useState<Record<string, string>>({});
   const [evaluasiKader, setEvaluasiKader] = useState<{ listKeaktifan: any[], catatan: string }>({ listKeaktifan: [], catatan: '' });
 
   // --- STATE PERPUS & SARAN ---
+  const [activeFolder, setActiveFolder] = useState('');
   const [listPerpus, setListPerpus] = useState<any[]>([]);
   const [saranText, setSaranText] = useState('');
   const [isSubmittingSaran, setIsSubmittingSaran] = useState(false);
@@ -59,7 +61,6 @@ export default function DashboardKader() {
   const uploadToCloudinary = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
-    // GANTI "nama_preset_kamu_disini" dan URL cloud name di bawah sesuai akun Cloudinary Anda!
     formData.append("upload_preset", "siakad_upload"); 
     
     const res = await fetch("https://api.cloudinary.com/v1_1/dcmdaghbq/auto/upload", {
@@ -78,13 +79,11 @@ export default function DashboardKader() {
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Deteksi Profil Kader
         const q = query(collection(db, "users"), where("email", "==", user.email));
         onSnapshot(q, (snap) => {
           if (!snap.empty) {
             const dataDB = snap.docs[0].data();
             
-            // 🛡️ Satpam Role Kader
             if (dataDB.role !== 'kader') {
               alert(`Akses Ditolak! Anda bukan Kader.`);
               signOut(auth);
@@ -101,18 +100,19 @@ export default function DashboardKader() {
               alamatAsal: dataDB.alamatAsal || '', alamatDomisili: dataDB.alamatDomisili || '',
               id_rayon: dataDB.id_rayon || '', 
               jenjang: dataDB.jenjang || 'MAPABA',
-              status: 'Aktif'
+              status: dataDB.status || 'Aktif'
             });
 
-            // Tarik nama Rayon asli
+            // Set Dropdown awal sesuai jenjang saat ini
+            if (dataDB.jenjang) setFilterRaport(dataDB.jenjang);
+
             if(dataDB.id_rayon) {
               onSnapshot(doc(db, "users", dataDB.id_rayon), (rayonSnap) => {
                 if (rayonSnap.exists()) setNamaRayonAsli(rayonSnap.data().nama);
               });
-              jalankanPendengarDataRayon(dataDB.nim, user.email, dataDB.id_rayon, dataDB.jenjang || 'MAPABA');
+              jalankanPendengarDataRayon(dataDB.nim, user.email, dataDB.id_rayon);
             }
 
-            // Tarik nama Pendamping
             if(dataDB.pendampingId) {
                onSnapshot(doc(db, "users", dataDB.pendampingId), (pendampingSnap) => {
                   if(pendampingSnap.exists()) setNamaPendamping(pendampingSnap.data().nama);
@@ -132,37 +132,20 @@ export default function DashboardKader() {
   // ==========================================
   // 2. FUNGSI PENDENGAR DATA SESUAI RAYON MASING-MASING
   // ==========================================
-  const jalankanPendengarDataRayon = (nimKader: string, emailKader: string | null, idRayon: string, jenjangKader: string) => {
+  const jalankanPendengarDataRayon = (nimKader: string, emailKader: string | null, idRayon: string) => {
     if(!nimKader || !emailKader || !idRayon) return;
 
-    // Kurikulum sesuai Rayon dan Jenjang Kader Saat Ini
+    // Kurikulum simpan seluruh objek jenjang
     onSnapshot(doc(db, "kurikulum_rayon", idRayon), (docSnap) => {
       if (docSnap.exists()) {
-         const allKurikulum = docSnap.data();
-         setListKurikulum(allKurikulum[jenjangKader] || []);
+         setListKurikulum(docSnap.data() as Record<string, any[]>);
       }
     });
 
-    // Nilai KHS Kader
     onSnapshot(doc(db, "nilai_khs", nimKader), (docSnap) => {
       if (docSnap.exists()) setNilaiKader(docSnap.data());
     });
 
-    // Evaluasi Kader
-    onSnapshot(doc(db, "evaluasi_kader", nimKader), (docSnap) => {
-      if (docSnap.exists() && docSnap.data()[jenjangKader]) {
-         setEvaluasiKader(docSnap.data()[jenjangKader]);
-      } else {
-         setEvaluasiKader({ listKeaktifan: [], catatan: '' });
-      }
-    });
-
-    // Opsi Master Surat dari Rayon
-    onSnapshot(query(collection(db, "master_jenis_surat"), where("id_rayon", "==", idRayon)), (snap) => {
-      setOpsiJenisSurat(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-
-    // Riwayat Surat Kader
     const qSurat = query(collection(db, "pengajuan_surat"), where("email_kader", "==", emailKader));
     onSnapshot(qSurat, (snap) => {
       const dataSurat: any[] = [];
@@ -171,7 +154,6 @@ export default function DashboardKader() {
       setRiwayatSurat(dataSurat);
     });
 
-    // Riwayat Berkas Tugas Kader
     const qBerkas = query(collection(db, "berkas_kader"), where("email_kader", "==", emailKader));
     onSnapshot(qBerkas, (snap) => {
       const dataBerkas: any[] = [];
@@ -180,26 +162,40 @@ export default function DashboardKader() {
       setRiwayatBerkas(dataBerkas);
     });
 
-    // Master Tugas sesuai Rayon
-    const qTugas = query(collection(db, "master_tugas"), where("id_rayon", "==", idRayon));
-    onSnapshot(qTugas, (snap) => {
+    onSnapshot(query(collection(db, "master_tugas"), where("id_rayon", "==", idRayon)), (snap) => {
       const dataTugas: any[] = [];
       snap.forEach((doc) => dataTugas.push({ id: doc.id, ...doc.data() }));
       setListMasterTugas(dataTugas);
     });
 
-    // Perpus sesuai Rayon
-    const qPerpus = query(collection(db, "perpustakaan"), where("id_rayon", "==", idRayon));
-    onSnapshot(qPerpus, (snap) => {
+    onSnapshot(query(collection(db, "master_jenis_surat"), where("id_rayon", "==", idRayon)), (snap) => {
+      setOpsiJenisSurat(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    onSnapshot(query(collection(db, "perpustakaan"), where("id_rayon", "==", idRayon)), (snap) => {
       const dataPerpus: any[] = [];
       snap.forEach((doc) => dataPerpus.push({ id: doc.id, ...doc.data() }));
       setListPerpus(dataPerpus);
     });
   };
 
+  // EFEK KHUSUS: Mengambil Evaluasi berdasarkan Filter Dropdown
+  useEffect(() => {
+    if (!profil.nim) return;
+    const unsubscribeKeaktifan = onSnapshot(doc(db, "evaluasi_kader", profil.nim), (docSnap) => {
+      if (docSnap.exists() && docSnap.data()[filterRaport]) {
+        setEvaluasiKader(docSnap.data()[filterRaport]);
+      } else {
+        setEvaluasiKader({ listKeaktifan: [], catatan: '' });
+      }
+    });
+    return () => unsubscribeKeaktifan();
+  }, [profil.nim, filterRaport]);
+
   // ==========================================
   // LOGIKA PERHITUNGAN IP & KHS SINKRON DENGAN RAYON
   // ==========================================
+  const materiAktif = listKurikulum[filterRaport] || [];
   let totalSks = 0;
   let totalBobotNilai = 0;
 
@@ -211,12 +207,12 @@ export default function DashboardKader() {
     return 0;
   };
 
-  const barisMateriRender = listKurikulum.map((materi, index) => {
+  const barisMateriRender = materiAktif.map((materi, index) => {
     const nilaiHuruf = nilaiKader[materi.kode] || "-";
     const angkaNilai = konversiHurufKeAngka(nilaiHuruf);
-    const sksKaliNilai = materi.bobot * angkaNilai;
+    const sksKaliNilai = (materi.bobot || 0) * angkaNilai;
     
-    totalSks += materi.bobot;
+    totalSks += (materi.bobot || 0);
     if (nilaiHuruf !== "-") totalBobotNilai += sksKaliNilai;
 
     return (
@@ -232,18 +228,6 @@ export default function DashboardKader() {
   });
 
   const ipKader = totalSks > 0 ? (totalBobotNilai / totalSks).toFixed(2) : "0.00";
-
-  // ==========================================
-  // LOGIKA STATUS TUGAS (GABUNGAN MASTER & RIWAYAT)
-  // ==========================================
-  const tugasRender = listMasterTugas.map((tugas) => {
-    const tugasDisubmit = riwayatBerkas.find((b) => b.jenis_berkas === tugas.nama_tugas);
-    let statusPengerjaan = 'Belum Mengumpulkan';
-    if (tugasDisubmit) {
-      statusPengerjaan = tugasDisubmit.status === 'Selesai' ? 'Selesai' : 'Menunggu Verifikasi';
-    }
-    return { ...tugas, statusPengerjaan, id_berkas_tersimpan: tugasDisubmit?.id, link_file: tugasDisubmit?.file_link_or_id };
-  });
 
   // ==========================================
   // FUNGSI PROFIL & LAINNYA
@@ -271,22 +255,6 @@ export default function DashboardKader() {
       alert("Profil berhasil diperbarui!");
       setIsEditingProfil(false); setFotoFile(null);
     } catch (error) { alert("Gagal update profil. Cek koneksi Anda."); } finally { setIsSavingProfil(false); }
-  };
-
-  const handleKirimSaran = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if(!saranText.trim() || !profil.id_rayon) return;
-    setIsSubmittingSaran(true);
-    try {
-      await addDoc(collection(db, "saran_aspirasi"), {
-        nim: profil.nim, nama: profil.nama, 
-        id_rayon: profil.id_rayon,
-        saran: saranText,
-        timestamp: Date.now(), tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'short' }).format(new Date())
-      });
-      alert("Saran Anda berhasil dikirim ke Pengurus Rayon. Terima kasih!");
-      setSaranText('');
-    } catch (error) { alert("Gagal mengirim saran."); } finally { setIsSubmittingSaran(false); }
   };
 
   const handleUploadTugas = async (namaTugas: string) => {
@@ -322,28 +290,61 @@ export default function DashboardKader() {
     } catch (error) { alert("Error sistem pengajuan surat."); } finally { setIsSubmittingSurat(false); }
   };
 
+  const handleKirimSaran = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if(!saranText.trim() || !profil.id_rayon) return;
+    setIsSubmittingSaran(true);
+    try {
+      await addDoc(collection(db, "saran_aspirasi"), {
+        nim: profil.nim, nama: profil.nama, id_rayon: profil.id_rayon, saran: saranText,
+        timestamp: Date.now(), tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'short' }).format(new Date())
+      });
+      alert("Saran Anda berhasil dikirim. Terima kasih!");
+      setSaranText('');
+    } catch (error) { alert("Gagal mengirim saran."); } finally { setIsSubmittingSaran(false); }
+  };
+
   const handleLogout = async () => { await signOut(auth); router.push('/'); };
 
+  const handleDownloadPDF = () => {
+    window.print();
+  };
+
+  const tugasRender = listMasterTugas.map((tugas) => {
+    const tugasDisubmit = riwayatBerkas.find((b) => b.jenis_berkas === tugas.nama_tugas);
+    let statusPengerjaan = 'Belum Mengumpulkan';
+    if (tugasDisubmit) {
+      statusPengerjaan = tugasDisubmit.status === 'Selesai' ? 'Selesai' : 'Menunggu Verifikasi';
+    }
+    return { ...tugas, statusPengerjaan, id_berkas_tersimpan: tugasDisubmit?.id, link_file: tugasDisubmit?.file_link_or_id };
+  });
+
+  const folderPerpus = Array.from(new Set(listPerpus.map(item => item.folder)));
+  const fileDalamFolder = listPerpus.filter(item => item.folder === activeFolder);
   const syaratSuratTerpilih = opsiJenisSurat.find(s => s.jenis === jenisSurat)?.syarat || '';
 
   return (
     <div style={{ display: 'flex', backgroundColor: '#f4f6f9', height: '100vh', overflow: 'hidden', fontFamily: 'Arial, sans-serif' }}>
       
+      {/* CSS KHUSUS UNTUK PRINT / DOWNLOAD PDF */}
+      <style>{`
+        @media (min-width: 768px) { aside { left: 0 !important; } main { margin-left: 260px !important; } .menu-burger { display: none !important; } }
+        
+        @media print {
+          body * { visibility: hidden; }
+          #area-cetak-raport, #area-cetak-raport * { visibility: visible; }
+          #area-cetak-raport { 
+            position: absolute; left: 0; top: 0; width: 100%; 
+            padding: 20px; background-color: white; 
+          }
+          .print-only-header { display: block !important; }
+          .no-print { display: none !important; }
+        }
+        .print-only-header { display: none; }
+      `}</style>
+
       {/* SIDEBAR KADER */}
-      <aside style={{ 
-        width: '260px', 
-        background: 'linear-gradient(180deg, #1e824c 0%, #145a32 100%)', 
-        color: 'white', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        position: 'fixed',
-        top: 0,
-        bottom: 0,
-        left: isSidebarOpen ? '0' : '-260px',
-        zIndex: 50,
-        transition: 'left 0.3s ease',
-        boxShadow: '2px 0 10px rgba(0,0,0,0.1)'
-      }}>
+      <aside className="no-print" style={{ width: '260px', background: 'linear-gradient(180deg, #1e824c 0%, #145a32 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
         <div style={{ padding: '20px', fontSize: '1.2rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>🎓 SIAKAD Kader</span>
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
@@ -359,17 +360,14 @@ export default function DashboardKader() {
           {[
             { id: 'home', icon: '🏠', label: 'Beranda' },
             { id: 'profil', icon: '👤', label: 'Profil Saya' },
-            { id: 'raport', icon: '📊', label: 'Raport Kaderisasi' },
+            { id: 'raport', icon: '📊', label: 'KHS & Raport Saya' },
             { id: 'upload', icon: '📤', label: 'Tugas Rayon' },
             { id: 'surat', icon: '✉️', label: 'Layanan Surat' },
             { id: 'perpus', icon: '📚', label: 'Perpustakaan' },
             { id: 'saran', icon: '💬', label: 'Kotak Saran' },
           ].map((item) => (
             <li key={item.id}>
-              <button 
-                onClick={() => { setActiveMenu(item.id); setIsSidebarOpen(false); }} 
-                style={{ width: '100%', textAlign: 'left', background: activeMenu === item.id ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', color: activeMenu === item.id ? '#f1c40f' : '#ecf0f1', padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px', fontSize: '0.9rem', cursor: 'pointer', borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent', transition: '0.2s', fontWeight: activeMenu === item.id ? 'bold' : 'normal' }}
-              >
+              <button onClick={() => { setActiveMenu(item.id); setIsSidebarOpen(false); }} style={{ width: '100%', textAlign: 'left', background: activeMenu === item.id ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', color: activeMenu === item.id ? '#f1c40f' : '#ecf0f1', padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px', fontSize: '0.9rem', cursor: 'pointer', borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent', transition: '0.2s', fontWeight: activeMenu === item.id ? 'bold' : 'normal' }}>
                 <span style={{fontSize: '1.1rem'}}>{item.icon}</span> {item.label}
               </button>
             </li>
@@ -382,12 +380,11 @@ export default function DashboardKader() {
 
       {/* MAIN CONTENT */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: '0', width: '100%', overflowX: 'hidden' }}>
-        <style>{`@media (min-width: 768px) { aside { left: 0 !important; } main { margin-left: 260px !important; } .menu-burger { display: none !important; } }`}</style>
         
-        <header style={{ backgroundColor: '#fff', padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
+        <header className="no-print" style={{ backgroundColor: '#fff', padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
           <button className="menu-burger" onClick={() => setIsSidebarOpen(true)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#0d1b2a' }}>☰</button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <h2 style={{ fontSize: '1.1rem', color: '#333', margin: 0 }}>Dashboard Jenjang {profil.jenjang}</h2>
+            <h2 style={{ fontSize: '1.1rem', color: '#333', margin: 0 }}>Ruang {profil.jenjang}</h2>
             <span style={{ fontSize: '0.75rem', color: profil.status === 'Aktif' ? '#1e824c' : '#c62828', backgroundColor: profil.status === 'Aktif' ? '#e8f5e9' : '#ffebee', padding: '5px 12px', borderRadius: '20px', fontWeight: 'bold' }}>Status: {profil.status || 'Aktif'}</span>
           </div>
         </header>
@@ -415,7 +412,7 @@ export default function DashboardKader() {
                 </div>
 
                 <div style={{ flex: '1 1 200px', backgroundColor: '#fff', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', borderLeft: '5px solid #f1c40f', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>Indeks Prestasi (IP)</h4>
+                  <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>Indeks Prestasi (IP) Saat Ini</h4>
                   <div style={{ fontSize: '3rem', fontWeight: 'bold', color: '#1e824c' }}>{ipKader}</div>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: '#888' }}>SKS Terselesaikan: {totalSks}</p>
                 </div>
@@ -481,14 +478,31 @@ export default function DashboardKader() {
           {/* MENU 3: RAPORT KADERISASI */}
           {activeMenu === 'raport' && (
             <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', minHeight: '500px' }}>
-              <div style={{ backgroundColor: '#4a637d', padding: '15px 20px', color: 'white' }}>
-                <span style={{ fontSize: '0.95rem', fontWeight: 'bold', letterSpacing: '1px' }}>RAPORT KADERISASI</span>
+              <div className="no-print" style={{ backgroundColor: '#4a637d', padding: '15px 20px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 'bold', letterSpacing: '1px' }}>KARTU HASIL STUDI (KHS) KADERISASI</span>
+                
+                {/* DROPDOWN FILTER JENJANG & TOMBOL PRINT */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <select value={filterRaport} onChange={(e) => setFilterRaport(e.target.value)} style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', outline: 'none', cursor: 'pointer', color: '#0d1b2a' }}>
+                    <option value="MAPABA">MAPABA</option>
+                    <option value="PKD">PKD</option>
+                    <option value="SIG">SIG</option>
+                    <option value="SKP">SKP</option>
+                    <option value="NONFORMAL">Non-Formal</option>
+                  </select>
+                  
+                  {tabRaport === 'raport' && (
+                    <button onClick={handleDownloadPDF} style={{ backgroundColor: '#f1c40f', color: '#0d1b2a', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      🖨️ Cetak / Download KHS
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div style={{ padding: '20px' }}>
-                <div style={{ display: 'flex', borderBottom: '1px solid #ddd', marginBottom: '20px' }}>
+                <div className="no-print" style={{ display: 'flex', borderBottom: '1px solid #ddd', marginBottom: '20px' }}>
                   <button onClick={() => setTabRaport('raport')} style={{ padding: '12px 25px', border: '1px solid', borderColor: tabRaport === 'raport' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaport === 'raport' ? '#fff' : 'transparent', color: tabRaport === 'raport' ? '#1e824c' : '#888', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderTopLeftRadius: '4px', borderTopRightRadius: '4px' }}>
-                    📑 Transkrip Nilai {profil.jenjang}
+                    📑 Transkrip Nilai ({filterRaport})
                   </button>
                   <button onClick={() => setTabRaport('persentase')} style={{ padding: '12px 25px', border: '1px solid', borderColor: tabRaport === 'persentase' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaport === 'persentase' ? '#fff' : 'transparent', color: tabRaport === 'persentase' ? '#1e824c' : '#888', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderTopLeftRadius: '4px', borderTopRightRadius: '4px' }}>
                     📊 Evaluasi Keaktifan
@@ -496,7 +510,21 @@ export default function DashboardKader() {
                 </div>
 
                 {tabRaport === 'raport' && (
-                  <div style={{ overflowX: 'auto', border: '1px solid #ddd', borderRadius: '4px' }}>
+                  <div id="area-cetak-raport" style={{ overflowX: 'auto', border: '1px solid #ddd', borderRadius: '4px' }}>
+                    
+                    {/* KOP SURAT (HANYA MUNCUL SAAT PRINT) */}
+                    <div className="print-only-header" style={{ textAlign: 'center', borderBottom: '3px solid #333', paddingBottom: '15px', marginBottom: '20px' }}>
+                      <h2 style={{ margin: '0 0 5px 0' }}>KARTU HASIL STUDI (KHS) KADERISASI</h2>
+                      <h3 style={{ margin: 0, color: '#555' }}>SIAKAD PMII - {namaRayonAsli}</h3>
+                      <table style={{ textAlign: 'left', margin: '20px auto 0 auto', width: '100%', maxWidth: '600px', fontSize: '1rem', fontWeight: 'bold' }}>
+                        <tbody>
+                          <tr><td width="200px">Nama Lengkap</td><td>: {profil.nama}</td></tr>
+                          <tr><td>NIM / Angkatan</td><td>: {profil.nim} / {profil.angkatan}</td></tr>
+                          <tr><td>Jenjang Kaderisasi</td><td>: {filterRaport}</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem', minWidth: '600px' }}>
                       <thead style={{ backgroundColor: '#1e824c', color: 'white' }}>
                         <tr>
@@ -509,7 +537,7 @@ export default function DashboardKader() {
                         </tr>
                       </thead>
                       <tbody>
-                        {listKurikulum.length === 0 ? (
+                        {materiAktif.length === 0 ? (
                           <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur oleh Pengurus Rayon.</td></tr>
                         ) : barisMateriRender}
 
@@ -534,7 +562,7 @@ export default function DashboardKader() {
 
                 {tabRaport === 'persentase' && (
                   <div style={{ backgroundColor: '#fafafa', border: '1px solid #ddd', borderRadius: '8px', padding: '30px' }}>
-                    <h4 style={{ margin: '0 0 20px 0', color: '#333' }}>Rincian Persentase Keaktifan ({profil.jenjang})</h4>
+                    <h4 style={{ margin: '0 0 20px 0', color: '#333' }}>Rincian Persentase Keaktifan ({filterRaport})</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '600px' }}>
                       {evaluasiKader.listKeaktifan && evaluasiKader.listKeaktifan.length > 0 ? (
                         evaluasiKader.listKeaktifan.map((item: any, idx: number) => {
@@ -551,7 +579,7 @@ export default function DashboardKader() {
                             </div>
                           )
                         })
-                      ) : (<p style={{ color: '#888', fontStyle: 'italic', fontSize: '0.9rem', margin: 0 }}>Pendamping Anda belum menginput nilai keaktifan.</p>)}
+                      ) : (<p style={{ color: '#888', fontStyle: 'italic', fontSize: '0.9rem', margin: 0 }}>Pendamping Anda belum menginput nilai keaktifan untuk jenjang ini.</p>)}
                     </div>
                     
                     <div style={{ marginTop: '30px', padding: '20px', backgroundColor: '#eef2f3', borderLeft: '5px solid #1e824c', borderRadius: '4px' }}>

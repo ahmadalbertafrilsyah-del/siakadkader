@@ -219,12 +219,12 @@ export default function DashboardKader() {
 
     return (
       <tr key={materi.kode} style={{ borderBottom: '1px solid #ccc', backgroundColor: index % 2 === 0 ? '#fff' : '#fafafa' }}>
-        <td style={{ padding: '10px 15px', textAlign: 'center', borderRight: '1px solid #ccc', borderLeft: '1px solid #ccc' }}>{index + 1}</td>
-        <td style={{ padding: '10px 15px', color: '#333', borderRight: '1px solid #ccc' }}>{materi.kode}</td>
-        <td style={{ padding: '10px 15px', color: '#333', borderRight: '1px solid #ccc' }}>{materi.nama}</td>
-        <td style={{ padding: '10px 15px', textAlign: 'center', color: '#333', borderRight: '1px solid #ccc' }}>{materi.bobot}</td>
-        <td style={{ padding: '10px 15px', textAlign: 'center', color: '#333', fontWeight: 'bold', borderRight: '1px solid #ccc' }}>{nilaiHuruf === '-' ? '' : nilaiHuruf}</td>
-        <td style={{ padding: '10px 15px', textAlign: 'center', color: '#333', borderRight: '1px solid #ccc' }}>{nilaiHuruf === '-' ? 0 : sksKaliNilai}</td>
+        <td className="col-cetak" style={{ padding: '10px 15px', textAlign: 'center', borderRight: '1px solid #ccc', borderLeft: '1px solid #ccc' }}>{index + 1}</td>
+        <td className="col-cetak" style={{ padding: '10px 15px', color: '#333', borderRight: '1px solid #ccc' }}>{materi.kode}</td>
+        <td className="col-cetak" style={{ padding: '10px 15px', color: '#333', borderRight: '1px solid #ccc' }}>{materi.nama}</td>
+        <td className="col-cetak" style={{ padding: '10px 15px', textAlign: 'center', color: '#333', borderRight: '1px solid #ccc' }}>{materi.bobot}</td>
+        <td className="col-cetak" style={{ padding: '10px 15px', textAlign: 'center', color: '#333', fontWeight: 'bold', borderRight: '1px solid #ccc' }}>{nilaiHuruf === '-' ? '' : nilaiHuruf}</td>
+        <td className="col-cetak" style={{ padding: '10px 15px', textAlign: 'center', color: '#333', borderRight: '1px solid #ccc' }}>{nilaiHuruf === '-' ? 0 : sksKaliNilai}</td>
       </tr>
     );
   });
@@ -328,27 +328,42 @@ export default function DashboardKader() {
   return (
     <div style={{ display: 'flex', backgroundColor: '#f4f6f9', height: '100vh', overflow: 'hidden', fontFamily: 'Arial, sans-serif' }}>
       
-      {/* CSS KHUSUS UNTUK PRINT / DOWNLOAD PDF */}
+      {/* CSS KHUSUS UNTUK PRINT / DOWNLOAD PDF - FORMAT A4 FORMAL */}
       <style>{`
         @media (min-width: 768px) { aside { left: 0 !important; } main { margin-left: 260px !important; } .menu-burger { display: none !important; } }
         
         @media print {
-          @page { size: A4; margin: 20mm; }
-          body { background-color: #fff !important; }
+          @page { size: A4 portrait; margin: 15mm; }
+          body, html { background-color: #fff !important; margin: 0; padding: 0; }
           body * { visibility: hidden; }
-          #area-cetak-raport, #area-cetak-raport * { visibility: visible; color: #000 !important; }
+          #area-cetak-raport, #area-cetak-raport * { visibility: visible; color: #000 !important; font-family: "Arial Narrow", Arial, sans-serif !important; }
           #area-cetak-raport { 
             position: absolute; left: 0; top: 0; width: 100%; 
-            padding: 0; background-color: white !important; 
+            padding: 0; margin: 0; background-color: white !important; 
             border: none !important; box-shadow: none !important;
           }
-          .print-kop-surat { display: block !important; } 
-          .print-footer { display: flex !important; justify-content: center; margin-top: 30px; page-break-inside: avoid; } 
+          
+          /* Menyembunyikan elemen web yang tidak perlu dicetak */
           .no-print { display: none !important; } 
-          table { border-color: #000 !important; }
-          th, td { border: 1px solid #000 !important; padding: 10px !important; }
-          th { background-color: #fff !important; color: #000 !important; }
+          
+          /* Pengaturan Tabel Formal Hitam Putih */
+          .tabel-cetak { border-collapse: collapse !important; width: 100% !important; margin-bottom: 20px; border: 1px solid #000 !important; }
+          .tabel-cetak th, .tabel-cetak td.col-cetak { border: 1px solid #000 !important; padding: 6px 8px !important; font-size: 11pt !important; color: #000 !important; background-color: #fff !important; }
+          .tabel-cetak th { font-weight: bold !important; text-align: center; }
+          
+          /* Pengaturan Tabel Biodata Tanpa Garis */
+          .tabel-biodata td { padding: 4px 0 !important; font-size: 12pt !important; border: none !important; }
+          
+          /* Tampilkan kolom khusus print */
+          .print-kop-surat { display: block !important; margin-bottom: 20px; width: 100%; } 
+          .print-footer { display: flex !important; width: 100%; justify-content: center; margin-top: 40px; page-break-inside: avoid; } 
+          .print-footer img { width: 100% !important; max-width: 100% !important; object-fit: contain; }
+          
+          /* Paksa menghilangkan background color dari web saat print */
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
+        
+        /* Default sembunyikan area print di web */
         .print-kop-surat { display: none; }
         .print-footer { display: none; }
       `}</style>
@@ -356,7 +371,7 @@ export default function DashboardKader() {
       {/* SIDEBAR KADER */}
       <aside className="no-print" style={{ width: '260px', background: 'linear-gradient(180deg, #1e824c 0%, #145a32 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
         <div style={{ padding: '20px', fontSize: '1.2rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>🎓 SIAKAD Kader</span>
+          <span>🎓 SIAKAD PMII</span>
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
         </div>
         <div style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
@@ -523,24 +538,26 @@ export default function DashboardKader() {
                   <div id="area-cetak-raport" style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '4px' }}>
                     
                     {/* KOP SURAT (HANYA MUNCUL SAAT PRINT) */}
-                    <div className="print-kop-surat" style={{ textAlign: 'center', marginBottom: '30px' }}>
+                    <div className="print-kop-surat">
                       {pengaturanCetak.kopSuratUrl && (
-                        <img src={pengaturanCetak.kopSuratUrl} alt="Kop Surat" style={{ width: '100%', maxHeight: '150px', objectFit: 'contain', marginBottom: '20px' }} />
+                        <img src={pengaturanCetak.kopSuratUrl} alt="Kop Surat" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px' }} />
                       )}
                       
-                      <h3 style={{ margin: '0 0 5px 0', textDecoration: 'underline' }}>KARTU HASIL STUDI (KHS) KADERISASI</h3>
-                      <p style={{ margin: 0, fontWeight: 'bold' }}>Jenjang: {filterRaport}</p>
+                      <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '20px 0 20px 0', fontSize: '14pt' }}>RAPORT KADERISASI</h3>
                       
-                      <table style={{ textAlign: 'left', margin: '30px auto 20px 0', width: '100%', maxWidth: '600px', fontSize: '0.95rem' }}>
+                      <table className="tabel-biodata" style={{ textAlign: 'left', margin: '0 auto 20px 0', width: '100%', maxWidth: '700px', fontSize: '1rem' }}>
                         <tbody>
-                          <tr><td width="150px">Nama Kader</td><td width="20px">:</td><td>{profil.nama || '-'}</td></tr>
-                          <tr><td>NIM</td><td>:</td><td>{profil.nim || '-'}</td></tr>
-                          <tr><td>Angkatan</td><td>:</td><td>{profil.angkatan || '-'}</td></tr>
+                          <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{profil.nim || '...........................'}</td></tr>
+                          <tr><td>Nomor Induk Anggota</td><td>:</td><td>{profil.nia || '...........................'}</td></tr>
+                          <tr><td>Nama Mahasiswa</td><td>:</td><td>{profil.nama || '...........................'}</td></tr>
+                          <tr><td>Nama Rayon</td><td>:</td><td>{namaRayonAsli || '...........................'}</td></tr>
+                          <tr><td>Angkatan</td><td>:</td><td>{profil.angkatan || '...........................'}</td></tr>
+                          <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{filterRaport}</td></tr>
                         </tbody>
                       </table>
                     </div>
 
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem', minWidth: '600px' }}>
+                    <table className="tabel-cetak" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem', minWidth: '600px' }}>
                       <thead>
                         <tr className="no-print" style={{ backgroundColor: '#1e824c', color: 'white' }}>
                           <th style={{ padding: '12px 15px', textAlign: 'center' }}>No</th>
@@ -552,12 +569,12 @@ export default function DashboardKader() {
                         </tr>
                         {/* HEADER KHUSUS PRINT (HITAM PUTIH, BORDER JELAS) */}
                         <tr className="print-only-header">
-                          <th style={{ padding: '10px', textAlign: 'center', width: '40px', border: '1px solid #000' }}>No</th>
-                          <th style={{ padding: '10px', border: '1px solid #000' }}>Kode Matakuliah</th>
-                          <th style={{ padding: '10px', border: '1px solid #000' }}>Nama Matakuliah</th>
-                          <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #000' }}>SKS</th>
-                          <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #000' }}>Nilai</th>
-                          <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #000' }}>SKS x Nilai</th>
+                          <th>No</th>
+                          <th>Kode Matakuliah</th>
+                          <th>Nama Matakuliah</th>
+                          <th>SKS</th>
+                          <th>Nilai / Input</th>
+                          <th>SKS x Nilai</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -565,23 +582,23 @@ export default function DashboardKader() {
                           <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur oleh Pengurus Rayon.</td></tr>
                         ) : barisMateriRender}
 
-                        <tr style={{ borderTop: '2px solid #ccc' }}>
-                          <td colSpan={3} style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333', borderRight: '1px solid #ccc', borderLeft: '1px solid #ccc' }}>Jumlah</td>
-                          <td style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333', borderRight: '1px solid #ccc' }}>{totalSks}</td>
-                          <td style={{ padding: '10px 15px', borderRight: '1px solid #ccc' }}></td>
-                          <td style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333', borderRight: '1px solid #ccc' }}>{totalBobotNilai}</td>
+                        <tr style={{ borderTop: '1px solid #000' }}>
+                          <td colSpan={3} style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333', borderRight: '1px solid #ccc' }}>Jumlah</td>
+                          <td className="col-cetak" style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalSks}</td>
+                          <td className="col-cetak"></td>
+                          <td className="col-cetak" style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalBobotNilai}</td>
                         </tr>
-                        <tr style={{ borderTop: '1px solid #ccc', borderBottom: '1px solid #ccc' }}>
-                          <td colSpan={5} style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '0.95rem', borderRight: '1px solid #ccc', borderLeft: '1px solid #ccc' }}>IP (Indeks Prestasi Kaderisasi)</td>
-                          <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem', color: '#333', borderRight: '1px solid #ccc' }}>{ipKader}</td>
+                        <tr style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000' }}>
+                          <td colSpan={5} style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '11pt', borderRight: '1px solid #ccc' }}>IPK (Indeks Prestasi Kader)</td>
+                          <td className="col-cetak" style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '12pt', color: '#333' }}>{ipKader}</td>
                         </tr>
                       </tbody>
                     </table>
 
-                    {/* FOOTER PDF (TANDA TANGAN/STEMPEL DARI RAYON) */}
+                    {/* FOOTER PDF (GAMBAR TANDA TANGAN/STEMPEL DARI RAYON) */}
                     {pengaturanCetak.footerUrl && (
-                      <div className="print-footer">
-                         <img src={pengaturanCetak.footerUrl} alt="Footer / Tanda Tangan" style={{ width: '100%', maxWidth: '800px', objectFit: 'contain' }} />
+                      <div className="print-footer" style={{ width: '100%', marginTop: '30px', display: 'flex', justifyContent: 'center' }}>
+                         <img src={pengaturanCetak.footerUrl} alt="Footer / Tanda Tangan" style={{ maxWidth: '100%', objectFit: 'contain' }} />
                       </div>
                     )}
 

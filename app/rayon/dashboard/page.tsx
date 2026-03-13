@@ -103,7 +103,7 @@ export default function DashboardAdminRayon() {
             const userData = snapRole.docs[0].data();
 
             if (userData.role !== 'rayon') {
-              alert(`Akses Ditolak! Anda mencoba masuk sebagai Admin Rayon, namun jabatan Anda adalah "${userData.role}".`);
+              alert(`Akses Ditolak! Anda mencoba masuk sebagai Admin Rayon, namun jabatan Anda adalah "${userData.role}". Silakan login kembali dengan akun yang benar.`);
               signOut(auth);
               router.push('/');
               return;
@@ -532,6 +532,10 @@ export default function DashboardAdminRayon() {
   };
 
   const handleLogout = () => { signOut(auth); router.push('/'); };
+
+  const handleDownloadPDF = () => {
+    window.print();
+  };
 
   const filteredKader = dataKader.filter(k => 
     ((k.nama && k.nama.toLowerCase().includes(searchKader.toLowerCase())) || 

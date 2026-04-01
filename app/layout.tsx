@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SIAKAD PMII",
-  description: "Sistem Informasi Kaderisasi PK. PMII Sunan Ampel Malang",
+  description: "Sistem Informasi dan Akademik Kaderisasi PK. PMII Sunan Ampel Malang",
 };
 
 export default function RootLayout({

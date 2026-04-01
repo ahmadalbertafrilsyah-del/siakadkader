@@ -439,27 +439,41 @@ export default function DashboardKader() {
         .tabel-utama th { padding: 10px; color: #333; text-align: center; font-weight: bold; }
         .tabel-utama td { padding: 8px 10px; border-bottom: 1px solid #ddd; color: #333; }
         
-        .print-layout-container { display: none; }
+        /* SEMBUNYIKAN AREA PRINT DI WEB */
+        .print-layout-container { 
+           position: absolute;
+           width: 1px;
+           height: 1px;
+           overflow: hidden;
+           opacity: 0;
+           pointer-events: none;
+        }
         
         @media print {
           @page { size: A4 portrait; margin: 0; }
-          body, html { background-color: #fff !important; margin: 0; padding: 0; height: auto !important; }
+          body, html { background-color: transparent !important; margin: 0; padding: 0; height: auto !important; }
           
-          /* 1. BATALKAN OVERFLOW HIDDEN AGAR HALAMAN TIDAK TERPOTONG / BLANK */
+          /* BATALKAN OVERFLOW HIDDEN AGAR HALAMAN TIDAK TERPOTONG / BLANK */
           div[style*="overflow: hidden"] {
              overflow: visible !important;
              height: auto !important;
           }
 
-          /* 2. SEMBUNYIKAN SIDEBAR DAN MAIN UI WEB (JANGAN PAKAI BODY *) */
+          /* SEMBUNYIKAN SIDEBAR DAN MAIN UI WEB */
           aside, main { display: none !important; }
           
-          /* 3. TAMPILKAN WADAH CETAK */
+          /* ------------------------------------------------------------------- */
+          /* PERBAIKAN: TAMPILKAN WADAH CETAK DENGAN UKURAN NORMAL (AUTO)        */
+          /* ------------------------------------------------------------------- */
           .print-layout-container { 
             display: block !important; 
-            position: absolute !important;
-            left: 0; top: 0; width: 100%;
+            position: relative !important;
+            width: 100% !important;
+            height: auto !important;       /* KUNCI PERBAIKANNYA DI SINI */
+            overflow: visible !important;  /* KUNCI PERBAIKANNYA DI SINI */
             background-color: transparent !important;
+            opacity: 1 !important; 
+            z-index: 1 !important; 
           }
           
           .print-layout-container * {
@@ -468,33 +482,35 @@ export default function DashboardKader() {
             line-height: 1.15 !important;
           }
           
-          /* GAMBAR BACKGROUND A4 FULL FIXED (Biar otomatis ada di tiap halaman) */
+          /* GAMBAR BACKGROUND A4 FULL FIXED (LAPISAN BAWAH) */
           .bg-kertas-a4 {
             position: fixed !important;
             top: 0; left: 0;
-            width: 100%; height: 100vh;
-            z-index: -1;
+            width: 100vw !important; 
+            height: 100vh !important;
+            z-index: -10 !important; 
           }
           .bg-kertas-a4 img {
-            width: 210mm !important;
-            height: 297mm !important;
+            width: 100% !important;
+            height: 100% !important;
             object-fit: fill !important;
           }
 
-          /* AREA KONTEN MENYESUAIKAN GAMBAR A4 (RUANG KOSONG) */
-          /* Silakan ubah 40mm/15mm di bawah ini jika tabel kurang ke atas/bawah/tengah */
+          /* AREA KONTEN TENGAH (LAPISAN DEPAN) */
           .print-content-area {
-            position: relative;
-            z-index: 1;
-            padding: 50mm 26mm 40mm 26mm !important; 
+            position: relative !important;
+            z-index: 10 !important; 
+            padding: 50mm 25mm 40mm 25mm !important; 
+            background-color: transparent !important; 
           }
 
-          table { width: 100% !important; border-collapse: collapse !important; }
-          tr { page-break-inside: avoid !important; }
+          table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
+          tr { page-break-inside: avoid !important; background-color: transparent !important; }
           th, td { 
              border: 1px solid #000 !important; 
              padding: 4px 6px !important; 
              font-size: 11pt !important; 
+             background-color: transparent !important; 
           }
           th { font-weight: bold !important; text-align: center !important; }
           

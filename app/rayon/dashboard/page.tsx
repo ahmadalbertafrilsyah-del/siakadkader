@@ -94,6 +94,8 @@ export default function DashboardAdminRayon() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", "siakad_upload"); 
+    
+    // PERBAIKAN: Gunakan auto upload agar PDF dan Word bisa dibaca, tidak dipaksa ke image
     const res = await fetch("https://api.cloudinary.com/v1_1/dcmdaghbq/auto/upload", {
       method: "POST",
       body: formData,
@@ -250,10 +252,10 @@ export default function DashboardAdminRayon() {
 
     return (
       <tr key={materi.kode}>
-        <td className="col-cetak" style={{ padding: '6px 10px', textAlign: 'center' }}>{index + 1}</td>
-        <td className="col-cetak" style={{ padding: '6px 10px', textAlign: 'left' }}>{materi.kode}</td>
-        <td className="col-cetak" style={{ padding: '6px 10px', textAlign: 'left' }}>{materi.nama}</td>
-        <td className="col-cetak" style={{ padding: '6px 10px', textAlign: 'center' }}>{materi.bobot}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'center' }}>{index + 1}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'left' }}>{materi.kode}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'left' }}>{materi.nama}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'center' }}>{materi.bobot}</td>
         <td className="no-print" style={{ padding: '6px 10px', textAlign: 'center' }}>
           {/* Versi Input untuk Layar Web */}
           <select 
@@ -265,10 +267,10 @@ export default function DashboardAdminRayon() {
           </select>
         </td>
         {/* Versi Teks untuk Print PDF */}
-        <td className="print-only-col col-cetak" style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold' }}>
+        <td className="print-only-col" style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold' }}>
            {nilaiHuruf === "-" ? "" : nilaiHuruf}
         </td>
-        <td className="col-cetak" style={{ padding: '6px 10px', textAlign: 'center' }}>{nilaiHuruf === '-' ? 0 : sksKaliNilai}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'center' }}>{nilaiHuruf === '-' ? 0 : sksKaliNilai}</td>
       </tr>
     );
   });
@@ -589,6 +591,7 @@ export default function DashboardAdminRayon() {
     e.preventDefault(); setIsSubmitting(true);
     const secondaryAuth = getSecondaryAuth();
     try {
+      // PERBAIKAN: Menggunakan domain email khusus kader
       const emailBaru = `${formKader.nim}@pmii-uinmalang.or.id`.toLowerCase();
       await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formKader.password);
       await setDoc(doc(db, "users", formKader.nim), { nim: formKader.nim, nia: "", nama: formKader.nama, email: emailBaru, role: "kader", id_rayon: adminRayonId, jenjang: "MAPABA", pendampingId: formKader.pendampingId, status: "Aktif", createdAt: Date.now() });
@@ -602,6 +605,7 @@ export default function DashboardAdminRayon() {
     e.preventDefault(); setIsSubmitting(true);
     const secondaryAuth = getSecondaryAuth();
     try {
+      // PERBAIKAN: Menggunakan domain email khusus
       const emailBaru = `${formPendamping.username}@pmii-uinmalang.or.id`.toLowerCase();
       await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formPendamping.password);
       await setDoc(doc(db, "users", formPendamping.username), { 
@@ -646,6 +650,7 @@ export default function DashboardAdminRayon() {
           let pendamping = row['Pendamping'] || row['pendamping'] || '';
           if (!nim || !nama || !tglLahir) { errorCount++; continue; }
           setImportProgress(`Memproses: ${nama} (${i + 1}/${data.length})`);
+          // PERBAIKAN: Menggunakan domain email khusus
           const emailBaru = `${nim}@pmii-uinmalang.or.id`.toLowerCase();
           try {
             await createUserWithEmailAndPassword(secondaryAuth, emailBaru, tglLahir);
@@ -693,7 +698,6 @@ export default function DashboardAdminRayon() {
     }
   };
 
-  // FUNGSI UNTUK MENGELOMPOKKAN FOLDER PERPUS (BARU)
   const groupedPerpus = listPerpus.reduce((acc, item) => {
     if (!acc[item.folder]) acc[item.folder] = [];
     acc[item.folder].push(item);
@@ -703,73 +707,80 @@ export default function DashboardAdminRayon() {
   return (
     <div style={{ display: 'flex', backgroundColor: '#f4f6f9', minHeight: '100vh', fontFamily: 'Arial, sans-serif' }}>
       
-      {/* CSS KHUSUS UNTUK PRINT / DOWNLOAD PDF - FORMAT A4 FORMAL */}
       <style>{`
         @media (min-width: 768px) { aside { left: 0 !important; } main { margin-left: 260px !important; } .menu-burger { display: none !important; } }
         
-        /* SEMBUNYIKAN ELEMEN KHUSUS CETAK SAAT DILIHAT DI WEB BROWSER */
-        @media screen {
-          .print-only-col { display: none !important; }
-          .print-only-div { display: none !important; }
-          .print-only-inline { display: none !important; }
-          .table-row:nth-child(even) { background-color: #fafafa; }
-        }
-        
-        /* ---------------------------------------------------- */
-        /* STYLING UNTUK TAMPILAN WEB (SIAKAD UIN MALANG STYLE) */
-        /* ---------------------------------------------------- */
         .tabel-utama { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; min-width: 600px; }
         .tabel-utama thead tr { border-top: 2px solid #555; border-bottom: 2px solid #555; background-color: #fff; }
         .tabel-utama th { padding: 10px; color: #333; text-align: center; font-weight: bold; }
         .tabel-utama td { padding: 8px 10px; border-bottom: 1px solid #ddd; color: #333; }
         
+        .print-layout-container { display: none; }
+        
+        /* ---------------------------------------------------- */
+        /* STYLING KHUSUS SAAT MENCETAK (PDF) DENGAN BACKGROUND A4 */
+        /* ---------------------------------------------------- */
         @media print {
-          @page { size: A4 portrait; margin: 15mm; }
-          body, html { background-color: #fff !important; margin: 0; padding: 0; font-family: "Arial Narrow", Arial, sans-serif !important; color: #000 !important; }
-          body * { visibility: hidden; }
+          @page { 
+            size: A4 portrait; 
+            margin: 0; /* Margin di-nol-kan agar gambar bisa full kertas */
+          }
+          body, html { background-color: #fff !important; margin: 0; padding: 0; }
           
-          #area-cetak-raport, #area-cetak-raport * { visibility: visible; color: #000 !important; }
-          #area-cetak-raport { 
-            position: absolute; left: 0; top: 0; width: 100%; 
-            padding: 0 !important; margin: 0; 
-            background-color: white !important; 
-            border: none !important; box-shadow: none !important;
+          body * { visibility: hidden; display: none !important; }
+          
+          .print-layout-container, .print-layout-container * { 
+            visibility: visible !important; 
+            display: block;
+            color: #000 !important; 
+            font-family: Arial, sans-serif !important; 
+            line-height: 1.15 !important;
           }
           
-          .no-print { display: none !important; } 
+          .print-layout-container { 
+            position: absolute !important; left: 0; top: 0; width: 100%; 
+            background-color: transparent !important; 
+          }
           
-          /* Pengaturan Tabel Utama Formal Hitam Putih */
-          .tabel-utama { border-collapse: collapse !important; width: 100% !important; margin-bottom: 15px; border: 1px solid #000 !important; }
-          .tabel-utama thead tr { border-top: 1px solid #000 !important; border-bottom: 1px solid #000 !important; background-color: #fff !important; color: #000 !important;}
-          .tabel-utama th, .tabel-utama td { 
+          /* GAMBAR A4 FULL SEBAGAI BACKGROUND BERULANG */
+          .bg-kertas-a4 {
+            position: fixed !important;
+            top: 0; left: 0;
+            width: 100%; height: 100vh;
+            z-index: -1; /* Berada di belakang teks */
+          }
+          .bg-kertas-a4 img {
+            width: 210mm !important;
+            height: 297mm !important;
+            object-fit: fill !important; 
+          }
+
+          /* AREA KONTEN MENYESUAIKAN GAMBAR A4 */
+          .print-content-area {
+            position: relative;
+            z-index: 1;
+            /* PENTING: Atur margin ini agar teks pas di tengah area putih KOP Anda */
+            /* Angka 40mm adalah jarak dari Atas, dan Bawah */
+            padding: 40mm 15mm 40mm 15mm !important; 
+          }
+          
+          table { display: table !important; width: 100% !important; border-collapse: collapse !important; }
+          tr { display: table-row !important; page-break-inside: avoid !important; }
+          th, td { 
+             display: table-cell !important;
              border: 1px solid #000 !important; 
              padding: 6px 8px !important; 
              font-size: 11pt !important; 
-             color: #000 !important; 
-             background-color: #fff !important; 
           }
-          .tabel-utama th { font-weight: bold !important; text-align: center !important; }
+          th { font-weight: bold !important; text-align: center !important; }
           
-          /* Pengaturan Tabel Biodata Tanpa Garis */
-          .tabel-biodata { width: 100%; font-size: 12pt !important; border: none !important; margin-bottom: 15px !important; }
-          .tabel-biodata td { padding: 4px 0 !important; border: none !important; }
+          .tabel-biodata { margin-bottom: 15px !important; width: 100% !important; border: none !important; }
+          .tabel-biodata td { border: none !important; padding: 4px 0 !important; font-size: 11pt !important; }
           
-          /* Tampilkan elemen khusus print */
-          .print-only-header { display: table-cell !important; } 
-          .print-only-inline { display: inline !important; }
-          .print-kop-surat { display: block !important; margin-bottom: 15px; width: 100%; } 
-          .print-kop-surat img { width: 100% !important; max-height: 250px; object-fit: contain; }
+          .no-print { display: none !important; } 
           
-          .print-footer-container { display: flex !important; width: 100%; justify-content: center; margin-top: 30px; page-break-inside: avoid; } 
-          .print-footer-container img { width: 100% !important; object-fit: contain; }
-          
-          /* Paksa menghilangkan background color browser */
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
-        
-        .print-only-header { display: none; }
-        .print-kop-surat { display: none; }
-        .print-footer-container { display: none; }
       `}</style>
 
       {/* SIDEBAR ADMIN */}
@@ -823,7 +834,7 @@ export default function DashboardAdminRayon() {
       </aside>
 
       {/* Konten Utama Container */}
-      <main style={{ 
+      <main className="no-print" style={{ 
         flex: 1, 
         display: 'flex', 
         flexDirection: 'column', 
@@ -832,8 +843,8 @@ export default function DashboardAdminRayon() {
         overflowX: 'hidden' 
       }}>
         
-        {/* HEADER ATAS DINAMIS (SATU-SATUNYA HEADER DI APLIKASI) */}
-        <header className="no-print" style={{ backgroundColor: '#fff', padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
+        {/* HEADER ATAS DINAMIS */}
+        <header style={{ backgroundColor: '#fff', padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
           <button className="menu-burger" onClick={() => setIsSidebarOpen(true)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#0d1b2a' }}>☰</button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <h2 style={{ fontSize: '1rem', color: '#333', margin: 0, textTransform: 'uppercase', fontWeight: 'bold' }}>
@@ -846,9 +857,7 @@ export default function DashboardAdminRayon() {
         {/* ISI KONTEN */}
         <div style={{ padding: '20px', flex: 1 }}>
 
-          {/* ========================================================= */}
           {/* MENU 0: BERANDA OVERVIEW */}
-          {/* ========================================================= */}
           {activeMenu === 'beranda' && (
             <div>
               <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
@@ -925,9 +934,7 @@ export default function DashboardAdminRayon() {
             </div>
           )}
           
-          {/* ========================================================= */}
           {/* MENU 1: VERIFIKASI SURAT & JENIS LAYANAN */}
-          {/* ========================================================= */}
           {activeMenu === 'verifikasi-surat' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
@@ -1046,9 +1053,7 @@ export default function DashboardAdminRayon() {
             </div>
           )}
 
-          {/* ========================================================= */}
           {/* MENU 2: MANAJEMEN AKUN & PLOTTING */}
-          {/* ========================================================= */}
           {activeMenu === 'manajemen-akun' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -1419,29 +1424,30 @@ export default function DashboardAdminRayon() {
                 <button onClick={() => setTabRaportAdmin('persentase')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'persentase' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'persentase' ? '#fff' : 'transparent', color: tabRaportAdmin === 'persentase' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>📊 Evaluasi Keaktifan</button>
                 
                 {/* TAB PENGATURAN KOP CETAK */}
-                <button onClick={() => setTabRaportAdmin('pengaturan')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'pengaturan' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'pengaturan' ? '#fff' : 'transparent', color: tabRaportAdmin === 'pengaturan' ? '#555' : '#e67e22', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', marginLeft: 'auto', fontSize: '0.85rem' }}>⚙️ Pengaturan Kop Cetak</button>
+                <button onClick={() => setTabRaportAdmin('pengaturan')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'pengaturan' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'pengaturan' ? '#fff' : 'transparent', color: tabRaportAdmin === 'pengaturan' ? '#555' : '#e67e22', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', marginLeft: 'auto', fontSize: '0.85rem' }}>⚙️ Pengaturan Cetak</button>
               </div>
 
               {tabRaportAdmin === 'raport' && (
                 <div id="area-cetak-raport" style={{ overflowX: 'auto', padding: '10px 0' }}>
                   
-                  {/* KOP SURAT ADMIN RAYON (HANYA SAAT PRINT) */}
-                  <div className="print-kop-surat">
+                  <div className="print-only-container" style={{ display: 'none' }}>
                     {pengaturanCetak.kopSuratUrl && (
-                      <img src={pengaturanCetak.kopSuratUrl} alt="Kop Surat" />
+                      <div className="print-kop-surat">
+                        <img src={pengaturanCetak.kopSuratUrl} alt="Kop Surat" />
+                      </div>
                     )}
-                    
-                    <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '15px 0 15px 0', fontSize: '12pt' }}>RAPORT KADERISASI</h3>
-                    
-                    <table className="tabel-biodata">
-                      <tbody>
-                        <tr><td style={{width: '200px'}}>Nama Kader</td><td style={{width: '15px'}}>:</td><td>{kaderDicetak.nama || '-'}</td></tr>
-                        <tr><td>NIM</td><td>:</td><td>{kaderDicetak.nim || '-'}</td></tr>
-                        <tr><td>Angkatan</td><td>:</td><td>{kaderDicetak.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '-'}</td></tr>
-                        <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{selectedJenjangNilai}</td></tr>
-                      </tbody>
-                    </table>
                   </div>
+                  
+                  <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '15px 0 15px 0', fontSize: '12pt' }}>RAPORT KADERISASI</h3>
+                  
+                  <table className="tabel-biodata">
+                    <tbody>
+                      <tr><td style={{width: '200px'}}>Nama Kader</td><td style={{width: '15px'}}>:</td><td>{kaderDicetak.nama || '-'}</td></tr>
+                      <tr><td>NIM</td><td>:</td><td>{kaderDicetak.nim || '-'}</td></tr>
+                      <tr><td>Angkatan</td><td>:</td><td>{kaderDicetak.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '-'}</td></tr>
+                      <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{selectedJenjangNilai}</td></tr>
+                    </tbody>
+                  </table>
 
                   {/* TABEL TUNGGAL ADMIN MIRIP KADER */}
                   <table className="tabel-utama">
@@ -1452,17 +1458,8 @@ export default function DashboardAdminRayon() {
                         <th style={{ width: '45%', textAlign: 'left' }}>Nama Matakuliah</th>
                         <th style={{ width: '10%' }}>SKS</th>
                         <th className="no-print" style={{ width: '10%' }}>Nilai / Input</th>
-                        <th className="print-only-header" style={{ width: '10%' }}>Nilai Huruf</th>
+                        <th className="print-only-header" style={{ display: 'none', width: '10%' }}>Nilai Huruf</th>
                         <th style={{ width: '10%' }}>SKS x Nilai</th>
-                      </tr>
-                      {/* HEADER KHUSUS PRINT (HITAM PUTIH, BORDER JELAS) */}
-                      <tr className="print-only-header">
-                        <th style={{ padding: '10px', textAlign: 'center', width: '40px', border: '1px solid #000' }}>No</th>
-                        <th style={{ padding: '10px', border: '1px solid #000' }}>Kode Matakuliah</th>
-                        <th style={{ padding: '10px', border: '1px solid #000' }}>Nama Matakuliah</th>
-                        <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #000' }}>SKS</th>
-                        <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #000' }}>Nilai</th>
-                        <th style={{ padding: '10px', textAlign: 'center', border: '1px solid #000' }}>SKS x Nilai</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1474,24 +1471,22 @@ export default function DashboardAdminRayon() {
                         <td colSpan={3} className="col-cetak" style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td>
                         <td className="col-cetak" style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td>
                         <td className="no-print"></td>
-                        <td className="print-only-col col-cetak"></td>
+                        <td className="print-only-col col-cetak" style={{ display: 'none' }}></td>
                         <td className="col-cetak" style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td>
                       </tr>
                       <tr style={{ borderTop: '1px solid #ccc', borderBottom: '1px solid #ccc' }}>
                         <td colSpan={5} className="no-print col-cetak" style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '0.95rem' }}>IPK (Indeks Prestasi Kader)</td>
-                        <td colSpan={5} className="print-only-col col-cetak" style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '11pt' }}>IPK (Indeks Prestasi Kader)</td>
+                        <td colSpan={5} className="print-only-col col-cetak" style={{ display: 'none', padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '11pt' }}>IPK (Indeks Prestasi Kader)</td>
                         <td className="col-cetak" style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem', color: '#333' }}>{ipKader}</td>
                       </tr>
                     </tbody>
                   </table>
-
-                  {/* FOOTER PDF (GAMBAR TANDA TANGAN/STEMPEL DARI RAYON) */}
-                  <div className="print-footer-container">
-                    {pengaturanCetak.footerUrl && (
-                      <img src={pengaturanCetak.footerUrl} alt="Footer / Tanda Tangan" />
-                    )}
-                    <div className="teks-motto-biru">
-                      Kebenaran, Keadilan, Kejujuran
+                  
+                  <div className="print-only-container" style={{ display: 'none' }}>
+                    <div className="print-footer-container">
+                      {pengaturanCetak.footerUrl && (
+                        <img src={pengaturanCetak.footerUrl} alt="Footer / Tanda Tangan" />
+                      )}
                     </div>
                   </div>
 
@@ -1569,7 +1564,7 @@ export default function DashboardAdminRayon() {
                                 >
                                   <option value="">-</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>
                                 </select>
-                                <span className="print-only-inline">{nilaiHuruf === "-" ? "" : nilaiHuruf}</span>
+                                <span className="print-only-inline" style={{ display: 'none' }}>{nilaiHuruf === "-" ? "" : nilaiHuruf}</span>
                               </td>
                               <td>{nilaiHuruf === '-' ? 0 : sksKaliNilai}</td>
                             </tr>
@@ -1606,23 +1601,17 @@ export default function DashboardAdminRayon() {
                 <div style={{ backgroundColor: '#fafafa', border: '1px solid #ddd', borderRadius: '4px', padding: '20px' }}>
                   <form onSubmit={handleSimpanPengaturanCetak} style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '500px' }}>
                     <div style={{ backgroundColor: '#fff3cd', padding: '10px', borderRadius: '4px', borderLeft: '4px solid #f1c40f', fontSize: '0.8rem', color: '#856404', lineHeight: '1.4' }}>
-                      <b>PENTING:</b> Website tidak membaca file Word (.docx) atau PDF untuk Kop Surat. Simpan Kop dari Word sebagai <b>Gambar (PNG/JPG)</b> (Klik Kanan &gt; Save as Picture).
+                      <b>PENTING:</b> Gunakan Gambar <b>Ukuran Kertas A4 (PNG/JPG)</b> yang berisi desain KOP SURAT di bagian atas dan TANDA TANGAN di bagian bawah. Bagian tengah gambar harus putih kosong. Gambar ini akan menjadi background pada saat cetak PDF.
                     </div>
 
                     <div>
-                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', color: '#333', fontSize: '0.85rem' }}>Kop Surat (Gambar Header Atas)</label>
-                      {pengaturanCetak.kopSuratUrl && <img src={pengaturanCetak.kopSuratUrl} alt="Kop Saat Ini" style={{ width: '100%', maxHeight: '100px', objectFit: 'contain', marginBottom: '10px', border: '1px solid #ccc', backgroundColor: '#fff', padding: '5px' }} />}
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', color: '#333', fontSize: '0.85rem' }}>Upload Template Background A4</label>
+                      {pengaturanCetak.kopSuratUrl && <img src={pengaturanCetak.kopSuratUrl} alt="Kop Saat Ini" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', border: '1px solid #ccc', backgroundColor: '#fff', padding: '5px' }} />}
                       <input type="file" accept="image/png, image/jpeg" onChange={(e) => setFileKop(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', border: '1px dashed #ccc', width: '100%', backgroundColor: '#fff', boxSizing: 'border-box', fontSize: '0.8rem' }} />
                     </div>
                     
-                    <div>
-                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', color: '#333', fontSize: '0.85rem' }}>Gambar Footer / Tanda Tangan (Bawah)</label>
-                      {pengaturanCetak.footerUrl && <img src={pengaturanCetak.footerUrl} alt="Footer Saat Ini" style={{ width: '100%', maxHeight: '100px', objectFit: 'contain', marginBottom: '10px', border: '1px solid #ccc', backgroundColor: '#fff', padding: '5px' }} />}
-                      <input type="file" accept="image/png, image/jpeg" onChange={(e) => setFileFooter(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', border: '1px dashed #ccc', width: '100%', backgroundColor: '#fff', boxSizing: 'border-box', fontSize: '0.8rem' }} />
-                    </div>
-                    
                     <button type="submit" disabled={isSavingPengaturan} style={{ backgroundColor: '#1e824c', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSavingPengaturan ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}>
-                      {isSavingPengaturan ? 'Mengupload...' : '💾 Simpan Pengaturan Cetak'}
+                      {isSavingPengaturan ? 'Mengupload...' : '💾 Simpan Template A4'}
                     </button>
                   </form>
                 </div>
@@ -1639,19 +1628,34 @@ export default function DashboardAdminRayon() {
               {selectedTesHasil ? (
                 // TAMPILAN LIHAT HASIL TES KADER
                 <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', padding: '20px' }}>
-                  <button onClick={() => setSelectedTesHasil(null)} style={{ marginBottom: '15px', padding: '6px 12px', backgroundColor: '#f1c40f', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
+                  <button className="no-print" onClick={() => setSelectedTesHasil(null)} style={{ marginBottom: '15px', padding: '6px 12px', backgroundColor: '#f1c40f', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
                     ⬅️ Kembali
                   </button>
-                  <h3 style={{ color: '#1e824c', margin: '0 0 10px 0', fontSize: '1.1rem' }}>Data Hasil: {selectedTesHasil.judul} ({selectedTesHasil.jenjang})</h3>
                   
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '800px' }}>
+                  <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ color: '#1e824c', margin: '0 0 10px 0', fontSize: '1.1rem' }}>Data Hasil: {selectedTesHasil.judul} ({selectedTesHasil.jenjang})</h3>
+                    <button onClick={handleDownloadPDF} style={{ backgroundColor: '#007bff', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
+                      🖨️ Cetak Semua Hasil
+                    </button>
+                  </div>
+                  
+                  <div style={{ overflowX: 'auto' }} id="area-cetak-tes">
+                    <div className="print-only-container" style={{ display: 'none' }}>
+                      {pengaturanCetak.kopSuratUrl && (
+                        <div className="print-kop-surat">
+                          <img src={pengaturanCetak.kopSuratUrl} alt="Kop Surat" />
+                        </div>
+                      )}
+                      <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '15px 0 15px 0', fontSize: '12pt', textTransform: 'uppercase' }}>REKAP JAWABAN: {selectedTesHasil.judul}</h3>
+                    </div>
+
+                    <table className="tabel-utama" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '800px' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f8f9fa' }}>
-                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Waktu Submit</th>
-                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>NIM</th>
-                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Nama Kader</th>
-                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Lihat Jawaban Kader</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '15%' }}>Waktu Submit</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '15%' }}>NIM</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '25%' }}>Nama Kader</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '45%' }}>Jawaban Kader</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1660,27 +1664,45 @@ export default function DashboardAdminRayon() {
                         ) : (
                           jawabanTesViewer.map((jawab: any) => (
                             <tr key={jawab.nim} style={{ borderBottom: '1px solid #eee' }}>
-                              <td style={{ padding: '10px' }}>{jawab.tanggal}</td>
-                              <td style={{ padding: '10px', fontWeight: 'bold' }}>{jawab.nim}</td>
-                              <td style={{ padding: '10px', color: '#004a87', fontWeight: 'bold' }}>{jawab.nama}</td>
-                              <td style={{ padding: '10px' }}>
-                                <details style={{ cursor: 'pointer' }}>
-                                  <summary style={{ color: '#27ae60', fontWeight: 'bold', outline: 'none' }}>Tampilkan Jawaban</summary>
-                                  <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#fafafa', border: '1px solid #eee', borderRadius: '4px' }}>
-                                    {(selectedTesHasil.daftar_soal || []).map((soal: string, i: number) => (
-                                      <div key={i} style={{ marginBottom: '10px' }}>
-                                        <div style={{ fontWeight: 'bold', color: '#333' }}>Q: {soal}</div>
-                                        <div style={{ color: '#555', fontStyle: 'italic', paddingLeft: '10px', borderLeft: '3px solid #3498db', marginTop: '4px', whiteSpace: 'pre-wrap' }}>A: {jawab.jawaban[i] || '- Kosong -'}</div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </details>
+                              <td style={{ padding: '10px', verticalAlign: 'top' }}>{jawab.tanggal}</td>
+                              <td style={{ padding: '10px', fontWeight: 'bold', verticalAlign: 'top' }}>{jawab.nim}</td>
+                              <td style={{ padding: '10px', color: '#004a87', fontWeight: 'bold', verticalAlign: 'top' }}>{jawab.nama}</td>
+                              <td style={{ padding: '10px', verticalAlign: 'top' }}>
+                                <div className="no-print">
+                                  <details style={{ cursor: 'pointer' }}>
+                                    <summary style={{ color: '#27ae60', fontWeight: 'bold', outline: 'none' }}>Tampilkan Jawaban</summary>
+                                    <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#fafafa', border: '1px solid #eee', borderRadius: '4px' }}>
+                                      {(selectedTesHasil.daftar_soal || []).map((soal: string, i: number) => (
+                                        <div key={i} style={{ marginBottom: '10px' }}>
+                                          <div style={{ fontWeight: 'bold', color: '#333' }}>Q: {soal}</div>
+                                          <div style={{ color: '#555', fontStyle: 'italic', paddingLeft: '10px', borderLeft: '3px solid #3498db', marginTop: '4px', whiteSpace: 'pre-wrap' }}>A: {jawab.jawaban[i] || '- Kosong -'}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </details>
+                                </div>
+                                <div className="print-only-container" style={{ display: 'none' }}>
+                                  {(selectedTesHasil.daftar_soal || []).map((soal: string, i: number) => (
+                                    <div key={i} style={{ marginBottom: '10px' }}>
+                                      <div style={{ fontWeight: 'bold', color: '#000' }}>Q: {soal}</div>
+                                      <div style={{ fontStyle: 'italic', whiteSpace: 'pre-wrap', color: '#333' }}>A: {jawab.jawaban[i] || '- Kosong -'}</div>
+                                    </div>
+                                  ))}
+                                </div>
                               </td>
                             </tr>
                           ))
                         )}
                       </tbody>
                     </table>
+
+                    <div className="print-only-container" style={{ display: 'none' }}>
+                      <div className="print-footer-container">
+                        {pengaturanCetak.footerUrl && (
+                          <img src={pengaturanCetak.footerUrl} alt="Footer / Tanda Tangan" />
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -1845,6 +1867,110 @@ export default function DashboardAdminRayon() {
 
         </div>
       </main>
+
+      {/* PERBAIKAN 2: STRUKTUR HIDDEN HTML KHUSUS UNTUK PRINT PDF DENGAN BACKGROUND GAMBAR A4 */}
+      <div id="hidden-print-container" className="print-layout-container">
+        
+        {/* GAMBAR FULL A4 (Diambil dari input Kop Surat Admin) */}
+        {pengaturanCetak.kopSuratUrl && (
+          <div className="bg-kertas-a4">
+            <img src={pengaturanCetak.kopSuratUrl} alt="Background A4" />
+          </div>
+        )}
+
+        {/* AREA KONTEN (Tabel, Teks, dll) */}
+        <div className="print-content-area">
+          
+          {/* JIKA MENCETAK KHS RAPORT */}
+          {activeMenu === 'raport' && tabRaportAdmin === 'raport' && (
+            <div>
+              <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '0 0 15px 0', fontSize: '12pt' }}>RAPORT KADERISASI</h3>
+              <table className="tabel-biodata">
+                <tbody>
+                  <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{kaderDicetak.nim || '...........................'}</td></tr>
+                  <tr><td>Nama Mahasiswa</td><td>:</td><td>{kaderDicetak.nama || '...........................'}</td></tr>
+                  <tr><td>Angkatan</td><td>:</td><td>{kaderDicetak.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '...........................'}</td></tr>
+                  <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{selectedJenjangNilai}</td></tr>
+                </tbody>
+              </table>
+
+              <table className="tabel-utama">
+                <thead>
+                  <tr>
+                    <th style={{ width: '5%' }}>No</th>
+                    <th style={{ width: '20%', textAlign: 'left' }}>Kode Matakuliah</th>
+                    <th style={{ width: '45%', textAlign: 'left' }}>Nama Matakuliah</th>
+                    <th style={{ width: '10%' }}>SKS</th>
+                    <th style={{ width: '10%' }}>Nilai</th>
+                    <th style={{ width: '10%' }}>SKS x Nilai</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {materiAktif.length === 0 ? (
+                    <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur oleh Pengurus Rayon.</td></tr>
+                  ) : barisRaportRender}
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td>
+                    <td></td>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td>
+                  </tr>
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kaderisasi)</td>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{ipKader}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* JIKA MENCETAK HASIL TES PEMAHAMAN */}
+          {activeMenu === 'manajemen-tes' && selectedTesId && riwayatTes.find(r => r.id_tes === selectedTesId) && (
+            <div>
+              {(() => {
+                const currentTes = listTes.find(t => t.id === selectedTesId);
+                const sudahMengerjakan = riwayatTes.find(r => r.id_tes === selectedTesId);
+                if (!currentTes || !sudahMengerjakan) return null;
+                
+                return (
+                  <>
+                    <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '0 0 15px 0', fontSize: '12pt', textTransform: 'uppercase' }}>REKAP JAWABAN: {currentTes.judul}</h3>
+                    <table className="tabel-utama">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '15%' }}>Waktu Submit</th>
+                          <th style={{ width: '15%' }}>NIM</th>
+                          <th style={{ width: '25%' }}>Nama Kader</th>
+                          <th style={{ width: '45%' }}>Jawaban Kader</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {jawabanTesViewer.map((jawab: any) => (
+                          <tr key={jawab.nim}>
+                            <td style={{ verticalAlign: 'top' }}>{jawab.tanggal}</td>
+                            <td style={{ fontWeight: 'bold', verticalAlign: 'top' }}>{jawab.nim}</td>
+                            <td style={{ fontWeight: 'bold', verticalAlign: 'top' }}>{jawab.nama}</td>
+                            <td style={{ verticalAlign: 'top' }}>
+                              {(currentTes.daftar_soal || []).map((soal: string, i: number) => (
+                                <div key={i} style={{ marginBottom: '10px' }}>
+                                  <div style={{ fontWeight: 'bold' }}>Q: {soal}</div>
+                                  <div style={{ fontStyle: 'italic' }}>A: {jawab.jawaban[i] || '- Kosong -'}</div>
+                                </div>
+                              ))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                )
+              })()}
+            </div>
+          )}
+
+        </div>
+      </div>
+
     </div>
   );
 }

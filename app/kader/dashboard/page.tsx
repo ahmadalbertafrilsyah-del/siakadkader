@@ -471,7 +471,7 @@ export default function DashboardKader() {
           .tabel-utama thead tr { border-top: 1px solid #000 !important; border-bottom: 1px solid #000 !important; }
           .tabel-utama th, .tabel-utama td { 
              border: 1px solid #000 !important; 
-             padding: 6px 8px !important; 
+             padding: 2px 5px !important; 
              font-size: 11pt !important; 
              color: #000 !important; 
              background-color: #fff !important; 
@@ -479,11 +479,11 @@ export default function DashboardKader() {
           .tabel-utama th { background-color: #fff !important; font-weight: bold !important; text-align: center !important; }
           
           /* Biodata Kader Tanpa Garis */
-          .tabel-biodata { margin-bottom: 15px !important; width: 100% !important; border: none !important; }
-          .tabel-biodata td { padding: 4px 0 !important; font-size: 11pt !important; border: none !important; text-align: left !important; }
+          .tabel-biodata { margin-bottom: 10px !important; width: 100% !important; border: none !important; }
+          .tabel-biodata td { padding: 2px 0 !important; font-size: 11pt !important; border: none !important; text-align: left !important; }
           
           /* Kop Surat Gambar Print */
-          .print-kop-surat { display: block !important; margin-bottom: 10px; width: 100%; text-align: center; } 
+          .print-kop-surat { display: block !important; margin-bottom: 2px; width: 100%; text-align: center; } 
           .print-kop-surat img { width: 100% !important; max-height: 160px; object-fit: contain; display: block; margin: 0 auto; }
 
           /* PENGATURAN FOOTER MENGUNCI DI PALING BAWAH KERTAS (SEPERTI MS. WORD) */
@@ -493,14 +493,14 @@ export default function DashboardKader() {
             align-items: center;
             width: 100%; 
             margin-top: auto !important; /* Mendorong footer menempel ke tepi paling bawah */
-            padding-top: 20px; 
+            padding-top: 2px; 
             page-break-inside: avoid;
           } 
           .print-footer-container img { 
             width: 100% !important; 
             max-width: 100% !important; 
             object-fit: contain; 
-            margin-bottom: 10px;
+            margin-bottom: 2px;
           }
           .teks-motto-biru {
              color: #0000FF !important; /* Paksa biru di cetakan */
@@ -518,23 +518,23 @@ export default function DashboardKader() {
       {/* SIDEBAR KADER */}
       <aside className="no-print" style={{ width: '240px', background: 'linear-gradient(180deg, #1e824c 0%, #145a32 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-240px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
         <div style={{ padding: '15px', fontSize: '1.1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>🎓 SIAKAD Kader</span>
+          <span>🎓 SIAKAD PMII</span>
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
         </div>
         <div style={{ padding: '15px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <img src={profil.fotoUrl} alt="Foto" style={{ width: '45px', height: '45px', backgroundColor: '#e74c3c', borderRadius: '50%', objectFit: 'cover', border: '2px solid #f1c40f' }} />
           <div>
             <h4 style={{ fontSize: '0.8rem', margin: '0 0 3px 0', color: '#fff', lineHeight: '1.2' }}>{profil.nama}</h4>
-            <p style={{ fontSize: '0.7rem', color: '#f1c40f', margin: 0, fontWeight: 'bold' }}>{profil.jenjang}</p>
+            <p style={{ fontSize: '0.7rem', color: '#f1c40f', margin: 0, fontWeight: 'bold' }}>{profil.nia}</p>
           </div>
         </div>
         <ul style={{ listStyle: 'none', padding: '10px 0', overflowY: 'auto', flex: 1, margin: 0 }}>
           {[
             { id: 'home', icon: '🏠', label: 'Beranda' },
             { id: 'profil', icon: '👤', label: 'Profil Saya' },
-            { id: 'raport', icon: '📊', label: 'KHS & Raport Saya' },
-            { id: 'tes-materi', icon: '📝', label: 'Tes Pemahaman' }, /* MENU BARU */
-            { id: 'upload', icon: '📤', label: 'Tugas Rayon' },
+            { id: 'raport', icon: '📊', label: 'KHS Kaderisasi' },
+            { id: 'tes-materi', icon: '📝', label: 'Tes Pemahaman' },
+            { id: 'upload', icon: '📤', label: 'Tugas Kader' },
             { id: 'surat', icon: '✉️', label: 'Layanan Surat' },
             { id: 'perpus', icon: '📚', label: 'Perpustakaan' },
             { id: 'saran', icon: '💬', label: 'Kotak Saran' },
@@ -754,9 +754,7 @@ export default function DashboardKader() {
                       {pengaturanCetak.footerUrl && (
                         <img src={pengaturanCetak.footerUrl} alt="Footer / Tanda Tangan" />
                       )}
-                      <div className="teks-motto-biru">
-                        Kebenaran, Keadilan, Kejujuran
-                      </div>
+
                     </div>
                   </div>
                 )}

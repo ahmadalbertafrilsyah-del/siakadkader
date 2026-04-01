@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import React, { useState, useEffect } from 'react';
 
@@ -35,9 +35,35 @@ export default function PintuMasukSiKader() {
   const [captchaNum1, setCaptchaNum1] = useState(0);
   const [captchaNum2, setCaptchaNum2] = useState(0);
 
+  // --- STATE UNTUK PENGUMUMAN BERJALAN ---
+  const [pengumumanList, setPengumumanList] = useState<string[]>([defaultDesign.pengumuman]);
+  const [currentPengumumanIndex, setCurrentPengumumanIndex] = useState(0);
+
   useEffect(() => {
     generateCaptcha();
+
+    // 1. Tarik data pengumuman dinamis dari database (secara realtime)
+    const unsubscribePengumuman = onSnapshot(doc(db, "pengaturan_sistem", "pengumuman"), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().listTeks && docSnap.data().listTeks.length > 0) {
+        setPengumumanList(docSnap.data().listTeks);
+      } else {
+        setPengumumanList([defaultDesign.pengumuman]); // Balik ke default jika kosong
+      }
+    });
+
+    return () => unsubscribePengumuman();
   }, []);
+
+  // 2. Timer untuk menggeser pengumuman setiap 5 detik
+  useEffect(() => {
+    if (pengumumanList.length <= 1) return; // Jika cuma 1 teks, tidak perlu bergeser
+
+    const interval = setInterval(() => {
+      setCurrentPengumumanIndex((prevIndex) => (prevIndex + 1) % pengumumanList.length);
+    }, 5000); // 5000 ms = 5 detik
+
+    return () => clearInterval(interval);
+  }, [pengumumanList]);
 
   const generateCaptcha = () => {
     setCaptchaNum1(Math.floor(Math.random() * 10) + 1);
@@ -65,12 +91,18 @@ export default function PintuMasukSiKader() {
 
       const amanLoginId = loginId.trim().toLowerCase();
 
-      // MENCARI DATA BERDASARKAN NIM ATAU USERNAME (PENDEKATAN LEBIH AMAN TANPA FUNGSI OR)
-      // 1. Coba cari sebagai NIM (Kader)
+      // MENCARI DATA BERDASARKAN NIM ATAU USERNAME 
+      // 1. Coba cari sebagai NIM (Kader) - String
       let q = query(collection(db, "users"), where("nim", "==", amanLoginId));
       let querySnapshot = await getDocs(q);
 
-      // 2. Jika tidak ketemu sebagai NIM, coba cari sebagai Username (Pengurus)
+      // 2. Jika tidak ketemu, coba cari sebagai NIM berupa angka (biasanya dari import Excel)
+      if (querySnapshot.empty && !isNaN(Number(amanLoginId))) {
+        q = query(collection(db, "users"), where("nim", "==", Number(amanLoginId)));
+        querySnapshot = await getDocs(q);
+      }
+
+      // 3. Jika tidak ketemu juga, coba cari sebagai Username (Pengurus)
       if (querySnapshot.empty) {
         q = query(collection(db, "users"), where("username", "==", amanLoginId));
         querySnapshot = await getDocs(q);
@@ -78,6 +110,9 @@ export default function PintuMasukSiKader() {
 
       if (!querySnapshot.empty) {
         const userData = querySnapshot.docs[0].data();
+        
+        // BACA EMAIL LANGSUNG DARI DATABASE
+        // Dengan begini, akun lama tetap pakai email lama, dan akun baru pakai email @pmii-uinmalang.or.id
         emailUntukLogin = userData.email; 
         peranUser = userData.role;
         namaUser = userData.nama;
@@ -86,15 +121,15 @@ export default function PintuMasukSiKader() {
         throw new Error("Akun tidak ditemukan di sistem SIAKAD.");
       }
 
-      // 3. Cek Status Aktif/Pasif
+      // 4. Cek Status Aktif/Pasif
       if (statusUser === "Pasif") {
         throw new Error("Akun Anda sedang dinonaktifkan. Silakan hubungi Admin Rayon.");
       }
 
-      // 4. Lakukan proses Auth Firebase 
+      // 5. Lakukan proses Auth Firebase 
       await signInWithEmailAndPassword(auth, emailUntukLogin, password);
       
-      // 5. Arahkan ke Dashboard sesuai jabatannya
+      // 6. Arahkan ke Dashboard sesuai jabatannya
       if (peranUser === 'komisariat') {
         router.push('/komisariat/dashboard');
       } else if (peranUser === 'rayon') { 
@@ -134,6 +169,14 @@ export default function PintuMasukSiKader() {
       flexDirection: 'column'
     }}>
       
+      {/* CSS KHUSUS UNTUK ANIMASI TEKS */}
+      <style>{`
+        @keyframes fadeInSlide {
+          0% { opacity: 0; transform: translateY(5px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
       {/* HEADER */}
       <header style={{ 
         display: 'flex', 
@@ -157,9 +200,23 @@ export default function PintuMasukSiKader() {
         <h2 style={{ letterSpacing: '2px', margin: 0, color: design.warnaUtama, fontSize: 'clamp(1.1rem, 3vw, 1.4rem)' }}>GERBANG MASUK SIAKAD</h2>
       </div>
 
-      {/* PENGUMUMAN */}
-      <div style={{ backgroundColor: design.warnaUtama, color: 'white', padding: '10px 5%', textAlign: 'center', fontStyle: 'italic', fontSize: 'clamp(0.8rem, 2vw, 0.9rem)', transition: 'background-color 0.5s ease' }}>
-        {design.pengumuman}
+      {/* PENGUMUMAN BERJALAN (SLIDER) */}
+      <div style={{ 
+        backgroundColor: design.warnaUtama, 
+        color: 'white', 
+        padding: '10px 5%', 
+        textAlign: 'center', 
+        fontStyle: 'italic', 
+        fontSize: 'clamp(0.8rem, 2vw, 0.9rem)', 
+        transition: 'background-color 0.5s ease',
+        minHeight: '25px', // Menjaga tinggi div agar tidak melompat-lompat
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <span key={currentPengumumanIndex} style={{ animation: 'fadeInSlide 0.8s ease-out' }}>
+          {pengumumanList[currentPengumumanIndex]}
+        </span>
       </div>
 
       {/* KONTEN UTAMA (RESPONSIF) */}

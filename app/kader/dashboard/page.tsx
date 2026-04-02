@@ -71,7 +71,8 @@ export default function DashboardKader() {
     formData.append("file", file);
     formData.append("upload_preset", "siakad_upload"); 
     
-    // PERBAIKAN: Pisahkan route jika file gambar gunakan 'image', jika PDF/dokumen gunakan 'raw'
+    // PERBAIKAN FINAL: Paksa dokumen (PDF) masuk ke jalur 'raw', dan foto ke 'image'.
+    // Ini akan menghindari Error 401 Unauthorized dari Cloudinary.
     const resourceType = file.type.startsWith('image/') ? 'image' : 'raw';
     
     const res = await fetch(`https://api.cloudinary.com/v1_1/dcmdaghbq/${resourceType}/upload`, {
@@ -81,7 +82,8 @@ export default function DashboardKader() {
     
     const data = await res.json();
     if (!data.secure_url) throw new Error("Gagal upload ke Cloudinary");
-    return data.secure_url;
+    
+    return data.secure_url.replace("http://", "https://");
   };
 
   // ==========================================
@@ -572,7 +574,7 @@ export default function DashboardKader() {
 
             <span style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', color: profil.status === 'Aktif' ? '#1e824c' : '#c62828', backgroundColor: profil.status === 'Aktif' ? '#e8f5e9' : '#ffebee', padding: '6px 12px', borderRadius: '20px', fontWeight: 'bold' }}>
               <span style={{ display: 'inline-block', width: '8px', height: '8px', backgroundColor: profil.status === 'Aktif' ? '#2ecc71' : '#e74c3c', borderRadius: '50%' }}></span>
-              {profil.status === 'Aktif' ? 'Kader Aktif SIAKAD' : 'Kader Non-Aktif'}
+              {profil.status === 'Aktif' ? 'Kader Aktif' : 'Kader Non-Aktif'}
             </span>
 
           </div>
@@ -586,7 +588,7 @@ export default function DashboardKader() {
               
               <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }}>
                 <h2 style={{marginTop: 0, fontSize: '1.5rem', color: '#1e824c'}}>Halo, Sahabat/i {profil.nama.split(' ')[0]}! 👋</h2>
-                <p style={{margin: '8px 0 0 0', fontSize: '0.9rem', color: '#555', opacity: 0.9}}>Selamat datang di pusat informasi dan administrasi kader {namaRayonAsli}. Berikut adalah ringkasan progres kaderisasi Anda saat ini.</p>
+                <p style={{margin: '8px 0 0 0', fontSize: '0.9rem', color: '#555', opacity: 0.9}}>Selamat datang di Sistem Informasi dan Akademik Kaderisasi {namaRayonAsli}. Berikut adalah ringkasan progres kaderisasi Anda saat ini.</p>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
@@ -861,16 +863,6 @@ export default function DashboardKader() {
                           </div>
 
                           <div style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '8px', overflowX: 'auto' }}>
-                            <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '15px 0 15px 0', fontSize: '12pt', textTransform: 'uppercase' }}>LEMBAR JAWABAN {currentTes.judul}</h3>
-                            <table className="tabel-biodata" style={{ width: '100%', marginBottom: '15px' }}>
-                              <tbody>
-                                <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{profil.nim || '...........................'}</td></tr>
-                                <tr><td>Nama Mahasiswa</td><td>:</td><td>{profil.nama || '...........................'}</td></tr>
-                                <tr><td>Rayon / Angkatan</td><td>:</td><td>{namaRayonAsli} / {profil.angkatan || '...........................'}</td></tr>
-                                <tr><td>Waktu Pengerjaan</td><td>:</td><td>{sudahMengerjakan.tanggal}</td></tr>
-                              </tbody>
-                            </table>
-
                             <table className="tabel-utama">
                               <thead>
                                 <tr>

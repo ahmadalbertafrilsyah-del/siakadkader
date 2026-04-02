@@ -484,19 +484,8 @@ export default function DashboardKader() {
             line-height: 1.15 !important;
           }
           
-          /* GAMBAR BACKGROUND A4 FULL FIXED (LAPISAN BAWAH) */
-          .bg-kertas-a4 {
-            position: fixed !important;
-            top: 0; left: 0;
-            width: 100vw !important; 
-            height: 100vh !important;
-            z-index: -10 !important; 
-          }
-          .bg-kertas-a4 img {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: fill !important;
-          }
+          .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
+          .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
 
           /* AREA KONTEN TENGAH (LAPISAN DEPAN) */
           .print-content-area {

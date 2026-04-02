@@ -386,8 +386,8 @@ export default function DashboardPendamping() {
           }
           .print-layout-container * { color: #000 !important; font-family: "Arial", "Arial Narrow", sans-serif !important; line-height: 1.15 !important; visibility: visible !important; }
           
-          .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; width: 100vw !important; height: 100vh !important; z-index: -10 !important; }
-          .bg-kertas-a4 img { width: 100% !important; height: 100% !important; object-fit: fill !important; }
+          .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
+          .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
           
           .print-content-area { position: relative !important; z-index: 10 !important; padding: 50mm 25mm 40mm 25mm !important; background-color: transparent !important; }
 

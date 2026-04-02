@@ -441,14 +441,22 @@ export default function DashboardKader() {
         .tabel-utama th { padding: 10px; color: #333; text-align: center; font-weight: bold; }
         .tabel-utama td { padding: 8px 10px; border-bottom: 1px solid #ddd; color: #333; }
         
-        /* SEMBUNYIKAN AREA PRINT DI WEB */
+        /* LEMPAR WADAH PRINT JAUH KELUAR LAYAR AGAR TIDAK MENUTUPI TOMBOL DI HP */
         .print-layout-container { 
-           position: absolute;
-           width: 1px;
-           height: 1px;
-           overflow: hidden;
-           opacity: 0;
-           pointer-events: none;
+           position: absolute !important; 
+           top: -9999px !important; 
+           left: -9999px !important; 
+           width: 1px !important; 
+           height: 1px !important; 
+           overflow: hidden !important; 
+           opacity: 0 !important; 
+           pointer-events: none !important; 
+           z-index: -9999 !important;
+        }
+
+        /* MATIKAN GAMBAR BACKGROUND A4 SECARA PAKSA DI LAYAR HP/WEB */
+        @media screen {
+          .bg-kertas-a4 { display: none !important; pointer-events: none !important; }
         }
         
         @media print {

@@ -35,7 +35,7 @@ export default function DashboardKader() {
   const [riwayatSurat, setRiwayatSurat] = useState<any[]>([]);
   const [opsiJenisSurat, setOpsiJenisSurat] = useState<any[]>([]);
   const [isSubmittingSurat, setIsSubmittingSurat] = useState(false);
-  const [showFormSurat, setShowFormSurat] = useState(false); // BUG FIX: State ini ditambahkan kembali
+  const [showFormSurat, setShowFormSurat] = useState(false); 
 
   // --- STATE UPLOAD BERKAS & TUGAS ---
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
@@ -48,7 +48,9 @@ export default function DashboardKader() {
   const [filterRaport, setFilterRaport] = useState('MAPABA'); 
   const [listKurikulum, setListKurikulum] = useState<Record<string, any[]>>({}); 
   const [nilaiKader, setNilaiKader] = useState<Record<string, string>>({});
-  const [evaluasiKader, setEvaluasiKader] = useState<{ listKeaktifan: any[], catatan: string }>({ listKeaktifan: [], catatan: '' });
+  
+  // SINKRONISASI FORMAT EVALUASI TERBARU
+  const [evaluasiKader, setEvaluasiKader] = useState<{ bobot: any[], nilai_mentah: any, catatan: string }>({ bobot: [], nilai_mentah: {}, catatan: '' });
 
   // --- STATE PERPUS & SARAN ---
   const [activeFolder, setActiveFolder] = useState('');
@@ -71,8 +73,6 @@ export default function DashboardKader() {
     formData.append("file", file);
     formData.append("upload_preset", "siakad_upload"); 
     
-    // PERBAIKAN FINAL: Paksa dokumen (PDF) masuk ke jalur 'raw', dan foto ke 'image'.
-    // Ini akan menghindari Error 401 Unauthorized dari Cloudinary.
     const resourceType = file.type.startsWith('image/') ? 'image' : 'raw';
     
     const res = await fetch(`https://api.cloudinary.com/v1_1/dcmdaghbq/${resourceType}/upload`, {
@@ -207,13 +207,14 @@ export default function DashboardKader() {
     });
   };
 
+  // MENDENGARKAN FORMAT EVALUASI KADER MATRIKS BARU
   useEffect(() => {
     if (!profil.nim) return;
     const unsubscribeKeaktifan = onSnapshot(doc(db, "evaluasi_kader", profil.nim), (docSnap) => {
       if (docSnap.exists() && docSnap.data()[filterRaport]) {
         setEvaluasiKader(docSnap.data()[filterRaport]);
       } else {
-        setEvaluasiKader({ listKeaktifan: [], catatan: '' });
+        setEvaluasiKader({ bobot: [], nilai_mentah: {}, catatan: '' });
       }
     });
     return () => unsubscribeKeaktifan();
@@ -232,6 +233,15 @@ export default function DashboardKader() {
     if(huruf === 'C') return 2;
     if(huruf === 'D') return 1;
     return 0;
+  };
+
+  const getNilaiHuruf = (angka: number) => {
+    if (angka >= 76) return "A";
+    if (angka >= 51) return "B";
+    if (angka >= 26) return "C";
+    if (angka >= 10) return "D";
+    if (angka > 0) return "E";
+    return "-";
   };
 
   const barisMateriRender = materiAktif.map((materi, index) => {
@@ -256,24 +266,9 @@ export default function DashboardKader() {
 
   const ipKader = totalSks > 0 ? (totalBobotNilai / totalSks).toFixed(2) : "0.00";
 
-  // ==========================================
-  // UPDATE 1: KATEGORI PENILAIAN FLEKSIBEL UNTUK NON-FORMAL
-  // ==========================================
-  // Jika jenjangnya NONFORMAL, biarkan list kategori ditarik langsung dari yang diisi oleh admin/pendamping.
-  // Jika jenjang lain (Mapaba, dll) dan kosong, barulah pakai default 'Pre-Test', dsb.
-  let kategoriPenilaian: string[] = [];
-  
-  if (evaluasiKader.listKeaktifan && evaluasiKader.listKeaktifan.length > 0) {
-    kategoriPenilaian = evaluasiKader.listKeaktifan.map(k => k.kategori);
-  } else {
-    // Berikan placeholder default hanya jika bukan Non-Formal, atau jika kosong sama sekali.
-    if (filterRaport !== 'NONFORMAL') {
-      kategoriPenilaian = ['Pre-Test', 'Keaktifan', 'Tugas', 'Post-Test'];
-    } else {
-      // Jika Non-Formal dan belum diisi admin, biarkan kosong agar tidak membingungkan
-      kategoriPenilaian = ['Kegiatan/Sekolah Belum Diinput']; 
-    }
-  }
+  // VARIABLE UNTUK TAB MATRIKS NILAI DETAIL
+  const kategoriBobot = evaluasiKader.bobot || [];
+  const nilaiMentah = evaluasiKader.nilai_mentah || {};
 
   // ==========================================
   // FUNGSI PROFIL & LAINNYA
@@ -726,7 +721,7 @@ export default function DashboardKader() {
                           <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur oleh Pengurus Rayon.</td></tr>
                         ) : barisMateriRender}
 
-                        <tr>
+                        <tr style={{ borderTop: '2px solid #ccc' }}>
                           <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td>
                           <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td>
                           <td></td>
@@ -747,72 +742,78 @@ export default function DashboardKader() {
                       <thead>
                         <tr>
                           <th rowSpan={2} style={{ width: '3%' }}>No</th>
-                          <th rowSpan={2} style={{ width: '12%', textAlign: 'left' }}>Kode Materi</th>
-                          <th rowSpan={2} style={{ width: '20%', textAlign: 'left' }}>Nama Materi</th>
-                          <th colSpan={kategoriPenilaian.length} style={{ borderBottom: '1px solid #ddd' }}>Persentase</th>
-                          <th colSpan={kategoriPenilaian.length} style={{ borderBottom: '1px solid #ddd' }}>Nilai Detil</th>
+                          <th rowSpan={2} style={{ width: '10%', textAlign: 'left' }}>Kode</th>
+                          <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Materi</th>
+                          {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Nilai Detail (0-100)</th>}
                           <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
-                          <th colSpan={2} style={{ borderBottom: '1px solid #ddd' }}>Nilai Akhir</th>
+                          <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
                           <th rowSpan={2} style={{ width: '8%' }}>SKS x Nilai Huruf</th>
                         </tr>
                         <tr>
-                          {kategoriPenilaian.map((kat, idx) => <th key={`p-${idx}`} style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#555' }}>{kat}</th>)}
-                          {kategoriPenilaian.map((kat, idx) => <th key={`n-${idx}`} style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#555' }}>{kat}</th>)}
-                          <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#555' }}>Angka</th>
-                          <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#555' }}>Huruf</th>
+                          {kategoriBobot.map((kat: any) => (
+                            <th key={kat.id} style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#1e824c', backgroundColor: '#f0fbf4' }}>
+                              {kat.nama} <br/><span style={{color: '#e74c3c'}}>{kat.persen}%</span>
+                            </th>
+                          ))}
+                          <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', backgroundColor: '#eaf4fc' }}>Angka</th>
+                          <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', backgroundColor: '#eaf4fc' }}>Huruf</th>
                         </tr>
                       </thead>
                       <tbody>
                         {materiAktif.length === 0 ? (
-                          <tr><td colSpan={6 + (kategoriPenilaian.length * 2)} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada rincian nilai.</td></tr>
+                          <tr><td colSpan={7 + kategoriBobot.length} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada rincian nilai untuk jenjang ini.</td></tr>
                         ) : (
                           materiAktif.map((materi, index) => {
-                            const nilaiHuruf = nilaiKader[materi.kode] || "-";
-                            const angkaNilai = konversiHurufKeAngka(nilaiHuruf);
-                            const sksKaliNilai = (materi.bobot || 0) * angkaNilai;
-                            
-                            // BASE SCORE UNTUK KALKULASI NILAI DETIL NYATA
-                            const baseScore = nilaiHuruf === 'A' ? 95 : nilaiHuruf === 'B' ? 82 : nilaiHuruf === 'C' ? 68 : nilaiHuruf === 'D' ? 50 : 0;
+                            let angkaAkhir = 0;
+                            kategoriBobot.forEach((kat: any) => {
+                                const score = nilaiMentah[materi.kode]?.[kat.nama] || 0;
+                                angkaAkhir += (score * (kat.persen / 100));
+                            });
+
+                            const hurufAkhir = getNilaiHuruf(angkaAkhir);
+                            const angkaNilaiSks = konversiHurufKeAngka(hurufAkhir);
+                            const sksKaliNilai = (materi.bobot || 0) * angkaNilaiSks;
 
                             return (
                               <tr key={`rinci-${materi.kode}`}>
                                 <td>{index + 1}</td>
                                 <td style={{ textAlign: 'left' }}>{materi.kode}</td>
-                                <td style={{ textAlign: 'left' }}>{materi.nama}</td>
+                                <td style={{ textAlign: 'left', fontWeight: 'bold' }}>{materi.nama}</td>
                                 
-                                {/* Mapping Persentase (Nyata dari Evaluasi Pendamping) */}
-                                {kategoriPenilaian.map((kat, i) => {
-                                  const nilaiPersen = evaluasiKader.listKeaktifan?.find(k => k.kategori === kat)?.nilai || 0;
-                                  return <td key={`vp-${i}`} style={{ color: '#555', fontSize: '0.8rem', fontWeight: 'bold' }}>{nilaiPersen}%</td>
-                                })}
-                                
-                                {/* Mapping Nilai Detil (Kalkulasi Otomatis) */}
-                                {kategoriPenilaian.map((kat, i) => {
-                                  const nilaiPersen = evaluasiKader.listKeaktifan?.find(k => k.kategori === kat)?.nilai || 0;
-                                  const nilaiDetil = nilaiHuruf !== '-' && baseScore > 0 ? (baseScore * (Number(nilaiPersen) / 100)).toFixed(1) : '-';
-                                  return <td key={`vn-${i}`} style={{ color: '#333', fontSize: '0.8rem', fontWeight: 'bold' }}>{nilaiDetil}</td>
-                                })}
+                                {kategoriBobot.map((kat: any) => (
+                                  <td key={kat.id} style={{ backgroundColor: '#fcfcfc', fontWeight: 'bold', color: '#333' }}>
+                                    {nilaiMentah[materi.kode]?.[kat.nama] || 0}
+                                  </td>
+                                ))}
                                 
                                 <td>{materi.bobot}</td>
-                                <td style={{ fontWeight: 'bold', color: '#1e824c' }}>{nilaiHuruf !== '-' ? baseScore : '-'}</td>
-                                <td style={{ fontWeight: 'bold' }}>{nilaiHuruf}</td>
-                                <td>{nilaiHuruf === '-' ? 0 : sksKaliNilai}</td>
+                                <td style={{ fontWeight: 'bold', color: '#004a87', backgroundColor: '#f4f9fd' }}>{angkaAkhir > 0 ? angkaAkhir.toFixed(1) : '-'}</td>
+                                <td style={{ fontWeight: 'bold', color: hurufAkhir !== '-' ? '#27ae60' : '#999', backgroundColor: '#f4f9fd', fontSize: '1rem' }}>{hurufAkhir}</td>
+                                <td style={{ fontWeight: 'bold' }}>{hurufAkhir === '-' ? 0 : sksKaliNilai}</td>
                               </tr>
                             )
                           })
                         )}
                         <tr>
-                          <td colSpan={3 + (kategoriPenilaian.length * 2)} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td>
+                          <td colSpan={3 + kategoriBobot.length} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah SKS & Nilai</td>
                           <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td>
                           <td colSpan={2}></td>
                           <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td>
                         </tr>
                         <tr>
-                          <td colSpan={5 + (kategoriPenilaian.length * 2)} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kaderisasi)</td>
-                          <td colSpan={2} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{ipKader}</td>
+                          <td colSpan={4 + kategoriBobot.length} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kaderisasi)</td>
+                          <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1.1rem' }}>{ipKader}</td>
                         </tr>
                       </tbody>
                     </table>
+
+                    <div className="no-print" style={{ marginTop: '20px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '4px', padding: '15px' }}>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', fontSize: '0.85rem', color: '#1e824c' }}>Catatan Khusus dari Pendamping/Rayon:</label>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: evaluasiKader.catatan ? '#333' : '#999', fontStyle: evaluasiKader.catatan ? 'italic' : 'normal' }}>
+                        {evaluasiKader.catatan ? `"${evaluasiKader.catatan}"` : 'Belum ada catatan evaluasi.'}
+                      </p>
+                    </div>
+
                   </div>
                 )}
               </div>

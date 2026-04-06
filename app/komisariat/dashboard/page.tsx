@@ -148,7 +148,7 @@ export default function DashboardKomisariat() {
 
     try {
       const safeUsername = formRayon.id_rayon.trim().toLowerCase();
-      const emailBaru = `${safeUsername}@sikad.com`;
+      const emailBaru = `${safeUsername}@pmii-uinmalang.or.id`;
       
       // Buat akun menggunakan Auth Kedua
       await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formRayon.password);
@@ -168,7 +168,7 @@ export default function DashboardKomisariat() {
       await setDoc(doc(db, "settings_rayon", safeUsername), {
         id: safeUsername,
         nama: formRayon.nama_rayon,
-        pengumuman: `Selamat datang di SiKad ${formRayon.nama_rayon}.`,
+        pengumuman: `Selamat datang di Sistem Informasi dan Akademik Kaderisasi ${formRayon.nama_rayon}.`,
         warnaUtama: "#004a87",
         warnaAksen: "#f1c40f"
       });
@@ -477,8 +477,8 @@ export default function DashboardKomisariat() {
                         <input type="text" placeholder="Cth: SIG-01" required value={formKurikulum.kode} onChange={e => setFormKurikulum({...formKurikulum, kode: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Bobot (SKS/Jam)</label>
-                        <input type="number" placeholder="Jam" required value={formKurikulum.bobot} onChange={e => setFormKurikulum({...formKurikulum, bobot: Number(e.target.value)})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                        <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Bobot (SKS)</label>
+                        <input type="number" placeholder=" SKS" required value={formKurikulum.bobot} onChange={e => setFormKurikulum({...formKurikulum, bobot: Number(e.target.value)})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
                       </div>
                     </div>
 
@@ -519,7 +519,7 @@ export default function DashboardKomisariat() {
                               <div style={{ color: '#333', fontWeight: 'bold', marginBottom: '2px', fontSize: '0.85rem' }}>{materi.nama}</div>
                               <div style={{ color: '#777', fontSize: '0.75rem', whiteSpace: 'pre-wrap' }}>{materi.muatan || '-'}</div>
                             </td>
-                            <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#555' }}>{materi.bobot} Jam</td>
+                            <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#555' }}>{materi.bobot}</td>
                             <td style={{ textAlign: 'center' }}>
                               <button onClick={() => handleHapusKurikulumPusat(materi.id)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }} title="Hapus Materi">🗑️</button>
                             </td>

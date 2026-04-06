@@ -86,65 +86,57 @@ export default function PintuMasukSiKader() {
     try {
       let emailUntukLogin = "";
       let peranUser = "";
-      let namaUser = "";
       let statusUser = "";
 
-      const amanLoginId = loginId.trim().toLowerCase();
+      const inputAsli = loginId.trim();
 
-      // MENCARI DATA BERDASARKAN NIM ATAU USERNAME 
-      // 1. Coba cari sebagai NIM (Kader) - String
-      let q = query(collection(db, "users"), where("nim", "==", amanLoginId));
-      let querySnapshot = await getDocs(q);
-
-      // 2. Jika tidak ketemu, coba cari sebagai NIM berupa angka (biasanya dari import Excel)
-      if (querySnapshot.empty && !isNaN(Number(amanLoginId))) {
-        q = query(collection(db, "users"), where("nim", "==", Number(amanLoginId)));
-        querySnapshot = await getDocs(q);
+      // MENCARI DATA BERDASARKAN NIM ATAU USERNAME (Pencarian Ganda yang Kuat)
+      let querySnapshot = await getDocs(query(collection(db, "users"), where("nim", "==", inputAsli)));
+      
+      if (querySnapshot.empty && !isNaN(Number(inputAsli))) {
+        querySnapshot = await getDocs(query(collection(db, "users"), where("nim", "==", Number(inputAsli))));
       }
 
-      // 3. Jika tidak ketemu juga, coba cari sebagai Username (Pengurus)
       if (querySnapshot.empty) {
-        q = query(collection(db, "users"), where("username", "==", amanLoginId));
-        querySnapshot = await getDocs(q);
+        querySnapshot = await getDocs(query(collection(db, "users"), where("username", "==", inputAsli)));
       }
 
       if (!querySnapshot.empty) {
         const userData = querySnapshot.docs[0].data();
         
-        // BACA EMAIL LANGSUNG DARI DATABASE
-        // Dengan begini, akun lama tetap pakai email lama, dan akun baru pakai email @pmii-uinmalang.or.id
         emailUntukLogin = userData.email; 
         peranUser = userData.role;
-        namaUser = userData.nama;
         statusUser = userData.status;
       } else {
         throw new Error("Akun tidak ditemukan di sistem SIAKAD.");
       }
 
-      // 4. Cek Status Aktif/Pasif
+      // Cek Status Aktif/Pasif
       if (statusUser === "Pasif") {
         throw new Error("Akun Anda sedang dinonaktifkan. Silakan hubungi Admin Rayon.");
       }
 
-      // 5. Lakukan proses Auth Firebase 
+      // Lakukan proses Auth Firebase menggunakan email yang ditemukan
       await signInWithEmailAndPassword(auth, emailUntukLogin, password);
       
-      // 6. Arahkan ke Dashboard sesuai jabatannya
+      // Arahkan ke Dashboard sesuai jabatannya
       if (peranUser === 'komisariat') {
         router.push('/komisariat/dashboard');
       } else if (peranUser === 'rayon') { 
         router.push('/rayon/dashboard');
       } else if (peranUser === 'pendamping') {
         router.push('/pendamping/dashboard');
-      } else {
+      } else if (peranUser === 'kader') {
         router.push('/kader/dashboard');
+      } else {
+        throw new Error("Role tidak valid. Hubungi Admin.");
       }
       
     } catch (error: any) {
       let pesanError = "Password salah atau terjadi kesalahan sistem.";
       
       if (error.message.includes("Akun tidak ditemukan")) {
-        pesanError = "NIM atau Username belum terdaftar. Pastikan ejaan sudah benar.";
+        pesanError = "NIM atau Username belum terdaftar. Pastikan ejaan sudah benar (perhatikan huruf besar/kecil).";
       } else if (error.message.includes("dinonaktifkan")) {
         pesanError = error.message;
       } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
@@ -152,7 +144,7 @@ export default function PintuMasukSiKader() {
       }
 
       alert(`Maaf, Akses Ditolak!\n\n${pesanError}`);
-      generateCaptcha(); // Reset captcha jika gagal login
+      generateCaptcha(); 
     } finally {
       setIsLoggingIn(false);
     }

@@ -921,7 +921,7 @@ export default function DashboardAdminRayon() {
                     <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px' }}>✏️ Buat Akun Pendamping</h4>
                     <form onSubmit={handleBuatAkunPendamping} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                       <input type="text" placeholder="Nama Lengkap Pendamping" value={formPendamping.nama} onChange={e => setFormPendamping({...formPendamping, nama: e.target.value})} required style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
-                      <input type="text" placeholder="Username (contoh: ridwan.aw)" value={formPendamping.username} onChange={e => setFormPendamping({...formPendamping, username: e.target.value})} required style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
+                      <input type="text" placeholder="Username (contoh: ridwan_rkcd)" value={formPendamping.username} onChange={e => setFormPendamping({...formPendamping, username: e.target.value})} required style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
                       <input type="text" placeholder="Password Sementara" value={formPendamping.password} onChange={e => setFormPendamping({...formPendamping, password: e.target.value})} required style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
                       <select required value={formPendamping.jenjangTugas} onChange={e => setFormPendamping({...formPendamping, jenjangTugas: e.target.value})} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontWeight: 'bold', color: '#2c3e50', fontSize: '0.85rem' }}>
                         <option value="MAPABA">Tugas Pendamping MAPABA</option><option value="PKD">Tugas Pendamping PKD</option><option value="SIG">Tugas Pendamping SIG</option><option value="SKP">Tugas Pendamping SKP</option>
@@ -1100,7 +1100,7 @@ export default function DashboardAdminRayon() {
                   <table className="tabel-utama">
                     <thead>
                       <tr>
-                        <th style={{ width: '5%' }}>No</th><th style={{ width: '20%', textAlign: 'left' }}>Kode Matakuliah</th><th style={{ width: '45%', textAlign: 'left' }}>Nama Matakuliah</th>
+                        <th style={{ width: '5%' }}>No</th><th style={{ width: '20%', textAlign: 'left' }}>Kode Materi</th><th style={{ width: '45%', textAlign: 'left' }}>Nama Materi</th>
                         <th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai Huruf</th><th style={{ width: '10%' }}>SKS x Nilai</th>
                       </tr>
                     </thead>
@@ -1150,7 +1150,7 @@ export default function DashboardAdminRayon() {
                       <tr>
                         <th rowSpan={2} style={{ width: '3%' }}>No</th>
                         <th rowSpan={2} style={{ width: '10%', textAlign: 'left' }}>Kode</th>
-                        <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Matakuliah</th>
+                        <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Materi</th>
                         {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
                         <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
                         <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
@@ -1468,7 +1468,7 @@ export default function DashboardAdminRayon() {
               </table>
               <table className="tabel-utama">
                 <thead>
-                  <tr><th style={{ width: '5%' }}>No</th><th style={{ width: '20%', textAlign: 'left' }}>Kode Matakuliah</th><th style={{ width: '45%', textAlign: 'left' }}>Nama Matakuliah</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai</th><th style={{ width: '10%' }}>SKS x Nilai</th></tr>
+                  <tr><th style={{ width: '5%' }}>No</th><th style={{ width: '20%', textAlign: 'left' }}>Kode Materi</th><th style={{ width: '45%', textAlign: 'left' }}>Nama Materi</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai</th><th style={{ width: '10%' }}>SKS x Nilai</th></tr>
                 </thead>
                 <tbody>
                   {materiAktif.length === 0 ? (<tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur.</td></tr>) : barisRaportRender}

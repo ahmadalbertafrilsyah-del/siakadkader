@@ -424,7 +424,7 @@ export default function DashboardPendamping() {
         </div>
         <div style={{ padding: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <div style={{fontSize: '0.9rem', fontWeight: 'bold', lineHeight: '1.4'}}>{profilPendamping.nama}</div>
-          <div style={{fontSize: '0.75rem', color: '#f1c40f', marginTop: '4px'}}>Tugas: {profilPendamping.jenjangTugas}</div>
+          <div style={{fontSize: '0.75rem', color: '#f1c40f', marginTop: '4px'}}>Pendamping: {profilPendamping.jenjangTugas}</div>
         </div>
         <ul style={{ listStyle: 'none', padding: '10px 0', flex: 1, margin: 0 }}>
           {[
@@ -455,7 +455,7 @@ export default function DashboardPendamping() {
             <h2 style={{ fontSize: '1rem', color: '#333', margin: 0, textTransform: 'uppercase', fontWeight: 'bold' }}>
               {getHeaderTitle()}
             </h2>
-            <div style={{ fontSize: '0.75rem', color: '#1e824c', fontWeight: 'bold' }}>📍 Rayon: {namaRayonInduk}</div>
+            <div style={{ fontSize: '0.75rem', color: '#1e824c', fontWeight: 'bold' }}>📍 Pendamping: {namaRayonInduk}</div>
           </div>
         </header>
 
@@ -466,7 +466,7 @@ export default function DashboardPendamping() {
             <div>
               <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
                 <h2 style={{color: '#1e824c', marginTop: 0, fontSize: '1.5rem'}}>Halo, Sahabat/i {profilPendamping.nama.split(' ')[0]}! 👋</h2>
-                <p style={{color: '#555', lineHeight: '1.6', margin: 0, fontSize: '0.9rem'}}>Selamat datang di Panel Pendamping. Pantau perkembangan kader binaan Anda dan berikan evaluasi terbaik untuk kemajuan Rayon {namaRayonInduk}.</p>
+                <p style={{color: '#555', lineHeight: '1.6', margin: 0, fontSize: '0.9rem'}}>Selamat datang di Panel Pendamping. Pantau perkembangan kader binaan Anda dan berikan evaluasi terbaik untuk kemajuan {namaRayonInduk}.</p>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '30px' }}>
@@ -623,8 +623,8 @@ export default function DashboardPendamping() {
                     <thead>
                       <tr>
                         <th style={{ width: '5%' }}>No</th>
-                        <th style={{ width: '20%', textAlign: 'left' }}>Kode Matakuliah</th>
-                        <th style={{ width: '45%', textAlign: 'left' }}>Nama Matakuliah</th>
+                        <th style={{ width: '20%', textAlign: 'left' }}>Kode Materi</th>
+                        <th style={{ width: '45%', textAlign: 'left' }}>Nama Materi</th>
                         <th style={{ width: '10%' }}>SKS</th>
                         <th style={{ width: '10%' }}>Nilai Huruf</th>
                         <th style={{ width: '10%' }}>SKS x Nilai</th>
@@ -676,7 +676,7 @@ export default function DashboardPendamping() {
                         <tr>
                           <th rowSpan={2} style={{ width: '3%' }}>No</th>
                           <th rowSpan={2} style={{ width: '10%', textAlign: 'left' }}>Kode</th>
-                          <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Matakuliah</th>
+                          <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Materi</th>
                           {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
                           <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
                           <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>

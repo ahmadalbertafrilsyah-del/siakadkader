@@ -347,12 +347,12 @@ export default function DashboardPendamping() {
 
   const getHeaderTitle = () => {
     switch (activeMenu) {
-      case 'beranda': return 'Dashboard Pendamping';
-      case 'profil': return 'Profil Pendamping';
-      case 'daftar-kader': return 'Daftar Kader Binaan';
-      case 'input-nilai': return 'Input Raport & Evaluasi Kader';
-      case 'berkas-tugas': return 'Verifikasi Tugas Kader';
-      case 'tes-pemahaman': return 'Cek Tes Pemahaman Binaan';
+      case 'beranda': return 'Dashboard';
+      case 'profil': return 'Profil';
+      case 'daftar-kader': return 'Binaan Saya';
+      case 'input-nilai': return 'Raport Kaderisasi';
+      case 'berkas-tugas': return 'Verifikasi Tugas';
+      case 'tes-pemahaman': return 'Verifikasi Tes';
       default: return 'Dashboard Pendamping';
     }
   };
@@ -429,7 +429,7 @@ export default function DashboardPendamping() {
           .print-content-area { 
             position: relative !important; 
             z-index: 10 !important; 
-            padding: 85mm 20mm 30mm 20mm !important; 
+            padding: 50mm 25mm 40mm 25mm !important; 
             background-color: transparent !important; 
           }
 
@@ -461,12 +461,12 @@ export default function DashboardPendamping() {
         </div>
         <ul style={{ listStyle: 'none', padding: '10px 0', flex: 1, margin: 0, overflowY: 'auto' }}>
           {[
-            { id: 'beranda', icon: '🏠', label: 'Beranda' }, 
+            { id: 'beranda', icon: '🏠', label: 'Dashboard' }, 
             { id: 'profil', icon: '👤', label: 'Profil Saya' }, 
             { id: 'daftar-kader', icon: '📋', label: 'Daftar Binaan' }, 
-            { id: 'input-nilai', icon: '📝', label: 'Raport & Evaluasi' }, 
+            { id: 'input-nilai', icon: '📝', label: 'Raport Kaderisasi' }, 
             { id: 'berkas-tugas', icon: '📂', label: 'Verifikasi Tugas', badge: berkasTugas.filter(b => b.status === 'Menunggu Verifikasi').length || null },
-            { id: 'tes-pemahaman', icon: '🧠', label: 'Hasil Tes Binaan' },
+            { id: 'tes-pemahaman', icon: '🧠', label: 'Verifikasi Tes' },
           ].map((item) => (
             <li key={item.id}>
               <button onClick={() => { setActiveMenu(item.id); setIsSidebarOpen(false); }} style={{ width: '100%', textAlign: 'left', background: activeMenu === item.id ? 'rgba(255, 255, 255, 0.1)' : 'transparent', border: 'none', color: activeMenu === item.id ? '#f1c40f' : '#d1d1d1', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent', transition: '0.2s', fontWeight: activeMenu === item.id ? 'bold' : 'normal', fontSize: '0.85rem' }}>
@@ -489,7 +489,7 @@ export default function DashboardPendamping() {
             <h2 style={{ fontSize: '1rem', color: '#333', margin: 0, textTransform: 'uppercase', fontWeight: 'bold' }}>
               {getHeaderTitle()}
             </h2>
-            <div style={{ fontSize: '0.75rem', color: '#1e824c', fontWeight: 'bold' }}>📍 Pendamping: {namaRayonInduk}</div>
+            <div style={{ fontSize: '0.75rem', color: '#1e824c', fontWeight: 'bold' }}>Jenjang: {selectedJenjang}</div>
           </div>
         </header>
 
@@ -543,7 +543,6 @@ export default function DashboardPendamping() {
           {/* MENU 1: PROFIL */}
           {activeMenu === 'profil' && (
             <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', overflow: 'hidden' }}>
-              <div style={{ backgroundColor: '#4a637d', padding: '15px 20px', color: 'white', fontWeight: 'bold' }}>PROFIL SAYA</div>
               <div style={{ padding: '30px', display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
                 <div style={{ flex: '0 0 180px', textAlign: 'center' }}>
                   <img src={profilPendamping.fotoUrl} alt="Foto Pendamping" style={{ width: '100%', height: '230px', objectFit: 'cover', borderRadius: '8px', border: '4px solid #eee' }} />
@@ -648,8 +647,8 @@ export default function DashboardPendamping() {
               </div>
 
               <div className="no-print" style={{ display: 'flex', borderBottom: '1px solid #ddd', marginBottom: '15px', flexWrap: 'wrap' }}>
-                <button onClick={() => setTabInput('materi')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabInput === 'materi' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabInput === 'materi' ? '#fff' : 'transparent', color: tabInput === 'materi' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>📑 Raport Kaderisasi (KHS)</button>
-                <button onClick={() => setTabInput('keaktifan')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabInput === 'keaktifan' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabInput === 'keaktifan' ? '#fff' : 'transparent', color: tabInput === 'keaktifan' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>📊 Input Nilai Detail (Matriks)</button>
+                <button onClick={() => setTabInput('materi')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabInput === 'materi' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabInput === 'materi' ? '#fff' : 'transparent', color: tabInput === 'materi' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>📑 Raport Kaderisasi</button>
+                <button onClick={() => setTabInput('keaktifan')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabInput === 'keaktifan' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabInput === 'keaktifan' ? '#fff' : 'transparent', color: tabInput === 'keaktifan' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>📊 Input Nilai</button>
               </div>
 
               {/* TAB 1: RAPORT KADERISASI */}
@@ -660,7 +659,7 @@ export default function DashboardPendamping() {
                     <thead>
                       <tr>
                         <th style={{ width: '5%' }}>No</th>
-                        <th style={{ width: '20%', textAlign: 'left' }}>Kode Materi</th>
+                        <th style={{ width: '20%', textAlign: 'left' }}>Kode</th>
                         <th style={{ width: '45%', textAlign: 'left' }}>Nama Materi</th>
                         <th style={{ width: '10%' }}>SKS</th>
                         <th style={{ width: '10%' }}>Nilai Huruf</th>
@@ -673,7 +672,7 @@ export default function DashboardPendamping() {
                       ) : barisRaportRender}
                       
                       <tr style={{ borderTop: '2px solid #ccc' }}>
-                        <td colSpan={3} style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td>
+                        <td colSpan={3} style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah SKS & Nilai</td>
                         <td style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td>
                         <td className="no-print"></td>
                         <td style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td>
@@ -708,63 +707,79 @@ export default function DashboardPendamping() {
                   </div>
 
                   <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
-                    <table className="tabel-utama" style={{ textAlign: 'center', minWidth: '900px', fontSize: '0.85rem', backgroundColor: '#fff' }}>
-                      <thead>
-                        <tr>
-                          <th rowSpan={2} style={{ width: '3%' }}>No</th>
-                          <th rowSpan={2} style={{ width: '10%', textAlign: 'left' }}>Kode</th>
-                          <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Materi</th>
-                          {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
-                          <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
-                          <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
-                        </tr>
-                        <tr>
-                          {kategoriBobot.map(kat => (
-                            <th key={kat.id} style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#1e824c', backgroundColor: '#f0fbf4' }}>
-                              {kat.nama} <br/><span style={{color: '#e74c3c'}}>{kat.persen}%</span>
-                            </th>
-                          ))}
-                          <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', backgroundColor: '#eaf4fc' }}>Angka</th>
-                          <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', backgroundColor: '#eaf4fc' }}>Huruf</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {materiAktif.length === 0 ? (
-                          <tr><td colSpan={6 + kategoriBobot.length} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada materi untuk jenjang ini.</td></tr>
-                        ) : (
-                          materiAktif.map((materi, index) => {
-                            let angkaAkhir = 0;
-                            kategoriBobot.forEach(kat => {
-                                const score = nilaiMentah[materi.kode]?.[kat.nama] || 0;
-                                angkaAkhir += (score * (kat.persen / 100));
-                            });
-                            const hurufAkhir = getNilaiHuruf(angkaAkhir);
+                    <table className="tabel-utama" style={{ textAlign: 'center', minWidth: '900px', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr>
+                        <th rowSpan={2} style={{ width: '3%' }}>No</th>
+                        <th rowSpan={2} style={{ width: '10%', textAlign: 'left' }}>Kode</th>
+                        <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Materi</th>
+                        {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
+                        <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
+                        <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
+                        <th rowSpan={2} style={{ width: '8%' }}>SKS x Nilai Huruf</th>
+                      </tr>
+                      <tr>
+                        {kategoriBobot.map(kat => (
+                          <th key={kat.id} style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#1e824c', backgroundColor: '#f0fbf4' }}>
+                            {kat.nama} <br/><span style={{color: '#e74c3c'}}>{kat.persen}%</span>
+                          </th>
+                        ))}
+                        <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', backgroundColor: '#eaf4fc' }}>Angka</th>
+                        <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', backgroundColor: '#eaf4fc' }}>Huruf</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {materiAktif.length === 0 ? (
+                        <tr><td colSpan={7 + kategoriBobot.length} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada materi untuk jenjang ini.</td></tr>
+                      ) : (
+                        materiAktif.map((materi, index) => {
+                          let angkaAkhir = 0;
+                          kategoriBobot.forEach(kat => {
+                              const score = nilaiMentah[materi.kode]?.[kat.nama] || 0;
+                              angkaAkhir += (score * (kat.persen / 100));
+                          });
 
-                            return (
-                              <tr key={`rinci-${materi.kode}`}>
-                                <td>{index + 1}</td><td style={{ textAlign: 'left' }}>{materi.kode}</td><td style={{ textAlign: 'left', fontWeight: 'bold' }}>{materi.nama}</td>
-                                
-                                {kategoriBobot.map((kat) => (
-                                  <td key={kat.id} style={{ backgroundColor: '#fcfcfc' }}>
-                                    <input 
-                                      type="number" min="0" max="100" placeholder="0"
-                                      value={nilaiMentah[materi.kode]?.[kat.nama] === 0 ? '' : (nilaiMentah[materi.kode]?.[kat.nama] || '')}
-                                      onChange={(e) => handleInputNilaiMentah(materi.kode, kat.nama, e.target.value)}
-                                      onBlur={() => handleAutoSaveNilaiDetail(materi.kode)}
-                                      style={{ width: '50px', padding: '6px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold', outline: 'none' }}
-                                    />
-                                  </td>
-                                ))}
-                                
-                                <td>{materi.bobot}</td>
-                                <td style={{ fontWeight: 'bold', color: '#004a87', backgroundColor: '#f4f9fd' }}>{angkaAkhir > 0 ? angkaAkhir.toFixed(1) : '-'}</td>
-                                <td style={{ fontWeight: 'bold', color: hurufAkhir !== '-' ? '#27ae60' : '#999', backgroundColor: '#f4f9fd', fontSize: '1rem' }}>{hurufAkhir}</td>
-                              </tr>
-                            )
-                          })
-                        )}
-                      </tbody>
-                    </table>
+                          const hurufAkhir = getNilaiHuruf(angkaAkhir);
+                          const angkaNilaiSks = konversiHurufKeAngka(hurufAkhir);
+                          const sksKaliNilai = (materi.bobot || 0) * angkaNilaiSks;
+
+                          return (
+                            <tr key={`rinci-${materi.kode}`}>
+                              <td>{index + 1}</td><td style={{ textAlign: 'left' }}>{materi.kode}</td><td style={{ textAlign: 'left', fontWeight: 'bold' }}>{materi.nama}</td>
+                              
+                              {kategoriBobot.map((kat) => (
+                                <td key={kat.id} style={{ backgroundColor: '#fcfcfc' }}>
+                                  <input 
+                                    type="number" className="no-print" min="0" max="100" placeholder="0"
+                                    value={nilaiMentah[materi.kode]?.[kat.nama] === 0 ? '' : (nilaiMentah[materi.kode]?.[kat.nama] || '')}
+                                    onChange={(e) => handleInputNilaiMentah(materi.kode, kat.nama, e.target.value)}
+                                    onBlur={() => handleAutoSaveNilaiDetail(materi.kode)}
+                                    style={{ width: '50px', padding: '6px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold', outline: 'none' }}
+                                  />
+                                  <span className="print-only-inline" style={{ display: 'none', fontWeight: 'bold' }}>{nilaiMentah[materi.kode]?.[kat.nama] || 0}</span>
+                                </td>
+                              ))}
+                              
+                              <td>{materi.bobot}</td>
+                              <td style={{ fontWeight: 'bold', color: '#004a87', backgroundColor: '#f4f9fd' }}>{angkaAkhir > 0 ? angkaAkhir.toFixed(1) : '-'}</td>
+                              <td style={{ fontWeight: 'bold', color: hurufAkhir !== '-' ? '#27ae60' : '#999', backgroundColor: '#f4f9fd', fontSize: '1rem' }}>{hurufAkhir}</td>
+                              <td style={{ fontWeight: 'bold' }}>{hurufAkhir === '-' ? 0 : sksKaliNilai}</td>
+                            </tr>
+                          )
+                        })
+                      )}
+                      <tr>
+                        <td colSpan={3 + kategoriBobot.length} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah SKS & Nilai</td>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td>
+                        <td colSpan={2}></td>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={4 + kategoriBobot.length} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kader)</td>
+                        <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1.1rem' }}>{ipKader}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                   </div>
                   
                   <p style={{fontSize: '0.7rem', color: '#888', marginTop: '10px', fontStyle: 'italic'}}>*Tips: Ketik nilai mentah (0-100) di dalam kotak, lalu klik sembarang tempat di luar kotak agar sistem otomatis menyimpan data ke server.</p>
@@ -982,7 +997,7 @@ export default function DashboardPendamping() {
                 <thead>
                   <tr>
                     <th style={{ width: '5%' }}>No</th>
-                    <th style={{ width: '20%', textAlign: 'left' }}>Kode Materi</th>
+                    <th style={{ width: '20%', textAlign: 'left' }}>Kode</th>
                     <th style={{ width: '45%', textAlign: 'left' }}>Nama Materi</th>
                     <th style={{ width: '10%' }}>SKS</th>
                     <th style={{ width: '10%' }}>Nilai</th>

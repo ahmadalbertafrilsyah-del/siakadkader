@@ -468,17 +468,19 @@ export default function DashboardKader() {
           aside, main { display: none !important; }
           
           /* ------------------------------------------------------------------- */
-          /* PERBAIKAN: TAMPILKAN WADAH CETAK DENGAN UKURAN NORMAL (AUTO)        */
+          /* PERBAIKAN BUG CETAK KHS: KEMBALIKAN POSISI KE LAYAR                 */
           /* ------------------------------------------------------------------- */
           .print-layout-container { 
             display: block !important; 
             position: relative !important;
+            top: 0 !important;             /* MENGEMBALIKAN TABEL KE ATAS KERTAS */
+            left: 0 !important;            /* MENGEMBALIKAN TABEL KE ATAS KERTAS */
             width: 100% !important;
-            height: auto !important;       /* KUNCI PERBAIKANNYA DI SINI */
-            overflow: visible !important;  /* KUNCI PERBAIKANNYA DI SINI */
+            height: auto !important;       
+            overflow: visible !important;  
             background-color: transparent !important;
             opacity: 1 !important; 
-            z-index: 1 !important; 
+            z-index: 10 !important; 
           }
           
           .print-layout-container * {
@@ -743,7 +745,7 @@ export default function DashboardKader() {
                         <tr>
                           <th rowSpan={2} style={{ width: '3%' }}>No</th>
                           <th rowSpan={2} style={{ width: '10%', textAlign: 'left' }}>Kode</th>
-                          <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Materi</th>
+                          <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Matakuliah</th>
                           {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Nilai Detail (0-100)</th>}
                           <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
                           <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>

@@ -440,6 +440,15 @@ export default function DashboardAdminRayon() {
   const handleUbahJenjangKader = async (nimKader: string, jenjangBaru: string) => { if (!window.confirm(`Pindah jenjang? Pendamping diriset.`)) return; try { await updateDoc(doc(db, "users", nimKader), { jenjang: jenjangBaru, pendampingId: "" }); alert("Sukses."); } catch (error) {} };
   const handleUbahJenjangPendamping = async (idPendamping: string, jenjangTugasBaru: string) => { try { await updateDoc(doc(db, "users", idPendamping), { jenjangTugas: jenjangTugasBaru }); } catch (error) {} };
 
+  // FITUR BARU: UPDATE NIA KADER
+  const handleUbahNiaKader = async (nimKader: string, niaBaru: string) => {
+    try {
+      await updateDoc(doc(db, "users", nimKader), { nia: niaBaru });
+    } catch (error) {
+      console.error("Gagal mengupdate NIA", error);
+    }
+  };
+
   const handleBersihkanDataKaderLama = async () => {
     const batasTahun = currentYear - 3; 
     const kaderExpired = dataKader.filter(k => { if (!k.createdAt) return false; return new Date(k.createdAt).getFullYear() <= batasTahun; });
@@ -456,7 +465,6 @@ export default function DashboardAdminRayon() {
     setIsSavingKurikulum(true);
     try {
       const currentList = listKurikulum[tabKurikulum] || [];
-      // FLAG isLokal = false (Materi dari pusat, tidak bisa diedit)
       const newMateri = { id: Date.now().toString(), kode: materiPusat.kode, nama: materiPusat.nama, muatan: materiPusat.muatan || '', bobot: Number(materiPusat.bobot), isLokal: false };
       await setDoc(doc(db, "kurikulum_rayon", adminRayonId), { [tabKurikulum]: [...currentList, newMateri] }, { merge: true });
     } catch (error) {} finally { setIsSavingKurikulum(false); }
@@ -466,7 +474,6 @@ export default function DashboardAdminRayon() {
     e.preventDefault(); setIsSavingKurikulum(true);
     try {
       const currentList = listKurikulum[tabKurikulum] || [];
-      // FLAG isLokal = true (Materi lokal, BISA DIEDIT)
       const newMateri = { id: Date.now().toString(), kode: formMateri.kode, nama: formMateri.nama, muatan: formMateri.muatan, bobot: Number(formMateri.bobot), isLokal: true };
       await setDoc(doc(db, "kurikulum_rayon", adminRayonId), { [tabKurikulum]: [...currentList, newMateri] }, { merge: true });
       setFormMateri({ kode: '', nama: '', muatan: '', bobot: 3 });
@@ -481,7 +488,6 @@ export default function DashboardAdminRayon() {
     } catch (error) {}
   };
 
-  // FUNGSI SIMPAN EDIT MATERI LOKAL
   const handleSimpanEditMateri = async (materiId: string) => {
     if (!editMateriForm.kode || !editMateriForm.nama) return alert("Kode dan Nama materi tidak boleh kosong!");
     setIsSavingKurikulum(true);
@@ -595,7 +601,6 @@ export default function DashboardAdminRayon() {
         .tabel-utama th { padding: 10px; color: #333; text-align: center; font-weight: bold; }
         .tabel-utama td { padding: 8px 10px; border-bottom: 1px solid #ddd; color: #333; }
         
-        /* LEMPAR WADAH PRINT JAUH KELUAR LAYAR AGAR TIDAK MENUTUPI TOMBOL DI HP */
         .print-layout-container { 
            position: absolute !important; 
            top: -9999px !important; 
@@ -608,7 +613,6 @@ export default function DashboardAdminRayon() {
            z-index: -9999 !important;
         }
 
-        /* MATIKAN GAMBAR BACKGROUND A4 SECARA PAKSA DI LAYAR HP/WEB */
         @media screen {
           .bg-kertas-a4 { display: none !important; pointer-events: none !important; }
         }
@@ -616,23 +620,32 @@ export default function DashboardAdminRayon() {
         @media print {
           @page { size: A4 portrait; margin: 0; }
           body, html { background-color: transparent !important; margin: 0; padding: 0; height: auto !important; }
-          div[style*="overflow: hidden"], main, section, aside { overflow: visible !important; height: auto !important; }
+          div[style*="overflow: hidden"] { overflow: visible !important; height: auto !important; }
           aside, main, header, .no-print { display: none !important; }
           
           .print-layout-container { 
-            display: block !important; position: relative !important; width: 100% !important; height: auto !important;       
-            overflow: visible !important; background-color: transparent !important; opacity: 1 !important; z-index: 1 !important; 
+            display: block !important; 
+            position: relative !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: auto !important;       
+            overflow: visible !important;  
+            background-color: transparent !important;
+            opacity: 1 !important; 
+            z-index: 10 !important; 
           }
+          
           .print-layout-container * { color: #000 !important; font-family: "Arial", "Arial Narrow", sans-serif !important; line-height: 1.15 !important; visibility: visible !important; }
           
           .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
           .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
           
-          .print-content-area { position: relative !important; z-index: 10 !important; padding: 50mm 25mm 40mm 25mm !important; background-color: transparent !important; }
+          .print-content-area { position: relative !important; z-index: 999 !important; padding: 50mm 25mm 40mm 25mm !important; background-color: transparent !important; }
 
-          table { display: table !important; width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
-          tr { display: table-row !important; page-break-inside: avoid !important; background-color: transparent !important; }
-          th, td { display: table-cell !important; border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; }
+          table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; z-index: 999 !important; position: relative !important; }
+          tr { page-break-inside: avoid !important; background-color: transparent !important; }
+          th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; }
           th { font-weight: bold !important; text-align: center !important; }
           
           .tabel-biodata { margin-bottom: 15px !important; border: none !important; width: 100% !important; }
@@ -875,20 +888,36 @@ export default function DashboardAdminRayon() {
                     </div>
                     
                     <div style={{ overflowX: 'auto', flex: 1 }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '800px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '950px' }}>
                         <thead>
                           <tr style={{ backgroundColor: '#f8f9fa', color: '#333', textAlign: 'left' }}>
-                            <th style={{ padding: '10px' }}>NIM / Tahun</th><th style={{ padding: '10px' }}>Nama Kader</th><th style={{ padding: '10px' }}>Jenjang (Ubah)</th><th style={{ padding: '10px' }}>Pendamping</th><th style={{ padding: '10px', textAlign: 'center' }}>Status</th><th style={{ padding: '10px', textAlign: 'center' }}>Hapus</th>
+                            <th style={{ padding: '10px' }}>NIM / Tahun</th>
+                            <th style={{ padding: '10px' }}>Nama Kader</th>
+                            <th style={{ padding: '10px' }}>Nomor NIA</th>
+                            <th style={{ padding: '10px' }}>Jenjang (Ubah)</th>
+                            <th style={{ padding: '10px' }}>Pendamping</th>
+                            <th style={{ padding: '10px', textAlign: 'center' }}>Status</th>
+                            <th style={{ padding: '10px', textAlign: 'center' }}>Aksi</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredKader.length === 0 ? (<tr><td colSpan={6} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Tidak ada data kader yang cocok.</td></tr>) : (
+                          {filteredKader.length === 0 ? (<tr><td colSpan={7} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Tidak ada data kader yang cocok.</td></tr>) : (
                             filteredKader.map((k) => {
                               const thnMasuk = k.createdAt ? new Date(k.createdAt).getFullYear() : '-';
                               return (
                                 <tr key={k.id} style={{ borderBottom: '1px solid #eee' }}>
                                   <td style={{ padding: '10px', fontWeight: 'bold', color: '#555' }}>{k.nim} <br/> <span style={{fontSize: '0.7rem', color: '#1e824c'}}>Agt. {thnMasuk}</span></td>
                                   <td style={{ padding: '10px', fontWeight: 'bold', color: '#333' }}>{k.nama}</td>
+                                  <td style={{ padding: '10px' }}>
+                                    {/* INPUT NIA OLEH ADMIN RAYON */}
+                                    <input 
+                                      type="text" 
+                                      placeholder="Masukkan NIA" 
+                                      value={k.nia || ''} 
+                                      onChange={(e) => handleUbahNiaKader(k.nim, e.target.value)} 
+                                      style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', maxWidth: '120px', fontSize: '0.75rem', outline: 'none' }}
+                                    />
+                                  </td>
                                   <td style={{ padding: '10px' }}>
                                     <select value={k.jenjang || "MAPABA"} onChange={(e) => handleUbahJenjangKader(k.nim, e.target.value)} style={{ padding: '4px', border: '1px solid #3498db', borderRadius: '4px', backgroundColor: '#eaf4fc', fontWeight: 'bold', cursor: 'pointer', width: '100%', maxWidth: '100px', fontSize: '0.75rem', color: '#2c3e50' }}>
                                       <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option><option value="SKP">SKP</option>
@@ -903,7 +932,9 @@ export default function DashboardAdminRayon() {
                                   <td style={{ padding: '10px', textAlign: 'center' }}>
                                     <button onClick={() => handleUbahStatusAkun(k.id, k.status)} style={{ padding: '4px 6px', border: 'none', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: k.status === 'Aktif' ? '#e8f5e9' : '#ffebee', color: k.status === 'Aktif' ? '#2e7d32' : '#c62828' }}>{k.status === 'Aktif' ? '🟢 Aktif' : '🔴 Pasif'}</button>
                                   </td>
-                                  <td style={{ padding: '10px', textAlign: 'center' }}><button onClick={() => handleHapusAkun(k.id, k.nama)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }}>🗑️</button></td>
+                                  <td style={{ padding: '10px', textAlign: 'center' }}>
+                                    <button onClick={() => handleHapusAkun(k.id, k.nama)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Akun">🗑️</button>
+                                  </td>
                                 </tr>
                               )
                             })
@@ -1100,7 +1131,7 @@ export default function DashboardAdminRayon() {
                   <table className="tabel-utama">
                     <thead>
                       <tr>
-                        <th style={{ width: '5%' }}>No</th><th style={{ width: '20%', textAlign: 'left' }}>Kode Materi</th><th style={{ width: '45%', textAlign: 'left' }}>Nama Materi</th>
+                        <th style={{ width: '5%' }}>No</th><th style={{ width: '20%', textAlign: 'left' }}>Kode Matakuliah</th><th style={{ width: '45%', textAlign: 'left' }}>Nama Matakuliah</th>
                         <th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai Huruf</th><th style={{ width: '10%' }}>SKS x Nilai</th>
                       </tr>
                     </thead>
@@ -1150,7 +1181,7 @@ export default function DashboardAdminRayon() {
                       <tr>
                         <th rowSpan={2} style={{ width: '3%' }}>No</th>
                         <th rowSpan={2} style={{ width: '10%', textAlign: 'left' }}>Kode</th>
-                        <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Materi</th>
+                        <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Matakuliah</th>
                         {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
                         <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
                         <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
@@ -1415,7 +1446,7 @@ export default function DashboardAdminRayon() {
                               <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
                                 <td style={{ padding: '12px' }}>{item.nama_file}</td>
                                 <td style={{ padding: '12px', textAlign: 'right' }}>
-                                  <a href={item.link_file} target="_blank" style={{ display: 'inline-block', backgroundColor: '#3498db', color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '5px' }}>Buka</a>
+                                  <a href={item.link_file} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', backgroundColor: '#3498db', color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '5px' }}>Buka</a>
                                   <button onClick={() => handleHapusPerpus(item.id)} style={{ color: 'white', backgroundColor: '#e74c3c', padding: '4px 8px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Hapus</button>
                                 </td>
                               </tr>
@@ -1468,7 +1499,7 @@ export default function DashboardAdminRayon() {
               </table>
               <table className="tabel-utama">
                 <thead>
-                  <tr><th style={{ width: '5%' }}>No</th><th style={{ width: '20%', textAlign: 'left' }}>Kode Materi</th><th style={{ width: '45%', textAlign: 'left' }}>Nama Materi</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai</th><th style={{ width: '10%' }}>SKS x Nilai</th></tr>
+                  <tr><th style={{ width: '5%' }}>No</th><th style={{ width: '20%', textAlign: 'left' }}>Kode Matakuliah</th><th style={{ width: '45%', textAlign: 'left' }}>Nama Matakuliah</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai</th><th style={{ width: '10%' }}>SKS x Nilai</th></tr>
                 </thead>
                 <tbody>
                   {materiAktif.length === 0 ? (<tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur.</td></tr>) : barisRaportRender}

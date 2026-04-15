@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, getDocs, query, where, doc, setDoc, updateDoc, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../../lib/firebase';
 
 export default function DashboardPendamping() {
@@ -288,7 +288,6 @@ export default function DashboardPendamping() {
   
   const ipKader = totalSks > 0 ? (totalBobotNilai / totalSks).toFixed(2) : "0.00";
   const kaderDicetak = kaderBinaan.find(k => k.nim === selectedKader) || {};
-  const totalBobotTersimpan = kategoriBobot.reduce((sum, k) => sum + k.persen, 0);
 
   // ==========================================
   // FUNGSI PENILAIAN MATRIKS DETAIL (PENDAMPING)
@@ -359,7 +358,7 @@ export default function DashboardPendamping() {
   };
 
   return (
-    <div style={{ display: 'flex', backgroundColor: '#f4f6f9', minHeight: '100vh', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ display: 'flex', backgroundColor: '#f4f6f9', height: '100vh', overflow: 'hidden', fontFamily: 'Arial, sans-serif' }}>
       
       {/* CSS KHUSUS UNTUK TAMPILAN WEB & CETAK PDF A4 BACKGROUND */}
       <style>{`
@@ -370,48 +369,82 @@ export default function DashboardPendamping() {
         .tabel-utama th { padding: 10px; color: #333; text-align: center; font-weight: bold; }
         .tabel-utama td { padding: 8px 10px; border-bottom: 1px solid #ddd; color: #333; }
         
-        /* LEMPAR WADAH PRINT JAUH KELUAR LAYAR AGAR TIDAK MENUTUPI TOMBOL DI HP */
-        .print-layout-container { 
-           position: absolute !important; 
-           top: -9999px !important; 
-           left: -9999px !important; 
-           width: 1px !important; 
-           height: 1px !important; 
-           overflow: hidden !important; 
-           opacity: 0 !important; 
-           pointer-events: none !important; 
-           z-index: -9999 !important;
-        }
-
-        /* MATIKAN GAMBAR BACKGROUND A4 SECARA PAKSA DI LAYAR HP/WEB */
+        /* TAMPILAN LAYAR WEB (SEMBUNYIKAN PRINT WADAH DENGAN AMAN) */
         @media screen {
-          .bg-kertas-a4 { display: none !important; pointer-events: none !important; }
+          .print-layout-container { 
+             position: absolute !important;
+             top: 0 !important;
+             left: 0 !important;
+             width: 100% !important;
+             height: 0 !important; 
+             overflow: hidden !important; 
+             visibility: hidden !important; 
+             z-index: -999 !important;
+          }
+          .bg-kertas-a4 { display: none !important; }
         }
         
+        /* TAMPILAN SAAT CETAK PDF (CTRL+P) */
         @media print {
           @page { size: A4 portrait; margin: 0; }
-          body, html { background-color: transparent !important; margin: 0; padding: 0; height: auto !important; }
-          div[style*="overflow: hidden"], main, section, aside { overflow: visible !important; height: auto !important; }
-          aside, main, header, .no-print { display: none !important; }
+          body, html { background-color: white !important; margin: 0; padding: 0; height: auto !important; }
           
+          /* Sembunyikan Elemen Web Yang Tidak Perlu */
+          aside, header, .no-print { display: none !important; }
+          main { margin-left: 0 !important; display: block !important; height: auto !important; overflow: visible !important; }
+          div[style*="overflow: hidden"], div[style*="overflowY: auto"] { overflow: visible !important; height: auto !important; }
+          
+          /* Tampilkan Wadah Cetak Utama */
           .print-layout-container { 
-            display: block !important; position: relative !important; width: 100% !important; height: auto !important;       
-            overflow: visible !important; background-color: transparent !important; opacity: 1 !important; z-index: 1 !important; 
+            display: block !important; 
+            position: relative !important;
+            width: 100% !important;
+            height: auto !important;       
+            overflow: visible !important;  
+            visibility: visible !important;
+            z-index: 1 !important; 
           }
-          .print-layout-container * { color: #000 !important; font-family: "Arial", "Arial Narrow", sans-serif !important; line-height: 1.15 !important; visibility: visible !important; }
           
-          .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
-          .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
+          .print-layout-container * { 
+            color: #000 !important; 
+            font-family: "Arial", "Arial Narrow", sans-serif !important; 
+            line-height: 1.15 !important; 
+          }
           
-          .print-content-area { position: relative !important; z-index: 10 !important; padding: 50mm 25mm 40mm 25mm !important; background-color: transparent !important; }
+          /* Background Kertas A4 Mengunci Di Belakang */
+          .bg-kertas-a4 { 
+            position: fixed !important; 
+            top: 0; left: 0; right: 0; bottom: 0; 
+            width: 210mm !important; 
+            height: 297mm !important; 
+            z-index: -1 !important; 
+          }
+          .bg-kertas-a4 img { 
+            width: 210mm !important; 
+            height: 297mm !important; 
+            object-fit: fill !important; 
+          }
 
-          table { display: table !important; width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
-          tr { display: table-row !important; page-break-inside: avoid !important; background-color: transparent !important; }
-          th, td { display: table-cell !important; border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; }
+          /* AREA KONTEN: Diberi margin/padding atas 85mm agar tidak menabrak KOP SURAT */
+          .print-content-area { 
+            position: relative !important; 
+            z-index: 10 !important; 
+            padding: 85mm 20mm 30mm 20mm !important; 
+            background-color: transparent !important; 
+          }
+
+          table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
+          tr { page-break-inside: avoid !important; }
+          th, td { 
+            border: 1px solid #000 !important; 
+            padding: 6px 8px !important; 
+            font-size: 11pt !important; 
+          }
           th { font-weight: bold !important; text-align: center !important; }
           
           .tabel-biodata { margin-bottom: 15px !important; border: none !important; width: 100% !important; }
-          .tabel-biodata td, .tabel-biodata tr { border: none !important; padding: 3px 0 !important; text-align: left !important; }
+          .tabel-biodata td, .tabel-biodata tr { border: none !important; padding: 4px 0 !important; text-align: left !important; }
+          
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
@@ -420,13 +453,13 @@ export default function DashboardPendamping() {
       <aside className="no-print" style={{ width: '260px', background: 'linear-gradient(135deg, #1e824c 0%, #154360 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
         <div style={{ padding: '20px', fontSize: '1.2rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>🏛️ SIAKAD PMII</span>
-          <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
+          <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
         </div>
         <div style={{ padding: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <div style={{fontSize: '0.9rem', fontWeight: 'bold', lineHeight: '1.4'}}>{profilPendamping.nama}</div>
           <div style={{fontSize: '0.75rem', color: '#f1c40f', marginTop: '4px'}}>Pendamping: {profilPendamping.jenjangTugas}</div>
         </div>
-        <ul style={{ listStyle: 'none', padding: '10px 0', flex: 1, margin: 0 }}>
+        <ul style={{ listStyle: 'none', padding: '10px 0', flex: 1, margin: 0, overflowY: 'auto' }}>
           {[
             { id: 'beranda', icon: '🏠', label: 'Beranda' }, 
             { id: 'profil', icon: '👤', label: 'Profil Saya' }, 
@@ -446,9 +479,10 @@ export default function DashboardPendamping() {
         <div style={{ padding: '20px', borderTop: '1px solid rgba(255,255,255,0.1)' }}><button onClick={handleLogout} style={{ width: '100%', padding: '10px', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid #fff', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>🚪 Keluar</button></div>
       </aside>
 
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: '0', width: '100%', overflowX: 'hidden' }}>
+      {/* Konten Utama Container (Header Freeze) */}
+      <main className="no-print" style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: '0', width: '100%' }}>
         
-        {/* HEADER DINAMIS (HANYA SATU DI APLIKASI INI) */}
+        {/* HEADER DINAMIS */}
         <header className="no-print" style={{ backgroundColor: '#fff', padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
           <button className="menu-burger" onClick={() => setIsSidebarOpen(true)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#0d1b2a' }}>☰</button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
@@ -459,7 +493,8 @@ export default function DashboardPendamping() {
           </div>
         </header>
 
-        <div style={{ padding: '20px', flex: 1 }}>
+        {/* ISI KONTEN (Scroll Berjalan Di Sini Saja) */}
+        <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
 
           {/* MENU 0: BERANDA */}
           {activeMenu === 'beranda' && (
@@ -527,29 +562,31 @@ export default function DashboardPendamping() {
                 </div>
                 
                 <div style={{ flex: '1 1 350px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', color: '#333' }}>
-                    <tbody>
-                      <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', width: '35%', borderBottom: '1px solid #eee' }}>Username</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>{profilPendamping.username}</td></tr>
-                      <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Nama Lengkap</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>{profilPendamping.nama}</td></tr>
-                      <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Tugas Pendampingan</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}><span style={{ color: '#e67e22', fontWeight: 'bold', backgroundColor: '#fff3cd', padding: '4px 8px', borderRadius: '4px' }}>{profilPendamping.jenjangTugas}</span></td></tr>
-                      <tr>
-                        <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Nomor WhatsApp</td>
-                        <td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
-                          {isEditingProfil ? (
-                            <input type="text" value={profilPendamping.noHp} onChange={e => setProfilPendamping({...profilPendamping, noHp: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
-                          ) : (profilPendamping.noHp || '-')}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Alamat / Domisili</td>
-                        <td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
-                          {isEditingProfil ? (
-                            <input type="text" value={profilPendamping.alamat} onChange={e => setProfilPendamping({...profilPendamping, alamat: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
-                          ) : (profilPendamping.alamat || '-')}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', color: '#333', minWidth: '400px' }}>
+                      <tbody>
+                        <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', width: '35%', borderBottom: '1px solid #eee' }}>Username</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>{profilPendamping.username}</td></tr>
+                        <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Nama Lengkap</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>{profilPendamping.nama}</td></tr>
+                        <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Tugas Pendampingan</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}><span style={{ color: '#e67e22', fontWeight: 'bold', backgroundColor: '#fff3cd', padding: '4px 8px', borderRadius: '4px' }}>{profilPendamping.jenjangTugas}</span></td></tr>
+                        <tr>
+                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Nomor WhatsApp</td>
+                          <td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
+                            {isEditingProfil ? (
+                              <input type="text" value={profilPendamping.noHp} onChange={e => setProfilPendamping({...profilPendamping, noHp: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                            ) : (profilPendamping.noHp || '-')}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Alamat / Domisili</td>
+                          <td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
+                            {isEditingProfil ? (
+                              <input type="text" value={profilPendamping.alamat} onChange={e => setProfilPendamping({...profilPendamping, alamat: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                            ) : (profilPendamping.alamat || '-')}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                   {isEditingProfil && <p style={{ fontSize: '0.75rem', color: '#e74c3c', marginTop: '10px' }}>*Nama, Username, dan Jenjang Tugas hanya bisa diubah oleh Pengurus Rayon.</p>}
                 </div>
               </div>
@@ -560,7 +597,7 @@ export default function DashboardPendamping() {
           {activeMenu === 'daftar-kader' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <p style={{ color: '#555', fontSize: '0.85rem', marginBottom: '15px' }}>Daftar kader yang diplotkan langsung kepada Anda sebagai pendamping.</p>
-              <div style={{overflowX: 'auto'}}>
+              <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '500px' }}>
                   <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#333' }}><th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>NIM</th><th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Nama Kader</th><th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #ddd' }}>Aksi</th></tr></thead>
                   <tbody>
@@ -617,7 +654,7 @@ export default function DashboardPendamping() {
 
               {/* TAB 1: RAPORT KADERISASI */}
               {tabInput === 'materi' && (
-                <div id="area-cetak-raport" style={{ overflowX: 'auto', padding: '10px 0' }}>
+                <div id="area-cetak-raport" style={{ width: '100%', overflowX: 'auto', padding: '10px 0', boxSizing: 'border-box' }}>
                   
                   <table className="tabel-utama">
                     <thead>
@@ -670,7 +707,7 @@ export default function DashboardPendamping() {
                     </div>
                   </div>
 
-                  <div style={{ overflowX: 'auto' }}>
+                  <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                     <table className="tabel-utama" style={{ textAlign: 'center', minWidth: '900px', fontSize: '0.85rem', backgroundColor: '#fff' }}>
                       <thead>
                         <tr>
@@ -746,7 +783,7 @@ export default function DashboardPendamping() {
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <h3 style={{ color: '#1e824c', margin: '0 0 15px 0', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>Verifikasi Tugas Kader Binaan</h3>
               <p style={{ color: '#555', fontSize: '0.85rem', marginBottom: '15px' }}>Daftar tugas yang telah dikerjakan dan diunggah oleh kader binaan Anda.</p>
-              <div style={{overflowX: 'auto'}}>
+              <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '550px' }}>
                   <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#555', textAlign: 'left' }}><th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Kader / Tanggal</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Nama Tugas Berkas</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Dokumen</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi Status</th></tr></thead>
                   <tbody>
@@ -782,7 +819,7 @@ export default function DashboardPendamping() {
                     </button>
                   </div>
                   
-                  <div style={{ overflowX: 'auto' }}>
+                  <div className="no-print" style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                     <table className="tabel-utama no-print" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '800px' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f8f9fa' }}>
@@ -820,44 +857,92 @@ export default function DashboardPendamping() {
                       </tbody>
                     </table>
                   </div>
+
+                  {/* TAMPILAN KHUSUS PRINT (BLOK PER KADER BINAAN) */}
+                  <div className="print-only-container" style={{ display: 'none' }}>
+                    <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '0 0 20px 0', fontSize: '12pt', textTransform: 'uppercase' }}>
+                      REKAP JAWABAN KADER BINAAN: {selectedTesHasil.judul}
+                    </h3>
+                    
+                    {jawabanTesViewer.length === 0 ? (
+                      <p style={{ textAlign: 'center', color: '#000', fontStyle: 'italic' }}>Belum ada jawaban terkumpul.</p>
+                    ) : (
+                      jawabanTesViewer.map((jawab: any) => (
+                        <div key={jawab.nim} style={{ marginBottom: '40px', pageBreakInside: 'avoid' }}>
+                          <table className="tabel-biodata" style={{ marginBottom: '10px' }}>
+                            <tbody>
+                              <tr><td style={{width: '150px'}}>Nama Pendamping</td><td style={{width: '15px'}}>:</td><td style={{fontWeight: 'bold'}}>{profilPendamping.nama}</td></tr>
+                              <tr><td style={{width: '150px'}}>Nama Kader Binaan</td><td style={{width: '15px'}}>:</td><td style={{fontWeight: 'bold'}}>{jawab.nama}</td></tr>
+                              <tr><td>NIM</td><td>:</td><td>{jawab.nim}</td></tr>
+                              <tr><td>Waktu Submit</td><td>:</td><td>{jawab.tanggal}</td></tr>
+                            </tbody>
+                          </table>
+
+                          <table className="tabel-utama">
+                            <thead>
+                              <tr>
+                                <th style={{ width: '5%' }}>No</th>
+                                <th style={{ width: '45%', textAlign: 'left' }}>Pertanyaan</th>
+                                <th style={{ width: '50%', textAlign: 'left' }}>Jawaban Kader</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(selectedTesHasil.daftar_soal || []).map((soal: string, i: number) => (
+                                <tr key={i}>
+                                  <td style={{ textAlign: 'center', verticalAlign: 'top' }}>{i + 1}</td>
+                                  <td style={{ verticalAlign: 'top', whiteSpace: 'pre-wrap' }}>{soal}</td>
+                                  <td style={{ verticalAlign: 'top', whiteSpace: 'pre-wrap', fontStyle: 'italic', color: '#333' }}>
+                                    {jawab.jawaban[i] || '- Kosong -'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
                 </div>
               ) : (
                 // DAFTAR TES RAYON
-                <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', overflowX: 'auto' }}>
+                <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
                   <h4 style={{ color: '#4a637d', margin: '0 0 15px 0', borderBottom: '1px dashed #ccc', paddingBottom: '8px' }}>Daftar Tes dari Rayon</h4>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '500px' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}>
-                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Judul & Jenjang</th>
-                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Soal</th>
-                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status Tes</th>
-                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {listTes.length === 0 ? (
-                        <tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Rayon belum membuat tes pemahaman.</td></tr>
-                      ) : (
-                        listTes.map((tes) => (
-                          <tr key={tes.id} style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: '10px' }}>
-                              <div style={{ fontWeight: 'bold', color: '#0d1b2a' }}>{tes.judul}</div>
-                              <div style={{ fontSize: '0.7rem', color: '#888' }}>Sasaran: {tes.jenjang}</div>
-                            </td>
-                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#e67e22' }}>{tes.daftar_soal?.length || 0}</td>
-                            <td style={{ padding: '10px', textAlign: 'center' }}>
-                              <span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', backgroundColor: tes.status === 'Buka' ? '#e8f5e9' : '#ffebee', color: tes.status === 'Buka' ? '#2e7d32' : '#c62828' }}>
-                                {tes.status === 'Buka' ? '🔓 Dibuka' : '🔒 Ditutup'}
-                              </span>
-                            </td>
-                            <td style={{ padding: '10px', textAlign: 'center' }}>
-                              <button onClick={() => handleLihatHasilTes(tes)} style={{ backgroundColor: '#3498db', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>Lihat Jawaban Binaan</button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                  <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '500px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Judul & Jenjang</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Soal</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status Tes</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {listTes.length === 0 ? (
+                          <tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Rayon belum membuat tes pemahaman.</td></tr>
+                        ) : (
+                          listTes.map((tes) => (
+                            <tr key={tes.id} style={{ borderBottom: '1px solid #eee' }}>
+                              <td style={{ padding: '10px' }}>
+                                <div style={{ fontWeight: 'bold', color: '#0d1b2a' }}>{tes.judul}</div>
+                                <div style={{ fontSize: '0.7rem', color: '#888' }}>Sasaran: {tes.jenjang}</div>
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#e67e22' }}>{tes.daftar_soal?.length || 0}</td>
+                              <td style={{ padding: '10px', textAlign: 'center' }}>
+                                <span style={{ padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', backgroundColor: tes.status === 'Buka' ? '#e8f5e9' : '#ffebee', color: tes.status === 'Buka' ? '#2e7d32' : '#c62828' }}>
+                                  {tes.status === 'Buka' ? '🔓 Dibuka' : '🔒 Ditutup'}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center' }}>
+                                <button onClick={() => handleLihatHasilTes(tes)} style={{ backgroundColor: '#3498db', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>Lihat Jawaban Binaan</button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </div>
@@ -920,54 +1005,6 @@ export default function DashboardPendamping() {
                   </tr>
                 </tbody>
               </table>
-            </div>
-          )}
-
-          {/* CETAK HASIL TES PEMAHAMAN BINAAN */}
-          {activeMenu === 'tes-pemahaman' && selectedTesHasil && (
-            <div>
-              <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '0 0 20px 0', fontSize: '12pt', textTransform: 'uppercase' }}>
-                REKAP JAWABAN: {selectedTesHasil.judul}
-              </h3>
-              
-              {jawabanTesViewer.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#999', fontStyle: 'italic' }}>Belum ada jawaban terkumpul.</p>
-              ) : (
-                jawabanTesViewer.map((jawab: any) => (
-                  <div key={jawab.nim} style={{ marginBottom: '40px', pageBreakInside: 'avoid' }}>
-                    {/* BIODATA KADER */}
-                    <table className="tabel-biodata" style={{ marginBottom: '10px' }}>
-                      <tbody>
-                        <tr><td style={{width: '150px'}}>Nama Kader Binaan</td><td style={{width: '15px'}}>:</td><td style={{fontWeight: 'bold'}}>{jawab.nama}</td></tr>
-                        <tr><td>NIM</td><td>:</td><td>{jawab.nim}</td></tr>
-                        <tr><td>Waktu Submit</td><td>:</td><td>{jawab.tanggal}</td></tr>
-                      </tbody>
-                    </table>
-
-                    {/* TABEL PERTANYAAN & JAWABAN */}
-                    <table className="tabel-utama">
-                      <thead>
-                        <tr>
-                          <th style={{ width: '5%' }}>No</th>
-                          <th style={{ width: '45%', textAlign: 'left' }}>Pertanyaan</th>
-                          <th style={{ width: '50%', textAlign: 'left' }}>Jawaban Kader</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(selectedTesHasil.daftar_soal || []).map((soal: string, i: number) => (
-                          <tr key={i}>
-                            <td style={{ textAlign: 'center', verticalAlign: 'top' }}>{i + 1}</td>
-                            <td style={{ verticalAlign: 'top', whiteSpace: 'pre-wrap' }}>{soal}</td>
-                            <td style={{ verticalAlign: 'top', whiteSpace: 'pre-wrap', fontStyle: 'italic', color: '#333' }}>
-                              {jawab.jawaban[i] || '- Kosong -'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ))
-              )}
             </div>
           )}
 

@@ -36,7 +36,7 @@ export default function DashboardAdminRayon() {
   const [dataPendamping, setDataPendamping] = useState<any[]>([]);
   const [dataKader, setDataKader] = useState<any[]>([]);
   const [tabAkun, setTabAkun] = useState('kader'); 
-  const [formKader, setFormKader] = useState({ nim: '', nama: '', password: '', pendampingId: '' });
+  const [formKader, setFormKader] = useState({ nim: '', nia: '', nama: '', password: '', pendampingId: '' });
   const [formPendamping, setFormPendamping] = useState({ nama: '', username: '', password: '', jenjangTugas: 'MAPABA' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [importProgress, setImportProgress] = useState(''); 
@@ -55,11 +55,11 @@ export default function DashboardAdminRayon() {
   const [isSavingKurikulum, setIsSavingKurikulum] = useState(false);
   const [masterKurikulumPusat, setMasterKurikulumPusat] = useState<any[]>([]); 
   
-  // STATE UNTUK EDIT MATERI (FITUR BARU)
+  // STATE UNTUK EDIT MATERI 
   const [editingMateriId, setEditingMateriId] = useState<string | null>(null);
   const [editMateriForm, setEditMateriForm] = useState({ kode: '', nama: '', muatan: '', bobot: 0 });
 
-  // --- STATE NILAI KHS & RAPORT (MATRIKS UPDATE) ---
+  // --- STATE NILAI KHS & RAPORT ---
   const [selectedKaderNilai, setSelectedKaderNilai] = useState('');
   const [selectedJenjangNilai, setSelectedJenjangNilai] = useState('MAPABA');
   const [nilaiKaderRealtime, setNilaiKaderRealtime] = useState<Record<string, string>>({}); 
@@ -280,7 +280,6 @@ export default function DashboardAdminRayon() {
 
   const ipKader = totalSks > 0 ? (totalBobotNilai / totalSks).toFixed(2) : "0.00";
   const kaderDicetak = dataKader.find(k => k.nim === selectedKaderNilai) || {};
-
   const totalBobotTersimpan = kategoriBobot.reduce((sum, k) => sum + k.persen, 0);
 
   // ==========================================
@@ -295,14 +294,11 @@ export default function DashboardAdminRayon() {
     try {
       const currentEvaluasi = (await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKaderNilai)))).docs[0]?.data() || {};
       const jenjangData = currentEvaluasi[selectedJenjangNilai] || { bobot: [], nilai_mentah: {}, catatan: '' };
-      
       const newBobot = [...(jenjangData.bobot || []), { id: Date.now().toString(), nama: formKategori.nama, persen: formKategori.persen }];
       
       await setDoc(doc(db, "evaluasi_kader", selectedKaderNilai), { 
-        ...currentEvaluasi, 
-        [selectedJenjangNilai]: { ...jenjangData, bobot: newBobot } 
+        ...currentEvaluasi, [selectedJenjangNilai]: { ...jenjangData, bobot: newBobot } 
       }, { merge: true });
-      
       setFormKategori({ nama: '', persen: 0 });
     } catch (error) { alert("Gagal menyimpan kategori bobot."); } finally { setIsSavingEvaluasi(false); }
   };
@@ -315,24 +311,14 @@ export default function DashboardAdminRayon() {
       const newBobot = jenjangData.bobot.filter((item: any) => item.id !== id);
       
       await setDoc(doc(db, "evaluasi_kader", selectedKaderNilai), { 
-        ...currentEvaluasi, 
-        [selectedJenjangNilai]: { ...jenjangData, bobot: newBobot } 
+        ...currentEvaluasi, [selectedJenjangNilai]: { ...jenjangData, bobot: newBobot } 
       }, { merge: true });
     } catch (error) { alert("Gagal menghapus."); }
   };
 
   const handleInputNilaiMentah = (kodeMateri: string, namaKategori: string, value: string) => {
-    let valNum = Number(value);
-    if (valNum > 100) valNum = 100;
-    if (valNum < 0) valNum = 0;
-
-    const updatedNilai = {
-      ...nilaiMentah,
-      [kodeMateri]: {
-        ...(nilaiMentah[kodeMateri] || {}),
-        [namaKategori]: valNum
-      }
-    };
+    let valNum = Number(value); if (valNum > 100) valNum = 100; if (valNum < 0) valNum = 0;
+    const updatedNilai = { ...nilaiMentah, [kodeMateri]: { ...(nilaiMentah[kodeMateri] || {}), [namaKategori]: valNum } };
     setNilaiMentah(updatedNilai);
   };
 
@@ -345,17 +331,13 @@ export default function DashboardAdminRayon() {
       
       await setDoc(docRef, { ...currentEvaluasi, [selectedJenjangNilai]: { ...jenjangData, nilai_mentah: nilaiMentah } }, { merge: true });
 
-      // Hitung Angka Akhir
       let angkaAkhir = 0;
       kategoriBobot.forEach(kat => {
           const score = nilaiMentah[kodeMateri]?.[kat.nama] || 0;
           angkaAkhir += score * (kat.persen / 100);
       });
 
-      // Hitung Huruf
       const hurufAkhir = getNilaiHuruf(angkaAkhir);
-
-      // Simpan Ke KHS Utama
       await setDoc(doc(db, "nilai_khs", selectedKaderNilai), { 
         [kodeMateri]: hurufAkhir, terakhirDiubah: Date.now(), diubahOleh: "Admin Rayon" 
       }, { merge: true });
@@ -440,15 +422,10 @@ export default function DashboardAdminRayon() {
   const handleUbahJenjangKader = async (nimKader: string, jenjangBaru: string) => { if (!window.confirm(`Pindah jenjang? Pendamping diriset.`)) return; try { await updateDoc(doc(db, "users", nimKader), { jenjang: jenjangBaru, pendampingId: "" }); alert("Sukses."); } catch (error) {} };
   const handleUbahJenjangPendamping = async (idPendamping: string, jenjangTugasBaru: string) => { try { await updateDoc(doc(db, "users", idPendamping), { jenjangTugas: jenjangTugasBaru }); } catch (error) {} };
 
-  // FITUR BARU: UPDATE NIA KADER
   const handleUbahNiaKader = async (nimKader: string, niaBaru: string) => {
-    try {
-      await updateDoc(doc(db, "users", nimKader), { nia: niaBaru });
-    } catch (error) {
-      console.error("Gagal mengupdate NIA", error);
-    }
+    try { await updateDoc(doc(db, "users", nimKader), { nia: niaBaru }); } catch (error) { console.error("Gagal update NIA", error); }
   };
-
+  
   const handleBersihkanDataKaderLama = async () => {
     const batasTahun = currentYear - 3; 
     const kaderExpired = dataKader.filter(k => { if (!k.createdAt) return false; return new Date(k.createdAt).getFullYear() <= batasTahun; });
@@ -497,11 +474,7 @@ export default function DashboardAdminRayon() {
       await setDoc(doc(db, "kurikulum_rayon", adminRayonId), { [tabKurikulum]: updatedList }, { merge: true });
       setEditingMateriId(null);
       alert("Materi berhasil diperbarui!");
-    } catch(err) {
-      alert("Gagal mengedit materi.");
-    } finally {
-      setIsSavingKurikulum(false);
-    }
+    } catch(err) { alert("Gagal mengedit materi."); } finally { setIsSavingKurikulum(false); }
   };
 
   const handleTambahTugas = async (e: React.FormEvent) => { e.preventDefault(); try { await addDoc(collection(db, "master_tugas"), { id_rayon: adminRayonId, nama_tugas: formTugas.nama_tugas, deadline: formTugas.deadline, timestamp: Date.now() }); setFormTugas({ nama_tugas: '', deadline: '' }); alert("Tugas ditambah!"); } catch (error) {} };
@@ -520,8 +493,8 @@ export default function DashboardAdminRayon() {
     try {
       const emailBaru = `${formKader.nim}@pmii-uinmalang.or.id`.toLowerCase();
       await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formKader.password);
-      await setDoc(doc(db, "users", formKader.nim), { nim: formKader.nim, nia: "", nama: formKader.nama, email: emailBaru, role: "kader", id_rayon: adminRayonId, jenjang: "MAPABA", pendampingId: formKader.pendampingId, status: "Aktif", createdAt: Date.now() });
-      await signOutSecondary(secondaryAuth); alert(`Sukses!`); setFormKader({ nim: '', nama: '', password: '', pendampingId: '' });
+      await setDoc(doc(db, "users", formKader.nim), { nim: formKader.nim, nia: formKader.nia, nama: formKader.nama, email: emailBaru, role: "kader", id_rayon: adminRayonId, jenjang: "MAPABA", pendampingId: formKader.pendampingId, status: "Aktif", createdAt: Date.now() });
+      await signOutSecondary(secondaryAuth); alert(`Sukses!`); setFormKader({ nim: '', nia: '', nama: '', password: '', pendampingId: '' });
     } catch (error: any) { alert(error.message); } finally { setIsSubmitting(false); }
   };
 
@@ -543,13 +516,19 @@ export default function DashboardAdminRayon() {
         const bstr = evt.target?.result; const wb = XLSX.read(bstr, { type: 'binary' }); const wsname = wb.SheetNames[0]; const ws = wb.Sheets[wsname]; const data = XLSX.utils.sheet_to_json(ws); 
         if (data.length === 0) throw new Error("Kosong."); const secondaryAuth = getSecondaryAuth(); let successCount = 0; let errorCount = 0;
         for (let i = 0; i < data.length; i++) {
-          const row: any = data[i]; const nim = String(row['NIM'] || row['nim'] || '').trim(); const nama = row['Nama'] || row['nama'] || ''; const tglLahir = String(row['TanggalLahir'] || row['tanggallahir'] || row['Password'] || '').trim(); let pendamping = row['Pendamping'] || row['pendamping'] || '';
+          const row: any = data[i]; 
+          const nim = String(row['NIM'] || row['nim'] || '').trim(); 
+          const nia = String(row['NIA'] || row['nia'] || '').trim(); 
+          const nama = row['Nama'] || row['nama'] || ''; 
+          const tglLahir = String(row['TanggalLahir'] || row['tanggallahir'] || row['Password'] || '').trim(); 
+          let pendamping = row['Pendamping'] || row['pendamping'] || '';
+          
           if (!nim || !nama || !tglLahir) { errorCount++; continue; }
           setImportProgress(`Memproses: ${nama} (${i + 1}/${data.length})`);
           const emailBaru = `${nim}@pmii-uinmalang.or.id`.toLowerCase();
           try {
             await createUserWithEmailAndPassword(secondaryAuth, emailBaru, tglLahir);
-            await setDoc(doc(db, "users", nim), { nim: nim, nia: "", nama: nama, email: emailBaru, role: "kader", id_rayon: adminRayonId, jenjang: "MAPABA", pendampingId: pendamping, status: "Aktif", createdAt: Date.now() }); successCount++;
+            await setDoc(doc(db, "users", nim), { nim: nim, nia: nia, nama: nama, email: emailBaru, role: "kader", id_rayon: adminRayonId, jenjang: "MAPABA", pendampingId: pendamping, status: "Aktif", createdAt: Date.now() }); successCount++;
           } catch(err: any) { errorCount++; }
         }
         await signOutSecondary(secondaryAuth); alert(`Selesai! Berhasil: ${successCount}. Gagal: ${errorCount}`); fileInput.value = ''; 
@@ -574,23 +553,26 @@ export default function DashboardAdminRayon() {
   
   const getHeaderTitle = () => {
     switch (activeMenu) {
-      case 'beranda': return 'Dashboard Statistik';
-      case 'manajemen-akun': return 'Manajemen Akun User';
-      case 'kurikulum': return 'Master Kurikulum Rayon';
-      case 'pantau-nilai': return 'Raport & Matriks Penilaian';
-      case 'master-tugas': return 'Manajemen Tugas Kader';
-      case 'verifikasi-surat': return 'Layanan Administrasi Surat';
+      case 'beranda': return 'Dashboard';
+      case 'manajemen-akun': return 'Manajemen Akun';
+      case 'kurikulum': return 'Kurikulum';
+      case 'pantau-nilai': return 'Raport Kaderisasi';
+      case 'master-tugas': return 'Manajemen Tugas';
+      case 'verifikasi-surat': return 'Layanan Administrasi';
       case 'perpus': return 'Perpustakaan Digital';
-      case 'manajemen-tes': return 'Manajemen Tes Pemahaman';
-      case 'saran': return 'Kotak Aspirasi Kader';
+      case 'manajemen-tes': return 'Manajemen Tes';
+      case 'saran': return 'Kotak Aspirasi';
       default: return 'Dashboard Admin';
     }
   };
 
   const groupedPerpus = listPerpus.reduce((acc, item) => { if (!acc[item.folder]) acc[item.folder] = []; acc[item.folder].push(item); return acc; }, {});
 
+  // ==========================================
+  // VIEW RENDER
+  // ==========================================
   return (
-    <div style={{ display: 'flex', backgroundColor: '#f4f6f9', minHeight: '100vh', fontFamily: 'Arial, sans-serif' }}>
+    <div style={{ display: 'flex', backgroundColor: '#f4f6f9', height: '100vh', overflow: 'hidden', fontFamily: 'Arial, sans-serif' }}>
       
       {/* CSS KHUSUS UNTUK TAMPILAN WEB & CETAK PDF A4 BACKGROUND */}
       <style>{`
@@ -601,55 +583,82 @@ export default function DashboardAdminRayon() {
         .tabel-utama th { padding: 10px; color: #333; text-align: center; font-weight: bold; }
         .tabel-utama td { padding: 8px 10px; border-bottom: 1px solid #ddd; color: #333; }
         
-        .print-layout-container { 
-           position: absolute !important; 
-           top: -9999px !important; 
-           left: -9999px !important; 
-           width: 1px !important; 
-           height: 1px !important; 
-           overflow: hidden !important; 
-           opacity: 0 !important; 
-           pointer-events: none !important; 
-           z-index: -9999 !important;
-        }
-
+        /* TAMPILAN LAYAR WEB (SEMBUNYIKAN PRINT WADAH DENGAN AMAN) */
         @media screen {
-          .bg-kertas-a4 { display: none !important; pointer-events: none !important; }
+          .print-layout-container { 
+             position: absolute !important;
+             top: 0 !important;
+             left: 0 !important;
+             width: 100% !important;
+             height: 0 !important; 
+             overflow: hidden !important; 
+             visibility: hidden !important; 
+             z-index: -999 !important;
+          }
+          .bg-kertas-a4 { display: none !important; }
         }
         
+        /* TAMPILAN SAAT CETAK PDF (CTRL+P) */
         @media print {
           @page { size: A4 portrait; margin: 0; }
-          body, html { background-color: transparent !important; margin: 0; padding: 0; height: auto !important; }
-          div[style*="overflow: hidden"] { overflow: visible !important; height: auto !important; }
-          aside, main, header, .no-print { display: none !important; }
+          body, html { background-color: white !important; margin: 0; padding: 0; height: auto !important; }
           
+          /* Sembunyikan Elemen Web Yang Tidak Perlu */
+          aside, header, .no-print { display: none !important; }
+          main { margin-left: 0 !important; display: block !important; height: auto !important; overflow: visible !important; }
+          div[style*="overflow: hidden"], div[style*="overflowY: auto"] { overflow: visible !important; height: auto !important; }
+          
+          /* Tampilkan Wadah Cetak Utama */
           .print-layout-container { 
             display: block !important; 
             position: relative !important;
-            top: 0 !important;
-            left: 0 !important;
             width: 100% !important;
             height: auto !important;       
             overflow: visible !important;  
-            background-color: transparent !important;
-            opacity: 1 !important; 
-            z-index: 10 !important; 
+            visibility: visible !important;
+            z-index: 1 !important; 
           }
           
-          .print-layout-container * { color: #000 !important; font-family: "Arial", "Arial Narrow", sans-serif !important; line-height: 1.15 !important; visibility: visible !important; }
+          .print-layout-container * { 
+            color: #000 !important; 
+            font-family: "Arial", "Arial Narrow", sans-serif !important; 
+            line-height: 1.15 !important; 
+          }
           
-          .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
-          .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
-          
-          .print-content-area { position: relative !important; z-index: 999 !important; padding: 50mm 25mm 40mm 25mm !important; background-color: transparent !important; }
+          /* Background Kertas A4 Mengunci Di Belakang */
+          .bg-kertas-a4 { 
+            position: fixed !important; 
+            top: 0; left: 0; right: 0; bottom: 0; 
+            width: 210mm !important; 
+            height: 297mm !important; 
+            z-index: -1 !important; 
+          }
+          .bg-kertas-a4 img { 
+            width: 210mm !important; 
+            height: 297mm !important; 
+            object-fit: fill !important; 
+          }
 
-          table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; z-index: 999 !important; position: relative !important; }
-          tr { page-break-inside: avoid !important; background-color: transparent !important; }
-          th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; }
+          /* AREA KONTEN: Diberi margin/padding atas 110mm agar tidak menabrak KOP SURAT */
+          .print-content-area { 
+            position: relative !important; 
+            z-index: 10 !important; 
+            padding: 50mm 25mm 40mm 25mm !important; 
+            background-color: transparent !important; 
+          }
+
+          table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
+          tr { page-break-inside: avoid !important; }
+          th, td { 
+            border: 1px solid #000 !important; 
+            padding: 6px 8px !important; 
+            font-size: 11pt !important; 
+          }
           th { font-weight: bold !important; text-align: center !important; }
           
           .tabel-biodata { margin-bottom: 15px !important; border: none !important; width: 100% !important; }
-          .tabel-biodata td, .tabel-biodata tr { border: none !important; padding: 3px 0 !important; text-align: left !important; }
+          .tabel-biodata td, .tabel-biodata tr { border: none !important; padding: 4px 0 !important; text-align: left !important; }
+          
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
@@ -665,15 +674,15 @@ export default function DashboardAdminRayon() {
         </div>
         <ul style={{ listStyle: 'none', padding: '10px 0', margin: 0 }}>
           {[
-            { id: 'beranda', icon: '🏠', label: 'Dashboard Statistik' },
-            { id: 'verifikasi-surat', icon: '✉️', label: 'Layanan Surat', badge: suratMasuk.filter(s => s.status === 'Menunggu Verifikasi').length || null },
+            { id: 'beranda', icon: '🏠', label: 'Dashboard' },
+            { id: 'verifikasi-surat', icon: '✉️', label: 'Layanan Administrasi', badge: suratMasuk.filter(s => s.status === 'Menunggu Verifikasi').length || null },
             { id: 'manajemen-akun', icon: '👥', label: 'Manajemen Akun' },
-            { id: 'kurikulum', icon: '📚', label: 'Master Kurikulum' }, 
-            { id: 'pantau-nilai', icon: '📊', label: 'Raport Kader' }, 
-            { id: 'manajemen-tes', icon: '📝', label: 'Manajemen Tes Materi' },
-            { id: 'master-tugas', icon: '📋', label: 'Penugasan Kader' }, 
-            { id: 'perpus', icon: '📁', label: 'Perpustakaan Kader' }, 
-            { id: 'saran', icon: '💬', label: 'Kotak Saran', badge: saranMasuk.length || null }, 
+            { id: 'kurikulum', icon: '📚', label: 'Kurikulum' }, 
+            { id: 'pantau-nilai', icon: '📊', label: 'Raport Kaderisasi' }, 
+            { id: 'manajemen-tes', icon: '📝', label: 'Manajemen Tes' },
+            { id: 'master-tugas', icon: '📋', label: 'Manajemen Tugas' }, 
+            { id: 'perpus', icon: '📁', label: 'Perpustakaan Digital' }, 
+            { id: 'saran', icon: '💬', label: 'Kotak Aspirasi', badge: saranMasuk.length || null }, 
           ].map((item) => (
             <li key={item.id}>
               <button 
@@ -691,7 +700,7 @@ export default function DashboardAdminRayon() {
         </div>
       </aside>
 
-      {/* Konten Utama Container */}
+      {/* Konten Utama Container (Header Freeze) */}
       <main className="no-print" style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: '0', width: '100%', overflowX: 'hidden' }}>
         
         <header style={{ backgroundColor: '#fff', padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
@@ -702,8 +711,8 @@ export default function DashboardAdminRayon() {
           </div>
         </header>
 
-        {/* ISI KONTEN */}
-        <div style={{ padding: '20px', flex: 1 }}>
+        {/* ISI KONTEN (Scroll Berjalan Di Sini Saja) */}
+        <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
 
           {/* MENU 0: BERANDA OVERVIEW */}
           {activeMenu === 'beranda' && (
@@ -742,23 +751,25 @@ export default function DashboardAdminRayon() {
                 </div>
               </div>
 
-              <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflowX: 'auto' }}>
+              <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
                 <h4 style={{ marginTop: 0, color: '#0d1b2a', marginBottom: '15px' }}>Distribusi Jenjang Kader</h4>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '400px' }}>
-                  <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}><th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Jenjang Kaderisasi</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Jumlah Kader</th></tr></thead>
-                  <tbody>
-                    {['MAPABA', 'PKD', 'SIG', 'SKP'].map((jenjang) => {
-                      let count = 0;
-                      if (jenjang === 'MAPABA') count = dataKaderDifilterTahun.filter(k => ['MAPABA', 'PKD', 'SIG', 'SKP'].includes(k.jenjang)).length;
-                      else if (jenjang === 'PKD') count = dataKaderDifilterTahun.filter(k => ['PKD', 'SKP'].includes(k.jenjang)).length;
-                      else if (jenjang === 'SIG') count = dataKaderDifilterTahun.filter(k => ['SIG', 'SKP'].includes(k.jenjang)).length;
-                      else if (jenjang === 'SKP') count = dataKaderDifilterTahun.filter(k => k.jenjang === 'SKP').length;
-                      return (
-                        <tr key={jenjang} style={{ borderBottom: '1px solid #eee' }}><td style={{ padding: '10px', fontWeight: 'bold', color: '#0d1b2a' }}>{jenjang}</td><td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#3498db' }}>{count} Kader</td></tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                <div style={{ width: '100%', overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '400px' }}>
+                    <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}><th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Jenjang Kaderisasi</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Jumlah Kader</th></tr></thead>
+                    <tbody>
+                      {['MAPABA', 'PKD', 'SIG', 'SKP'].map((jenjang) => {
+                        let count = 0;
+                        if (jenjang === 'MAPABA') count = dataKaderDifilterTahun.filter(k => ['MAPABA', 'PKD', 'SIG', 'SKP'].includes(k.jenjang)).length;
+                        else if (jenjang === 'PKD') count = dataKaderDifilterTahun.filter(k => ['PKD', 'SKP'].includes(k.jenjang)).length;
+                        else if (jenjang === 'SIG') count = dataKaderDifilterTahun.filter(k => ['SIG', 'SKP'].includes(k.jenjang)).length;
+                        else if (jenjang === 'SKP') count = dataKaderDifilterTahun.filter(k => k.jenjang === 'SKP').length;
+                        return (
+                          <tr key={jenjang} style={{ borderBottom: '1px solid #eee' }}><td style={{ padding: '10px', fontWeight: 'bold', color: '#0d1b2a' }}>{jenjang}</td><td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#3498db' }}>{count} Kader</td></tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -769,7 +780,7 @@ export default function DashboardAdminRayon() {
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
                 <h3 style={{ color: '#1e824c', margin: 0, borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>Pengaturan Jenis Layanan Surat</h3>
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 300px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px' }}>
+                  <div style={{ flex: '1 1 300px', maxWidth: '100%', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px' }}>
                     <h4 style={{marginTop: 0, marginBottom: '15px', color: '#333'}}>➕ Tambah Layanan Baru</h4>
                     <form onSubmit={handleTambahJenisSurat} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                       <input type="text" placeholder="Nama / Jenis Surat" required value={newJenisSurat} onChange={(e) => setNewJenisSurat(e.target.value)} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', boxSizing: 'border-box' }} />
@@ -777,28 +788,30 @@ export default function DashboardAdminRayon() {
                       <button disabled={isSavingJenisSurat} type="submit" style={{ backgroundColor: '#2ecc71', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSavingJenisSurat ? 'not-allowed' : 'pointer' }}>{isSavingJenisSurat ? 'Menyimpan...' : 'Tambahkan Layanan'}</button>
                     </form>
                   </div>
-                  <div style={{ flex: '2 1 100%', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '400px' }}>
-                      <thead><tr style={{ backgroundColor: '#f8f9fa' }}><th style={{ padding: '15px', borderBottom: '2px solid #ddd' }}>Jenis Surat</th><th style={{ padding: '15px', borderBottom: '2px solid #ddd' }}>Instruksi Isian Wajib</th><th style={{ padding: '15px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th></tr></thead>
-                      <tbody>
-                        {listJenisSurat.length === 0 ? (<tr><td colSpan={3} style={{textAlign: 'center', padding: '20px'}}>Belum ada jenis surat.</td></tr>) : listJenisSurat.map((surat) => (
-                          <tr key={surat.id} style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: '15px', fontWeight: 'bold' }}>{surat.jenis}</td><td style={{ padding: '15px', color: '#555', whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{surat.syarat || '-'}</td>
-                            <td style={{ padding: '15px', textAlign: 'center' }}><button onClick={() => handleHapusJenisSurat(surat.id)} style={{ color: 'white', backgroundColor: '#e74c3c', padding: '4px 8px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Hapus</button></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div style={{ flex: '2 1 400px', minWidth: 0, maxWidth: '100%', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px' }}>
+                    <div style={{ width: '100%', overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '500px' }}>
+                        <thead><tr style={{ backgroundColor: '#f8f9fa' }}><th style={{ padding: '15px', borderBottom: '2px solid #ddd' }}>Jenis Surat</th><th style={{ padding: '15px', borderBottom: '2px solid #ddd' }}>Instruksi Isian Wajib</th><th style={{ padding: '15px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th></tr></thead>
+                        <tbody>
+                          {listJenisSurat.length === 0 ? (<tr><td colSpan={3} style={{textAlign: 'center', padding: '20px'}}>Belum ada jenis surat.</td></tr>) : listJenisSurat.map((surat) => (
+                            <tr key={surat.id} style={{ borderBottom: '1px solid #eee' }}>
+                              <td style={{ padding: '15px', fontWeight: 'bold' }}>{surat.jenis}</td><td style={{ padding: '15px', color: '#555', whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>{surat.syarat || '-'}</td>
+                              <td style={{ padding: '15px', textAlign: 'center' }}><button onClick={() => handleHapusJenisSurat(surat.id)} style={{ color: 'white', backgroundColor: '#e74c3c', padding: '4px 8px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Hapus</button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', minHeight: '400px', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: '#4a637d', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', minHeight: '400px' }}>
+                <div style={{ backgroundColor: '#4a637d', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white', flexWrap: 'wrap', gap: '10px', borderRadius: '8px 8px 0 0' }}>
                   <span style={{ fontSize: '0.9rem', fontWeight: 'bold', letterSpacing: '1px' }}>DAFTAR PENGAJUAN SURAT KADER</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '20px' }}>{suratMasuk.filter(s => s.status === 'Menunggu Verifikasi').length} Menunggu Verifikasi</div>
                 </div>
-                <div style={{ padding: '20px', overflowX: 'auto' }}>
+                <div style={{ padding: '20px', width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', color: '#333', minWidth: '800px' }}>
                     <thead><tr style={{ borderBottom: '2px solid #ddd', backgroundColor: '#f8f9fa' }}><th style={{ padding: '10px' }}>Kader</th><th style={{ padding: '10px' }}>Jenis</th><th style={{ padding: '10px' }}>Isian Keperluan</th><th style={{ padding: '10px' }}>Status</th><th style={{ padding: '10px' }}>Balasan Surat (Manual)</th><th style={{ padding: '10px', textAlign: 'center' }}>Aksi</th></tr></thead>
                     <tbody>
@@ -837,6 +850,10 @@ export default function DashboardAdminRayon() {
           {/* MENU 2: MANAJEMEN AKUN */}
           {activeMenu === 'manajemen-akun' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+              
+              {/* HEADER MANAJEMEN AKUN */}
+              <h3 style={{ color: '#1e824c', margin: '0 0 15px 0', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>Manajemen Akun & Data</h3>
+              
               <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
                 <button onClick={() => setTabAkun('kader')} style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabAkun === 'kader' ? '#1e824c' : '#f4f6f9', color: tabAkun === 'kader' ? 'white' : '#555', flex: '1 1 auto', textAlign: 'center', fontSize: '0.85rem' }}>🎓 Akun Kader</button>
                 <button onClick={() => setTabAkun('pendamping')} style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabAkun === 'pendamping' ? '#1e824c' : '#f4f6f9', color: tabAkun === 'pendamping' ? 'white' : '#555', flex: '1 1 auto', textAlign: 'center', fontSize: '0.85rem' }}>👤 Akun Pendamping</button>
@@ -844,11 +861,12 @@ export default function DashboardAdminRayon() {
 
               {tabAkun === 'kader' && (
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  <div style={{ flex: '1 1 300px', maxWidth: '100%', display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     <div style={{ backgroundColor: '#fdfdfd', padding: '15px', border: '1px solid #eee', borderRadius: '8px' }}>
                       <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px' }}>✏️ Buat Akun Satuan</h4>
                       <form onSubmit={handleBuatAkunKader} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                         <input type="number" placeholder="NIM Kader" value={formKader.nim} onChange={e => setFormKader({...formKader, nim: e.target.value})} required style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
+                        <input type="text" placeholder="NIA Kader (Opsional)" value={formKader.nia} onChange={e => setFormKader({...formKader, nia: e.target.value})} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
                         <input type="text" placeholder="Nama Lengkap Kader" value={formKader.nama} onChange={e => setFormKader({...formKader, nama: e.target.value})} required style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
                         <input type="text" placeholder="Password (Misal: 20042004)" value={formKader.password} onChange={e => setFormKader({...formKader, password: e.target.value})} required style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
                         <select required value={formKader.pendampingId} onChange={e => setFormKader({...formKader, pendampingId: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }}>
@@ -861,7 +879,7 @@ export default function DashboardAdminRayon() {
 
                     <div style={{ backgroundColor: '#f0fbf4', padding: '15px', border: '1px solid #c8e6c9', borderRadius: '8px' }}>
                       <h4 style={{ marginTop: 0, color: '#1e824c', borderBottom: '1px dashed #a5d6a7', paddingBottom: '8px' }}>📗 Import Massal (Excel)</h4>
-                      <p style={{fontSize: '0.75rem', color: '#555', margin: '5px 0'}}>Format: <b>NIM | Nama | TanggalLahir | Pendamping</b></p>
+                      <p style={{fontSize: '0.75rem', color: '#555', margin: '5px 0'}}>Format: <b>NIM | NIA | Nama | TanggalLahir | Pendamping</b></p>
                       <form onSubmit={handleImportExcel} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <input type="file" accept=".xlsx, .xls" required style={{ padding: '6px', border: '1px dashed #1e824c', borderRadius: '4px', backgroundColor: '#fff', fontSize: '0.8rem' }} />
                         <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#1e824c', color: 'white', padding: '8px', borderRadius: '4px', fontWeight: 'bold', cursor: isSubmitting ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}>🚀 Proses Data Excel</button>
@@ -876,7 +894,7 @@ export default function DashboardAdminRayon() {
                     </div>
                   </div>
                   
-                  <div style={{ flex: '2 1 500px', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ flex: '2 1 400px', minWidth: 0, maxWidth: '100%', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ padding: '15px', borderBottom: '1px solid #eee', backgroundColor: '#fdfdfd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                       <h4 style={{ margin: 0, color: '#1e824c', fontSize: '0.95rem' }}>🔄 Daftar Kader, Plotting & Jenjang</h4>
                       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -887,7 +905,7 @@ export default function DashboardAdminRayon() {
                       </div>
                     </div>
                     
-                    <div style={{ overflowX: 'auto', flex: 1 }}>
+                    <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '950px' }}>
                         <thead>
                           <tr style={{ backgroundColor: '#f8f9fa', color: '#333', textAlign: 'left' }}>
@@ -909,7 +927,6 @@ export default function DashboardAdminRayon() {
                                   <td style={{ padding: '10px', fontWeight: 'bold', color: '#555' }}>{k.nim} <br/> <span style={{fontSize: '0.7rem', color: '#1e824c'}}>Agt. {thnMasuk}</span></td>
                                   <td style={{ padding: '10px', fontWeight: 'bold', color: '#333' }}>{k.nama}</td>
                                   <td style={{ padding: '10px' }}>
-                                    {/* INPUT NIA OLEH ADMIN RAYON */}
                                     <input 
                                       type="text" 
                                       placeholder="Masukkan NIA" 
@@ -948,7 +965,7 @@ export default function DashboardAdminRayon() {
 
               {tabAkun === 'pendamping' && (
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 300px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                  <div style={{ flex: '1 1 300px', maxWidth: '100%', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
                     <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px' }}>✏️ Buat Akun Pendamping</h4>
                     <form onSubmit={handleBuatAkunPendamping} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                       <input type="text" placeholder="Nama Lengkap Pendamping" value={formPendamping.nama} onChange={e => setFormPendamping({...formPendamping, nama: e.target.value})} required style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
@@ -960,30 +977,32 @@ export default function DashboardAdminRayon() {
                       <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#1e824c', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>Buat Akun</button>
                     </form>
                   </div>
-                  <div style={{ flex: '2 1 500px', overflowX: 'auto', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px' }}>
+                  <div style={{ flex: '2 1 400px', minWidth: 0, maxWidth: '100%', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px' }}>
                     <div style={{ padding: '15px', borderBottom: '1px solid #eee', backgroundColor: '#fdfdfd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <h4 style={{ margin: 0, color: '#1e824c', fontSize: '0.95rem' }}>📋 Daftar Pendamping</h4>
                       <input type="text" placeholder="🔍 Cari Nama/Username..." value={searchPendamping} onChange={(e) => setSearchPendamping(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '20px', outline: 'none', fontSize: '0.8rem' }} />
                     </div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '500px' }}>
-                      <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#333', textAlign: 'left' }}><th style={{ padding: '10px' }}>Nama Pendamping</th><th style={{ padding: '10px' }}>Username</th><th style={{ padding: '10px' }}>Tugas Jenjang</th><th style={{ padding: '10px', textAlign: 'center' }}>Status</th><th style={{ padding: '10px', textAlign: 'center' }}>Aksi</th></tr></thead>
-                      <tbody>
-                        {filteredPendamping.length === 0 ? (<tr><td colSpan={5} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Tidak ada pendamping.</td></tr>) : (
-                          filteredPendamping.map((p) => (
-                            <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
-                              <td style={{ padding: '10px', fontWeight: 'bold' }}>{p.nama}</td><td style={{ padding: '10px' }}>{p.username}</td>
-                              <td style={{ padding: '10px' }}>
-                                <select value={p.jenjangTugas || "MAPABA"} onChange={(e) => handleUbahJenjangPendamping(p.id, e.target.value)} style={{ padding: '4px', border: '1px solid #3498db', borderRadius: '4px', backgroundColor: '#eaf4fc', fontWeight: 'bold', cursor: 'pointer', width: '100%', maxWidth: '120px', fontSize: '0.75rem', color: '#2c3e50' }}>
-                                  <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option><option value="SKP">SKP</option>
-                                </select>
-                              </td>
-                              <td style={{ padding: '10px', textAlign: 'center' }}><button onClick={() => handleUbahStatusAkun(p.id, p.status || 'Aktif')} style={{ padding: '4px 8px', border: 'none', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: (!p.status || p.status === 'Aktif') ? '#e8f5e9' : '#ffebee', color: (!p.status || p.status === 'Aktif') ? '#2e7d32' : '#c62828' }}>{(!p.status || p.status === 'Aktif') ? '🟢 Aktif' : '🔴 Pasif'}</button></td>
-                              <td style={{ padding: '10px', textAlign: 'center' }}><button onClick={() => handleHapusAkun(p.id, p.nama)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }}>🗑️</button></td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                    <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '600px' }}>
+                        <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#333', textAlign: 'left' }}><th style={{ padding: '10px' }}>Nama Pendamping</th><th style={{ padding: '10px' }}>Username</th><th style={{ padding: '10px' }}>Tugas Jenjang</th><th style={{ padding: '10px', textAlign: 'center' }}>Status</th><th style={{ padding: '10px', textAlign: 'center' }}>Aksi</th></tr></thead>
+                        <tbody>
+                          {filteredPendamping.length === 0 ? (<tr><td colSpan={5} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Tidak ada pendamping.</td></tr>) : (
+                            filteredPendamping.map((p) => (
+                              <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
+                                <td style={{ padding: '10px', fontWeight: 'bold' }}>{p.nama}</td><td style={{ padding: '10px' }}>{p.username}</td>
+                                <td style={{ padding: '10px' }}>
+                                  <select value={p.jenjangTugas || "MAPABA"} onChange={(e) => handleUbahJenjangPendamping(p.id, e.target.value)} style={{ padding: '4px', border: '1px solid #3498db', borderRadius: '4px', backgroundColor: '#eaf4fc', fontWeight: 'bold', cursor: 'pointer', width: '100%', maxWidth: '120px', fontSize: '0.75rem', color: '#2c3e50' }}>
+                                    <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option><option value="SKP">SKP</option>
+                                  </select>
+                                </td>
+                                <td style={{ padding: '10px', textAlign: 'center' }}><button onClick={() => handleUbahStatusAkun(p.id, p.status || 'Aktif')} style={{ padding: '4px 8px', border: 'none', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: (!p.status || p.status === 'Aktif') ? '#e8f5e9' : '#ffebee', color: (!p.status || p.status === 'Aktif') ? '#2e7d32' : '#c62828' }}>{(!p.status || p.status === 'Aktif') ? '🟢 Aktif' : '🔴 Pasif'}</button></td>
+                                <td style={{ padding: '10px', textAlign: 'center' }}><button onClick={() => handleHapusAkun(p.id, p.nama)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }}>🗑️</button></td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
@@ -992,7 +1011,7 @@ export default function DashboardAdminRayon() {
 
           {/* MENU 3: KURIKULUM (EDIT UPDATE) */}
           {activeMenu === 'kurikulum' && (
-            <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', minHeight: '500px', overflow: 'hidden' }}>
+            <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', minHeight: '500px' }}>
               <div style={{ padding: '20px' }}>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
                   <button onClick={() => setTabKurikulum('MAPABA')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'MAPABA' ? '#1e824c' : '#f4f6f9', color: tabKurikulum === 'MAPABA' ? 'white' : '#555', fontSize: '0.85rem' }}>📘 MAPABA</button>
@@ -1002,10 +1021,10 @@ export default function DashboardAdminRayon() {
                   <button onClick={() => setTabKurikulum('NONFORMAL')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'NONFORMAL' ? '#1e824c' : '#f4f6f9', color: tabKurikulum === 'NONFORMAL' ? 'white' : '#555', fontSize: '0.85rem' }}>📗 Non-Formal</button>
                 </div>
                 
-                <div style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', marginBottom: '20px' }}>
+                <div style={{ width: '100%', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', marginBottom: '20px' }}>
                   <div style={{backgroundColor: '#eef2f3', padding: '12px 15px', borderBottom: '1px solid #ddd'}}><h4 style={{margin: 0, color: '#0d1b2a', fontSize: '0.9rem'}}>✅ Kurikulum Rayon Saat Ini ({tabKurikulum})</h4></div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem', minWidth: '450px' }}>
-                    <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}><th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '40px' }}>No</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Kode</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Nama Kegiatan & Muatan</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Bobot</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th></tr></thead>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem', minWidth: '600px' }}>
+                    <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}><th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '40px' }}>No</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Kode</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Nama Materi & Muatan</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Bobot</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th></tr></thead>
                     <tbody>
                       {!listKurikulum[tabKurikulum] || listKurikulum[tabKurikulum].length === 0 ? (<tr><td colSpan={5} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Rayon belum memiliki kurikulum di jenjang ini.</td></tr>) : (
                         listKurikulum[tabKurikulum].map((materi, idx) => {
@@ -1056,19 +1075,19 @@ export default function DashboardAdminRayon() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '2 1 400px', backgroundColor: '#fdfdfd', padding: '15px', borderRadius: '8px', border: '1px dashed #b2c2cf' }}>
-                    <h4 style={{ color: '#0d1b2a', marginTop: 0, marginBottom: '10px', fontSize: '0.9rem' }}>📌 Referensi Kurikulum Standar Pusat</h4>
-                    <div style={{ overflowX: 'auto', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #eee' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
-                        <thead><tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}><th style={{ padding: '8px' }}>Kode</th><th style={{ padding: '8px' }}>Materi Pusat</th><th style={{ padding: '8px', textAlign: 'center' }}>Aksi</th></tr></thead>
+                  <div style={{ flex: '2 1 400px', minWidth: 0, maxWidth: '100%', backgroundColor: '#fdfdfd', padding: '15px', borderRadius: '8px', border: '1px dashed #b2c2cf' }}>
+                    <h4 style={{ color: '#0d1b2a', marginTop: 0, marginBottom: '10px', fontSize: '0.9rem' }}>📌 Kurikulum Standar MUSPIMNAS</h4>
+                    <div style={{ width: '100%', overflowX: 'auto', backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #eee' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem', minWidth: '400px' }}>
+                        <thead><tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}><th style={{ padding: '8px', textAlign: 'center' }}>Kode</th><th style={{ padding: '8px', textAlign: 'center' }}>Nama Materi</th><th style={{ padding: '8px', textAlign: 'center' }}>Aksi</th></tr></thead>
                         <tbody>
                           {masterKurikulumPusat.filter(m => m.jenjang === tabKurikulum).length === 0 ? (<tr><td colSpan={3} style={{ textAlign: 'center', padding: '15px', color: '#999' }}>Pusat belum menetapkan standar materi ini.</td></tr>) : (
                             masterKurikulumPusat.filter(m => m.jenjang === tabKurikulum).map((materiPusat) => {
                               const currentList = listKurikulum[tabKurikulum] || []; const isAlreadyAdded = currentList.some(m => m.kode === materiPusat.kode || m.nama === materiPusat.nama);
                               return (
                                 <tr key={materiPusat.id} style={{ borderBottom: '1px solid #eee', backgroundColor: isAlreadyAdded ? '#f9f9f9' : 'white' }}>
-                                  <td style={{ padding: '8px', fontWeight: 'bold', color: isAlreadyAdded ? '#999' : '#333' }}>{materiPusat.kode}</td>
-                                  <td style={{ padding: '8px' }}><div style={{fontWeight: 'bold', color: isAlreadyAdded ? '#999' : '#333'}}>{materiPusat.nama}</div><div style={{fontSize: '0.7rem', color: '#888', whiteSpace: 'pre-wrap'}}>{materiPusat.muatan}</div></td>
+                                  <td style={{ padding: '8px', fontWeight: 'bold', color: isAlreadyAdded ? '#000000' : '#333', textAlign: 'center' }}>{materiPusat.kode}</td>
+                                  <td style={{ padding: '8px' }}><div style={{fontWeight: 'bold', color: isAlreadyAdded ? '#000000' : '#333'}}>{materiPusat.nama}</div><div style={{fontSize: '0.7rem', color: '#888', whiteSpace: 'pre-wrap'}}>{materiPusat.muatan}</div></td>
                                   <td style={{ padding: '8px', textAlign: 'center' }}>
                                     {isAlreadyAdded ? (<span style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.75rem' }}>✅ Dipakai</span>) : (<button onClick={() => handleTarikMateriPusat(materiPusat)} disabled={isSavingKurikulum} style={{ backgroundColor: '#3498db', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.7rem' }}>➕ Pakai</button>)}
                                   </td>
@@ -1081,13 +1100,13 @@ export default function DashboardAdminRayon() {
                     </div>
                   </div>
 
-                  <div style={{ flex: '1 1 250px', backgroundColor: '#f0fbf4', padding: '15px', border: '1px solid #c8e6c9', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                  <div style={{ flex: '1 1 250px', maxWidth: '100%', backgroundColor: '#f0fbf4', padding: '15px', border: '1px solid #c8e6c9', borderRadius: '8px', alignSelf: 'flex-start' }}>
                     <h4 style={{ marginTop: 0, color: '#1e824c', borderBottom: '1px dashed #a5d6a7', paddingBottom: '8px', fontSize: '0.9rem' }}>📝 Tambah Materi Lokal/Lainnya</h4>
                     <form onSubmit={handleTambahMateriLokal} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                      <input type="text" placeholder="Kode (Misal: LOKAL-01)" required value={formMateri.kode} onChange={(e) => setFormMateri({...formMateri, kode: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem' }} />
-                      <input type="text" placeholder="Nama Materi Lokal" required value={formMateri.nama} onChange={(e) => setFormMateri({...formMateri, nama: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem' }} />
-                      <textarea rows={2} placeholder="Muatan / Pembahasan (Opsional)" value={formMateri.muatan} onChange={(e) => setFormMateri({...formMateri, muatan: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', fontSize: '0.8rem' }} />
-                      <input type="number" placeholder="Bobot SKS/Jam" required value={formMateri.bobot} onChange={(e) => setFormMateri({...formMateri, bobot: Number(e.target.value)})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem' }} />
+                      <input type="text" placeholder="Kode (Misal: LOKAL-01)" required value={formMateri.kode} onChange={(e) => setFormMateri({...formMateri, kode: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', boxSizing: 'border-box' }} />
+                      <input type="text" placeholder="Nama Materi Lokal" required value={formMateri.nama} onChange={(e) => setFormMateri({...formMateri, nama: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', boxSizing: 'border-box' }} />
+                      <textarea rows={2} placeholder="Muatan / Pembahasan (Opsional)" value={formMateri.muatan} onChange={(e) => setFormMateri({...formMateri, muatan: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', fontSize: '0.8rem', boxSizing: 'border-box' }} />
+                      <input type="number" placeholder="Bobot SKS/Jam (1 SKS = 30 Mnt)" required value={formMateri.bobot} onChange={(e) => setFormMateri({...formMateri, bobot: Number(e.target.value)})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', boxSizing: 'border-box' }} />
                       <button disabled={isSavingKurikulum} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '8px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Tambahkan Lokal</button>
                     </form>
                   </div>
@@ -1121,17 +1140,17 @@ export default function DashboardAdminRayon() {
               </div>
               
               <div className="no-print" style={{ display: 'flex', borderBottom: '1px solid #ddd', marginBottom: '15px', flexWrap: 'wrap' }}>
-                <button onClick={() => setTabRaportAdmin('raport')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'raport' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'raport' ? '#fff' : 'transparent', color: tabRaportAdmin === 'raport' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>📑 Raport Kaderisasi (KHS)</button>
-                <button onClick={() => setTabRaportAdmin('persentase')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'persentase' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'persentase' ? '#fff' : 'transparent', color: tabRaportAdmin === 'persentase' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>📊 Input Nilai Detail (Matriks)</button>
+                <button onClick={() => setTabRaportAdmin('raport')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'raport' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'raport' ? '#fff' : 'transparent', color: tabRaportAdmin === 'raport' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>📑 Raport Kaderisasi</button>
+                <button onClick={() => setTabRaportAdmin('persentase')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'persentase' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'persentase' ? '#fff' : 'transparent', color: tabRaportAdmin === 'persentase' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>📊 Input Nilai</button>
                 <button onClick={() => setTabRaportAdmin('pengaturan')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'pengaturan' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'pengaturan' ? '#fff' : 'transparent', color: tabRaportAdmin === 'pengaturan' ? '#555' : '#e67e22', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', marginLeft: 'auto', fontSize: '0.85rem' }}>⚙️ Pengaturan Cetak</button>
               </div>
 
               {tabRaportAdmin === 'raport' && (
-                <div style={{ overflowX: 'auto', padding: '10px 0' }}>
-                  <table className="tabel-utama">
+                <div style={{ width: '100%', overflowX: 'auto', padding: '10px 0' }}>
+                  <table className="tabel-utama" style={{ minWidth: '600px' }}>
                     <thead>
                       <tr>
-                        <th style={{ width: '5%' }}>No</th><th style={{ width: '20%', textAlign: 'left' }}>Kode Matakuliah</th><th style={{ width: '45%', textAlign: 'left' }}>Nama Matakuliah</th>
+                        <th style={{ width: '5%' }}>No</th><th style={{ width: '10%' }}>Kode</th><th style={{ width: '45%' }}>Nama Materi</th>
                         <th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai Huruf</th><th style={{ width: '10%' }}>SKS x Nilai</th>
                       </tr>
                     </thead>
@@ -1154,7 +1173,7 @@ export default function DashboardAdminRayon() {
               )}
 
               {tabRaportAdmin === 'persentase' && (
-                <div style={{ overflowX: 'auto', padding: '10px 0' }}>
+                <div style={{ width: '100%', overflowX: 'auto', padding: '10px 0' }}>
                   <div className="no-print" style={{ marginBottom: '15px', background: '#fdfdfd', padding: '15px', borderRadius: '6px', border: '1px solid #eee' }}>
                     <h4 style={{ margin: '0 0 10px 0', color: '#1e824c', fontSize: '0.9rem' }}>⚙️ Pengaturan Kategori & Bobot Penilaian (Max 100%)</h4>
                     <form onSubmit={handleTambahKategoriBobot} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1181,7 +1200,7 @@ export default function DashboardAdminRayon() {
                       <tr>
                         <th rowSpan={2} style={{ width: '3%' }}>No</th>
                         <th rowSpan={2} style={{ width: '10%', textAlign: 'left' }}>Kode</th>
-                        <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Matakuliah</th>
+                        <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Materi</th>
                         {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
                         <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
                         <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
@@ -1244,7 +1263,7 @@ export default function DashboardAdminRayon() {
                         <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td>
                       </tr>
                       <tr>
-                        <td colSpan={4 + kategoriBobot.length} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kaderisasi)</td>
+                        <td colSpan={4 + kategoriBobot.length} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kader)</td>
                         <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1.1rem' }}>{ipKader}</td>
                       </tr>
                     </tbody>
@@ -1287,7 +1306,7 @@ export default function DashboardAdminRayon() {
                   </div>
                   
                   {/* TAMPILAN WEB (BISA DI KLIK/TOGGLE) */}
-                  <div className="no-print" style={{ overflowX: 'auto' }}>
+                  <div className="no-print" style={{ width: '100%', overflowX: 'auto' }}>
                     <table className="tabel-utama" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '800px' }}>
                       <thead><tr style={{ backgroundColor: '#f8f9fa' }}><th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '15%' }}>Waktu Submit</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '15%' }}>NIM</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '25%' }}>Nama Kader</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '45%' }}>Jawaban Kader</th></tr></thead>
                       <tbody>
@@ -1356,7 +1375,7 @@ export default function DashboardAdminRayon() {
                 </div>
               ) : (
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 250px', backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', alignSelf: 'flex-start' }}>
+                  <div style={{ flex: '1 1 300px', maxWidth: '100%', backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', alignSelf: 'flex-start' }}>
                     <h4 style={{ color: '#1e824c', margin: '0 0 15px 0', borderBottom: '1px dashed #ccc', paddingBottom: '8px' }}>📝 Buat Tes Baru</h4>
                     <form onSubmit={handleBuatTes} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <input type="text" placeholder="Judul Tes (Cth: Pre-Test MAPABA)" required value={formTes.judul} onChange={(e) => setFormTes({...formTes, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
@@ -1370,26 +1389,30 @@ export default function DashboardAdminRayon() {
                       <button type="submit" style={{ backgroundColor: '#1e824c', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Buat Tes</button>
                     </form>
                   </div>
-                  <div style={{ flex: '2 1 450px', backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', overflowX: 'auto', alignSelf: 'flex-start' }}>
-                    <h4 style={{ color: '#4a637d', margin: '0 0 15px 0', borderBottom: '1px dashed #ccc', paddingBottom: '8px' }}>Daftar Tes Rayon</h4>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '500px' }}>
-                      <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}><th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Judul & Jenjang</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Soal</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th></tr></thead>
-                      <tbody>
-                        {listTes.length === 0 ? (<tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Belum ada tes pemahaman.</td></tr>) : (
-                          listTes.map((tes) => (
-                            <tr key={tes.id} style={{ borderBottom: '1px solid #eee' }}>
-                              <td style={{ padding: '10px' }}><div style={{ fontWeight: 'bold', color: '#0d1b2a' }}>{tes.judul}</div><div style={{ fontSize: '0.7rem', color: '#888' }}>Sasaran: {tes.jenjang}</div></td>
-                              <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#e67e22' }}>{tes.daftar_soal?.length || 0}</td>
-                              <td style={{ padding: '10px', textAlign: 'center' }}><button onClick={() => handleToggleStatusTes(tes.id, tes.status)} style={{ padding: '4px 8px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold', backgroundColor: tes.status === 'Buka' ? '#e8f5e9' : '#ffebee', color: tes.status === 'Buka' ? '#2e7d32' : '#c62828' }}>{tes.status === 'Buka' ? '🔓 Dibuka' : '🔒 Ditutup'}</button></td>
-                              <td style={{ padding: '10px', textAlign: 'center', display: 'flex', gap: '5px', justifyContent: 'center' }}>
-                                <button onClick={() => handleLihatHasilTes(tes)} style={{ backgroundColor: '#3498db', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>Hasil</button>
-                                <button onClick={() => handleHapusTes(tes.id)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>Hapus</button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                  <div style={{ flex: '2 1 400px', minWidth: 0, maxWidth: '100%', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px' }}>
+                    <div style={{ padding: '20px', borderBottom: '1px solid #eee' }}>
+                      <h4 style={{ color: '#4a637d', margin: 0 }}>Daftar Tes Rayon</h4>
+                    </div>
+                    <div style={{ width: '100%', overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '600px' }}>
+                        <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}><th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Judul & Jenjang</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Soal</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th></tr></thead>
+                        <tbody>
+                          {listTes.length === 0 ? (<tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Belum ada tes pemahaman.</td></tr>) : (
+                            listTes.map((tes) => (
+                              <tr key={tes.id} style={{ borderBottom: '1px solid #eee' }}>
+                                <td style={{ padding: '10px' }}><div style={{ fontWeight: 'bold', color: '#0d1b2a' }}>{tes.judul}</div><div style={{ fontSize: '0.7rem', color: '#888' }}>Sasaran: {tes.jenjang}</div></td>
+                                <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#e67e22' }}>{tes.daftar_soal?.length || 0}</td>
+                                <td style={{ padding: '10px', textAlign: 'center' }}><button onClick={() => handleToggleStatusTes(tes.id, tes.status)} style={{ padding: '4px 8px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 'bold', backgroundColor: tes.status === 'Buka' ? '#e8f5e9' : '#ffebee', color: tes.status === 'Buka' ? '#2e7d32' : '#c62828' }}>{tes.status === 'Buka' ? '🔓 Dibuka' : '🔒 Ditutup'}</button></td>
+                                <td style={{ padding: '10px', textAlign: 'center', display: 'flex', gap: '5px', justifyContent: 'center' }}>
+                                  <button onClick={() => handleLihatHasilTes(tes)} style={{ backgroundColor: '#3498db', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>Hasil</button>
+                                  <button onClick={() => handleHapusTes(tes.id)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>Hapus</button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1400,7 +1423,7 @@ export default function DashboardAdminRayon() {
           {activeMenu === 'master-tugas' && (
             <div style={{ background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                <div style={{ flex: '1 1 300px', maxWidth: '100%', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
                   <h4 style={{marginTop: 0, marginBottom: '15px', color: '#1e824c', borderBottom: '1px dashed #ccc', paddingBottom: '8px'}}>➕ Tambah Tugas</h4>
                   <form onSubmit={handleTambahTugas} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <input type="text" placeholder="Nama Tugas (Misal: Resume NDP)" required value={formTugas.nama_tugas} onChange={(e) => setFormTugas({...formTugas, nama_tugas: e.target.value})} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
@@ -1408,15 +1431,17 @@ export default function DashboardAdminRayon() {
                     <button type="submit" style={{ backgroundColor: '#2ecc71', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Buat Tugas Baru</button>
                   </form>
                 </div>
-                <div style={{ flex: '2 1 400px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '400px' }}>
-                    <thead><tr style={{ backgroundColor: '#f8f9fa' }}><th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Nama Tugas</th><th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Deadline</th><th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th></tr></thead>
-                    <tbody>
-                      {listMasterTugas.length === 0 ? (<tr><td colSpan={3} style={{textAlign: 'center', padding: '20px'}}>Belum ada tugas.</td></tr>) : listMasterTugas.map((tugas) => (
-                        <tr key={tugas.id} style={{ borderBottom: '1px solid #eee' }}><td style={{ padding: '12px', fontWeight: 'bold', color: '#0d1b2a' }}>{tugas.nama_tugas}</td><td style={{ padding: '12px', color: '#e74c3c', fontWeight: 'bold' }}>{tugas.deadline}</td><td style={{ padding: '12px', textAlign: 'center' }}><button onClick={() => handleHapusTugas(tugas.id)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Hapus</button></td></tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div style={{ flex: '2 1 400px', minWidth: 0, maxWidth: '100%', backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px' }}>
+                  <div style={{ width: '100%', overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '400px' }}>
+                      <thead><tr style={{ backgroundColor: '#f8f9fa' }}><th style={{ padding: '15px', borderBottom: '2px solid #ddd' }}>Nama Tugas</th><th style={{ padding: '15px', borderBottom: '2px solid #ddd' }}>Deadline</th><th style={{ padding: '15px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th></tr></thead>
+                      <tbody>
+                        {listMasterTugas.length === 0 ? (<tr><td colSpan={3} style={{textAlign: 'center', padding: '20px'}}>Belum ada tugas.</td></tr>) : listMasterTugas.map((tugas) => (
+                          <tr key={tugas.id} style={{ borderBottom: '1px solid #eee' }}><td style={{ padding: '15px', fontWeight: 'bold', color: '#0d1b2a' }}>{tugas.nama_tugas}</td><td style={{ padding: '15px', color: '#e74c3c', fontWeight: 'bold' }}>{tugas.deadline}</td><td style={{ padding: '15px', textAlign: 'center' }}><button onClick={() => handleHapusTugas(tugas.id)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}>Hapus</button></td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1426,7 +1451,7 @@ export default function DashboardAdminRayon() {
           {activeMenu === 'perpus' && (
             <div style={{ background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                <div style={{ flex: '1 1 300px', maxWidth: '100%', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
                   <h4 style={{marginTop: 0, marginBottom: '15px', color: '#1e824c', borderBottom: '1px dashed #ccc', paddingBottom: '8px'}}>📤 Upload Materi Baru</h4>
                   <form onSubmit={handleTambahPerpus} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <input type="text" placeholder="Nama Folder (Cth: Modul MAPABA)" required value={formPerpus.folder} onChange={(e) => setFormPerpus({...formPerpus, folder: e.target.value})} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
@@ -1435,27 +1460,29 @@ export default function DashboardAdminRayon() {
                     <button disabled={isUploadingPerpus} type="submit" style={{ backgroundColor: isUploadingPerpus ? '#95a5a6' : '#004a87', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isUploadingPerpus ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}>{isUploadingPerpus ? 'Mengupload...' : 'Upload ke Perpus'}</button>
                   </form>
                 </div>
-                <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
-                  {Object.keys(groupedPerpus).length === 0 ? (<div style={{ textAlign: 'center', padding: '30px', color: '#999' }}>Perpustakaan kosong.</div>) : (
-                    Object.keys(groupedPerpus).map(folderName => (
-                      <div key={folderName} style={{ marginBottom: '20px' }}>
-                        <div style={{ backgroundColor: '#1e824c', color: 'white', padding: '10px 15px', fontSize: '0.9rem', fontWeight: 'bold' }}>📁 Folder: {folderName}</div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-                          <tbody>
-                            {groupedPerpus[folderName].map((item: any) => (
-                              <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
-                                <td style={{ padding: '12px' }}>{item.nama_file}</td>
-                                <td style={{ padding: '12px', textAlign: 'right' }}>
-                                  <a href={item.link_file} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', backgroundColor: '#3498db', color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '5px' }}>Buka</a>
-                                  <button onClick={() => handleHapusPerpus(item.id)} style={{ color: 'white', backgroundColor: '#e74c3c', padding: '4px 8px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Hapus</button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ))
-                  )}
+                <div style={{ flex: '2 1 400px', minWidth: 0, maxWidth: '100%', border: '1px solid #eee', borderRadius: '8px' }}>
+                  <div style={{ width: '100%', overflowX: 'auto' }}>
+                    {Object.keys(groupedPerpus).length === 0 ? (<div style={{ textAlign: 'center', padding: '30px', color: '#999' }}>Perpustakaan kosong.</div>) : (
+                      Object.keys(groupedPerpus).map(folderName => (
+                        <div key={folderName} style={{ marginBottom: '20px' }}>
+                          <div style={{ backgroundColor: '#1e824c', color: 'white', padding: '10px 15px', fontSize: '0.9rem', fontWeight: 'bold' }}>📁 Folder: {folderName}</div>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '400px' }}>
+                            <tbody>
+                              {groupedPerpus[folderName].map((item: any) => (
+                                <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
+                                  <td style={{ padding: '12px' }}>{item.nama_file}</td>
+                                  <td style={{ padding: '12px', textAlign: 'right' }}>
+                                    <a href={item.link_file} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', backgroundColor: '#3498db', color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '5px' }}>Buka</a>
+                                    <button onClick={() => handleHapusPerpus(item.id)} style={{ color: 'white', backgroundColor: '#e74c3c', padding: '4px 8px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Hapus</button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1464,6 +1491,7 @@ export default function DashboardAdminRayon() {
           {/* MENU 9: SARAN MASUK */}
           {activeMenu === 'saran' && (
             <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', padding: '20px' }}>
+              <h3 style={{ color: '#1e824c', margin: '0 0 15px 0', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>Kotak Saran & Aspirasi</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
                 {saranMasuk.length === 0 ? <p style={{ color: '#999' }}>Belum ada saran masuk.</p> : saranMasuk.map((saran) => (
                   <div key={saran.id} style={{ backgroundColor: '#fdfdfd', border: '1px solid #eee', borderRadius: '8px', padding: '15px', borderLeft: '4px solid #f1c40f', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
@@ -1499,12 +1527,12 @@ export default function DashboardAdminRayon() {
               </table>
               <table className="tabel-utama">
                 <thead>
-                  <tr><th style={{ width: '5%' }}>No</th><th style={{ width: '20%', textAlign: 'left' }}>Kode Matakuliah</th><th style={{ width: '45%', textAlign: 'left' }}>Nama Matakuliah</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai</th><th style={{ width: '10%' }}>SKS x Nilai</th></tr>
+                  <tr><th style={{ width: '5%' }}>No</th><th style={{ width: '20%', textAlign: 'left' }}>Kode</th><th style={{ width: '45%', textAlign: 'left' }}>Nama Materi</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai</th><th style={{ width: '10%' }}>SKS x Nilai</th></tr>
                 </thead>
                 <tbody>
                   {materiAktif.length === 0 ? (<tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur.</td></tr>) : barisRaportRender}
                   <tr><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td><td></td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td></tr>
-                  <tr><td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kaderisasi)</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{ipKader}</td></tr>
+                  <tr><td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kader)</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{ipKader}</td></tr>
                 </tbody>
               </table>
             </div>

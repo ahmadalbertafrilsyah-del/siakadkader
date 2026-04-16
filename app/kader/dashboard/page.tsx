@@ -35,7 +35,6 @@ export default function DashboardKader() {
   const [riwayatSurat, setRiwayatSurat] = useState<any[]>([]);
   const [opsiJenisSurat, setOpsiJenisSurat] = useState<any[]>([]);
   const [isSubmittingSurat, setIsSubmittingSurat] = useState(false);
-  const [showFormSurat, setShowFormSurat] = useState(false); 
 
   // --- STATE UPLOAD BERKAS & TUGAS ---
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
@@ -53,7 +52,6 @@ export default function DashboardKader() {
   const [evaluasiKader, setEvaluasiKader] = useState<{ bobot: any[], nilai_mentah: any, catatan: string }>({ bobot: [], nilai_mentah: {}, catatan: '' });
 
   // --- STATE PERPUS & SARAN ---
-  const [activeFolder, setActiveFolder] = useState('');
   const [listPerpus, setListPerpus] = useState<any[]>([]);
   const [saranText, setSaranText] = useState('');
   const [isSubmittingSaran, setIsSubmittingSaran] = useState(false);
@@ -258,7 +256,9 @@ export default function DashboardKader() {
         <td style={{ textAlign: 'left' }}>{materi.kode}</td>
         <td style={{ textAlign: 'left' }}>{materi.nama}</td>
         <td style={{ textAlign: 'center' }}>{materi.bobot}</td>
-        <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{nilaiHuruf === '-' ? '' : nilaiHuruf}</td>
+        <td style={{ textAlign: 'center', fontWeight: 'bold', color: nilaiHuruf !== '-' ? '#27ae60' : '#555' }}>
+           {nilaiHuruf === '-' ? '' : nilaiHuruf}
+        </td>
         <td style={{ textAlign: 'center' }}>{nilaiHuruf === '-' ? 0 : sksKaliNilai}</td>
       </tr>
     );
@@ -327,7 +327,7 @@ export default function DashboardKader() {
         tanggal: tgl, status: 'Menunggu Verifikasi', timestamp: Date.now() 
       });
       alert("Surat berhasil diajukan!");
-      setJenisSurat(''); setKeperluan(''); setShowFormSurat(false);
+      setJenisSurat(''); setKeperluan('');
     } catch (error) { alert("Error sistem pengajuan surat."); } finally { setIsSubmittingSurat(false); }
   };
 
@@ -429,8 +429,24 @@ export default function DashboardKader() {
       
       {/* CSS KHUSUS UNTUK TAMPILAN WEB & CETAK PDF A4 BACKGROUND */}
       <style>{`
+        * { box-sizing: border-box; } /* KUNCI RESPONSIFITAS GLOBAL */
+
+        /* Custom scrollbar elegan untuk Webkit (Chrome, Safari, Edge) */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.4); }
+
+        /* Mencegah input field melebihi layar di HP */
+        input, select, textarea { max-width: 100%; }
+
         @media (min-width: 768px) { aside { left: 0 !important; } main { margin-left: 240px !important; } .menu-burger { display: none !important; } }
         
+        /* Smooth scrolling di layar sentuh (iOS/Android) */
+        div[style*="overflowX: auto"], div[style*="overflow-x: auto"] {
+          -webkit-overflow-scrolling: touch;
+        }
+
         .tabel-utama { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; min-width: 600px; }
         .tabel-utama thead tr { border-top: 2px solid #555; border-bottom: 2px solid #555; background-color: #fff; }
         .tabel-utama th { padding: 10px; color: #333; text-align: center; font-weight: bold; }
@@ -459,13 +475,13 @@ export default function DashboardKader() {
           body, html { background-color: transparent !important; margin: 0; padding: 0; height: auto !important; }
           
           /* BATALKAN OVERFLOW HIDDEN AGAR HALAMAN TIDAK TERPOTONG / BLANK */
-          div[style*="overflow: hidden"] {
+          div[style*="overflow: hidden"], div[style*="overflowY: auto"] {
              overflow: visible !important;
              height: auto !important;
           }
 
           /* SEMBUNYIKAN SIDEBAR DAN MAIN UI WEB */
-          aside, main { display: none !important; }
+          aside, main, header, .no-print { display: none !important; }
           
           /* ------------------------------------------------------------------- */
           /* PERBAIKAN BUG CETAK KHS: KEMBALIKAN POSISI KE LAYAR                 */
@@ -473,8 +489,8 @@ export default function DashboardKader() {
           .print-layout-container { 
             display: block !important; 
             position: relative !important;
-            top: 0 !important;             /* MENGEMBALIKAN TABEL KE ATAS KERTAS */
-            left: 0 !important;            /* MENGEMBALIKAN TABEL KE ATAS KERTAS */
+            top: 0 !important;              /* MENGEMBALIKAN TABEL KE ATAS KERTAS */
+            left: 0 !important;             /* MENGEMBALIKAN TABEL KE ATAS KERTAS */
             width: 100% !important;
             height: auto !important;       
             overflow: visible !important;  
@@ -496,7 +512,7 @@ export default function DashboardKader() {
           .print-content-area {
             position: relative !important;
             z-index: 10 !important; 
-            padding: 50mm 25mm 40mm 25mm !important; 
+            padding: 50mm 25mm 30mm 25mm !important; 
             background-color: transparent !important; 
           }
 
@@ -518,6 +534,15 @@ export default function DashboardKader() {
         }
       `}</style>
 
+      {/* OVERLAY HP (Muncul saat sidebar terbuka, klik untuk menutup) */}
+      {isSidebarOpen && (
+        <div 
+          className="no-print"
+          onClick={() => setIsSidebarOpen(false)} 
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 45 }} 
+        />
+      )}
+      
       {/* SIDEBAR KADER */}
       <aside className="no-print" style={{ width: '240px', background: 'linear-gradient(180deg, #1e824c 0%, #145a32 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-240px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
         <div style={{ padding: '15px', fontSize: '1.1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -639,32 +664,34 @@ export default function DashboardKader() {
                   </button>
                 </div>
                 <div style={{ flex: '1 1 350px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', color: '#333' }}>
-                    <tbody>
-                      {[
-                        { label: 'NIM', key: 'nim', readOnly: true },
-                        { label: 'Nomor Induk Anggota (NIA)', key: 'nia', readOnly: true },
-                        { label: 'Nama Lengkap', key: 'nama', readOnly: true },
-                        { label: 'Angkatan / Tahun Masuk', key: 'angkatan' },
-                        { label: 'Tempat Lahir', key: 'tempatLahir' },
-                        { label: 'Tanggal Lahir', key: 'tanggalLahir' },
-                        { label: 'Email Pribadi', key: 'email' },
-                        { label: 'Alamat Asal (Lengkap)', key: 'alamatAsal' },
-                        { label: 'Alamat Domisili Malang', key: 'alamatDomisili' },
-                      ].map((row, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-                          <td style={{ padding: '10px', fontWeight: 'bold', width: '200px', color: '#555' }}>{row.label}</td>
-                          <td style={{ padding: '10px' }}>
-                            {isEditingProfil && !row.readOnly ? (
-                              <input type="text" value={(profil as any)[row.key]} onChange={(e) => setProfil({...profil, [row.key]: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
-                            ) : ( 
-                              <span style={{ color: row.readOnly ? '#888' : '#333', fontStyle: row.readOnly ? 'italic' : 'normal' }}>{(profil as any)[row.key]}</span> 
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', color: '#333', minWidth: '400px' }}>
+                      <tbody>
+                        {[
+                          { label: 'NIM', key: 'nim', readOnly: true },
+                          { label: 'Nomor Induk Anggota (NIA)', key: 'nia', readOnly: true },
+                          { label: 'Nama Lengkap', key: 'nama', readOnly: true },
+                          { label: 'Angkatan / Tahun Masuk', key: 'angkatan' },
+                          { label: 'Tempat Lahir', key: 'tempatLahir' },
+                          { label: 'Tanggal Lahir', key: 'tanggalLahir' },
+                          { label: 'Email Pribadi', key: 'email' },
+                          { label: 'Alamat Asal (Lengkap)', key: 'alamatAsal' },
+                          { label: 'Alamat Domisili Malang', key: 'alamatDomisili' },
+                        ].map((row, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
+                            <td style={{ padding: '10px', fontWeight: 'bold', width: '200px', color: '#555' }}>{row.label}</td>
+                            <td style={{ padding: '10px' }}>
+                              {isEditingProfil && !row.readOnly ? (
+                                <input type="text" value={(profil as any)[row.key]} onChange={(e) => setProfil({...profil, [row.key]: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                              ) : ( 
+                                <span style={{ color: row.readOnly ? '#888' : '#333', fontStyle: row.readOnly ? 'italic' : 'normal' }}>{(profil as any)[row.key]}</span> 
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                   {isEditingProfil && <p style={{ fontSize: '0.75rem', color: '#e74c3c', marginTop: '10px' }}>*NIM, Nama, dan NIA hanya bisa diubah oleh Pengurus Rayon/Cabang.</p>}
                 </div>
               </div>
@@ -694,27 +721,27 @@ export default function DashboardKader() {
                 )}
               </div>
 
-              <div style={{ display: 'flex', borderBottom: '1px solid #ddd', padding: '0 20px', backgroundColor: '#fff', marginTop: '15px' }}>
+              <div className="no-print" style={{ display: 'flex', borderBottom: '1px solid #ddd', padding: '0 20px', backgroundColor: '#fff', marginTop: '15px', flexWrap: 'wrap' }}>
                  <button onClick={() => setTabRaport('raport')} style={{ padding: '12px 20px', border: 'none', background: tabRaport === 'raport' ? '#fff' : 'transparent', color: tabRaport === 'raport' ? '#007bff' : '#555', fontWeight: tabRaport === 'raport' ? 'bold' : 'normal', borderTop: tabRaport === 'raport' ? '3px solid #007bff' : '3px solid transparent', borderRight: '1px solid #ddd', borderLeft: '1px solid #ddd', cursor: 'pointer', marginBottom: '-1px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    📑 Kartu Hasil Studi
+                   📑 Kartu Hasil Studi
                  </button>
                  <button onClick={() => setTabRaport('persentase')} style={{ padding: '12px 20px', border: 'none', background: tabRaport === 'persentase' ? '#fff' : 'transparent', color: tabRaport === 'persentase' ? '#007bff' : '#555', fontWeight: tabRaport === 'persentase' ? 'bold' : 'normal', borderTop: tabRaport === 'persentase' ? '3px solid #007bff' : '3px solid transparent', borderRight: '1px solid #ddd', cursor: 'pointer', marginBottom: '-1px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    📊 Rincian Persentase & Nilai
+                   📊 Rincian Persentase & Nilai
                  </button>
               </div>
 
               <div style={{ padding: '20px' }}>
 
                 {tabRaport === 'raport' && (
-                  <div style={{ overflowX: 'auto', padding: '10px' }}>
-                    <table className="tabel-utama">
+                  <div style={{ width: '100%', overflowX: 'auto', padding: '5px 0 0px 0', boxSizing: 'border-box' }}>
+                    <table className="tabel-utama" style={{ minWidth: '600px' }}>
                       <thead>
                         <tr>
                           <th style={{ width: '5%' }}>No</th>
-                          <th style={{ width: '20%', textAlign: 'left' }}>Kode Materi</th>
-                          <th style={{ width: '45%', textAlign: 'left' }}>Nama Materi</th>
+                          <th style={{ width: '12%', textAlign: 'left' }}>Kode</th>
+                          <th style={{ width: '53%', textAlign: 'left' }}>Nama Materi</th>
                           <th style={{ width: '10%' }}>SKS</th>
-                          <th style={{ width: '10%' }}>Nilai</th>
+                          <th style={{ width: '10%' }}>Nilai Huruf</th>
                           <th style={{ width: '10%' }}>SKS x Nilai</th>
                         </tr>
                       </thead>
@@ -726,26 +753,28 @@ export default function DashboardKader() {
                         <tr style={{ borderTop: '2px solid #ccc' }}>
                           <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td>
                           <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td>
-                          <td></td>
+                          <td className="no-print"></td>
                           <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td>
                         </tr>
-                        <tr>
-                          <td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kaderisasi)</td>
-                          <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{ipKader}</td>
+                        <tr style={{ borderTop: '1px solid #ccc', borderBottom: '1px solid #ccc' }}>
+                          <td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '0.95rem' }}>IPK (Indeks Prestasi Kaderisasi)</td>
+                          <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1.1rem' }}>{ipKader}</td>
                         </tr>
                       </tbody>
                     </table>
+                    <p style={{fontSize: '0.75rem', color: '#888', marginTop: '15px', fontStyle: 'italic'}}>*Catatan: Nilai Huruf pada tabel ini terisi otomatis berdasarkan perhitungan Matriks di tab "Input Nilai Detail".</p>
+
                   </div>
                 )}
 
                 {tabRaport === 'persentase' && (
-                  <div style={{ overflowX: 'auto', padding: '10px' }}>
+                  <div style={{ width: '100%', overflowX: 'auto', padding: '10px 0', boxSizing: 'border-box' }}>
                     <table className="tabel-utama" style={{ textAlign: 'center', minWidth: '900px', fontSize: '0.85rem' }}>
                       <thead>
                         <tr>
                           <th rowSpan={2} style={{ width: '3%' }}>No</th>
-                          <th rowSpan={2} style={{ width: '10%', textAlign: 'left' }}>Kode</th>
-                          <th rowSpan={2} style={{ width: '25%', textAlign: 'left' }}>Nama Matakuliah</th>
+                          <th rowSpan={2} style={{ width: '8%', textAlign: 'left' }}>Kode</th>
+                          <th rowSpan={2} style={{ width: '35%', textAlign: 'left' }}>Nama Materi</th>
                           {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Nilai Detail (0-100)</th>}
                           <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
                           <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
@@ -844,7 +873,7 @@ export default function DashboardKader() {
                     Silakan pilih tes yang tersedia pada menu dropdown di atas.
                   </div>
                 ) : (
-                  () => {
+                  (() => {
                     const currentTes = listTes.find(t => t.id === selectedTesId);
                     const sudahMengerjakan = riwayatTes.find(r => r.id_tes === selectedTesId);
 
@@ -854,7 +883,7 @@ export default function DashboardKader() {
                     if (sudahMengerjakan) {
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                          <div style={{ backgroundColor: '#e8f5e9', borderLeft: '4px solid #27ae60', padding: '15px', borderRadius: '4px' }}>
+                          <div className="no-print" style={{ backgroundColor: '#e8f5e9', borderLeft: '4px solid #27ae60', padding: '15px', borderRadius: '4px' }}>
                             <h4 style={{ margin: '0 0 5px 0', color: '#27ae60' }}>✅ Anda Sudah Menyelesaikan Tes Ini</h4>
                             <p style={{ margin: 0, fontSize: '0.85rem', color: '#555' }}>Waktu Submit: {sudahMengerjakan.tanggal}. Silakan cetak/download hasil jawaban Anda untuk diberikan kepada Pendamping.</p>
                             <button onClick={handleDownloadPDF} style={{ marginTop: '10px', backgroundColor: '#27ae60', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
@@ -862,8 +891,8 @@ export default function DashboardKader() {
                             </button>
                           </div>
 
-                          <div style={{ padding: '10px', border: '1px solid #ddd', borderRadius: '8px', overflowX: 'auto' }}>
-                            <table className="tabel-utama">
+                          <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
+                            <table className="tabel-utama" style={{ minWidth: '700px' }}>
                               <thead>
                                 <tr>
                                   <th style={{ width: '5%' }}>No</th>
@@ -899,7 +928,7 @@ export default function DashboardKader() {
 
                     // JIKA BELUM MENGERJAKAN & STATUS DIBUKA (FORM SOAL)
                     return (
-                      <form onSubmit={(e) => handleKirimJawabanTes(e, currentTes)} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <form onSubmit={(e) => handleKirimJawabanTes(e, currentTes)} style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '100%', overflowX: 'hidden' }}>
                         <div style={{ backgroundColor: '#eef2f3', borderLeft: '4px solid #1e824c', padding: '15px', borderRadius: '4px' }}>
                           <h4 style={{ margin: '0 0 5px 0', color: '#1e824c' }}>{currentTes.judul}</h4>
                           <p style={{ margin: 0, fontSize: '0.85rem', color: '#555' }}>Silakan jawab pertanyaan di bawah ini dengan jelas. Hasil jawaban tidak dapat diubah setelah dikirim.</p>
@@ -916,18 +945,18 @@ export default function DashboardKader() {
                               value={jawabanTes[i] || ''} 
                               onChange={(e) => setJawabanTes({ ...jawabanTes, [i]: e.target.value })}
                               placeholder="Ketik jawaban Anda di sini..." 
-                              style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', outline: 'none', fontSize: '0.85rem', backgroundColor: '#fafafa' }} 
+                              style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', outline: 'none', fontSize: '0.85rem', backgroundColor: '#fafafa', boxSizing: 'border-box' }} 
                             />
                           </div>
                         ))}
 
-                        <button disabled={isSubmittingTes} type="submit" style={{ backgroundColor: isSubmittingTes ? '#95a5a6' : '#1e824c', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: isSubmittingTes ? 'not-allowed' : 'pointer', fontSize: '1rem', marginTop: '10px' }}>
+                        <button disabled={isSubmittingTes} type="submit" style={{ backgroundColor: isSubmittingTes ? '#95a5a6' : '#1e824c', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: isSubmittingTes ? 'not-allowed' : 'pointer', fontSize: '1rem', marginTop: '10px', width: '100%', boxSizing: 'border-box' }}>
                           {isSubmittingTes ? 'Mengirim Jawaban...' : 'Kirim Jawaban Tes'}
                         </button>
                       </form>
                     );
-                  }
-                )()}
+                  })()
+                )}
               </div>
             </div>
           )}
@@ -937,7 +966,7 @@ export default function DashboardKader() {
             <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', minHeight: '500px', overflow: 'hidden' }}>
               <div style={{ padding: '20px' }}>
                 <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '15px' }}>Daftar tugas yang diinstruksikan oleh Pengurus Rayon. Pastikan file dalam format PDF/Word/Gambar yang jelas.</p>
-                <div style={{ overflowX: 'auto' }}>
+                <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', color: '#333', minWidth: '600px' }}>
                     <thead>
                       <tr style={{ borderBottom: '2px solid #ddd', backgroundColor: '#f8f9fa' }}>
@@ -991,11 +1020,12 @@ export default function DashboardKader() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
                 <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 300px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px' }}>
+                  
+                  <div style={{ flex: '1 1 300px', maxWidth: '100%', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px' }}>
                     <form onSubmit={handleAjukanSurat} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                       <div>
                         <label style={{fontSize: '0.8rem', fontWeight: 'bold', color: '#555', display: 'block', marginBottom: '5px'}}>1. Pilih Jenis Layanan Surat</label>
-                        <select required value={jenisSurat} onChange={(e) => setJenisSurat(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', outline: 'none', cursor: 'pointer', backgroundColor: '#fff', fontSize: '0.85rem' }}>
+                        <select required value={jenisSurat} onChange={(e) => setJenisSurat(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', outline: 'none', cursor: 'pointer', backgroundColor: '#fff', fontSize: '0.85rem', boxSizing: 'border-box' }}>
                           <option value="" disabled>-- Pilih Surat yang Tersedia --</option>
                           {opsiJenisSurat.length === 0 && <option value="" disabled>Belum ada layanan dari Rayon</option>}
                           {opsiJenisSurat.map(s => <option key={s.id} value={s.jenis}>{s.jenis}</option>)}
@@ -1011,45 +1041,48 @@ export default function DashboardKader() {
 
                       <div>
                         <label style={{fontSize: '0.8rem', fontWeight: 'bold', color: '#555', display: 'block', marginBottom: '5px'}}>2. Isi Keperluan / Jawaban Syarat</label>
-                        <textarea rows={3} required value={keperluan} onChange={(e) => setKeperluan(e.target.value)} placeholder="Ketik keperluan Anda sesuai instruksi di atas..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', fontSize: '0.85rem', outline: 'none' }} />
+                        <textarea rows={3} required value={keperluan} onChange={(e) => setKeperluan(e.target.value)} placeholder="Ketik keperluan Anda sesuai instruksi di atas..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }} />
                       </div>
                       
-                      <button disabled={isSubmittingSurat} type="submit" style={{ backgroundColor: isSubmittingSurat ? '#95a5a6' : '#1e824c', color: 'white', padding: '12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSubmittingSurat ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}>
+                      <button disabled={isSubmittingSurat} type="submit" style={{ backgroundColor: isSubmittingSurat ? '#95a5a6' : '#1e824c', color: 'white', padding: '12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSubmittingSurat ? 'not-allowed' : 'pointer', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' }}>
                         {isSubmittingSurat ? 'Mengirim...' : '✉️ Ajukan Surat Sekarang'}
                       </button>
                     </form>
                   </div>
 
-                  <div style={{ flex: '2 1 100%', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', backgroundColor: '#fff' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', color: '#333', minWidth: '500px' }}>
-                      <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}><th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Jenis Pengajuan</th><th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Keperluan</th><th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status</th><th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Surat Balasan / Aksi</th></tr></thead>
-                      <tbody>
-                        {riwayatSurat.length === 0 ? (<tr><td colSpan={4} style={{textAlign: 'center', padding: '30px', color: '#999'}}>Anda belum pernah mengajukan surat.</td></tr>) : riwayatSurat.map((surat) => (
-                          <tr key={surat.id} style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: '12px' }}><div style={{fontWeight: 'bold', color: '#0d1b2a'}}>{surat.jenis}</div><div style={{fontSize: '0.7rem', color: '#888', marginTop: '2px'}}>{surat.tanggal}</div></td>
-                            <td style={{ padding: '12px', color: '#555', fontStyle: 'italic', maxWidth: '200px', whiteSpace: 'pre-wrap' }}>"{surat.keperluan}"</td>
-                            <td style={{ padding: '12px', textAlign: 'center' }}>
-                              <span style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', backgroundColor: surat.status === 'Disetujui' ? '#e8f5e9' : surat.status === 'Ditolak' ? '#ffebee' : '#fff3e0', color: surat.status === 'Disetujui' ? '#2e7d32' : surat.status === 'Ditolak' ? '#c62828' : '#e67e22' }}>
-                                {surat.status}
-                              </span>
-                            </td>
-                            <td style={{ padding: '12px', textAlign: 'center' }}>
-                              {surat.status === 'Disetujui' && surat.file_balasan_url ? (
-                                <a href={surat.file_balasan_url} target="_blank" rel="noopener noreferrer" style={{ color: 'white', backgroundColor: '#3498db', padding: '6px 12px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.75rem', display: 'inline-block' }}>📥 Download</a>
-                              ) : surat.status === 'Ditolak' ? (
-                                <span style={{color: '#c62828', fontSize: '0.75rem', fontWeight: 'bold'}}>- Ditolak -</span>
-                              ) : (
-                                <span style={{color: '#999', fontSize: '0.75rem', fontStyle: 'italic'}}>⏳ Diproses</span>
-                              )}
-                              
-                              {/* TOMBOL HAPUS UNTUK KADER */}
-                              <button onClick={() => handleHapusSurat(surat.id)} style={{ display: 'block', margin: '10px auto 0 auto', background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Riwayat Surat">🗑️</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div style={{ flex: '2 1 400px', minWidth: 0, maxWidth: '100%', border: '1px solid #eee', borderRadius: '8px', backgroundColor: '#fff' }}>
+                    <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', color: '#333', minWidth: '500px' }}>
+                        <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}><th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Jenis Pengajuan</th><th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Keperluan</th><th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status</th><th style={{ padding: '12px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Surat Balasan / Aksi</th></tr></thead>
+                        <tbody>
+                          {riwayatSurat.length === 0 ? (<tr><td colSpan={4} style={{textAlign: 'center', padding: '30px', color: '#999'}}>Anda belum pernah mengajukan surat.</td></tr>) : riwayatSurat.map((surat) => (
+                            <tr key={surat.id} style={{ borderBottom: '1px solid #eee' }}>
+                              <td style={{ padding: '12px' }}><div style={{fontWeight: 'bold', color: '#0d1b2a'}}>{surat.jenis}</div><div style={{fontSize: '0.7rem', color: '#888', marginTop: '2px'}}>{surat.tanggal}</div></td>
+                              <td style={{ padding: '12px', color: '#555', fontStyle: 'italic', maxWidth: '200px', whiteSpace: 'pre-wrap' }}>"{surat.keperluan}"</td>
+                              <td style={{ padding: '12px', textAlign: 'center' }}>
+                                <span style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', backgroundColor: surat.status === 'Disetujui' ? '#e8f5e9' : surat.status === 'Ditolak' ? '#ffebee' : '#fff3e0', color: surat.status === 'Disetujui' ? '#2e7d32' : surat.status === 'Ditolak' ? '#c62828' : '#e67e22' }}>
+                                  {surat.status}
+                                </span>
+                              </td>
+                              <td style={{ padding: '12px', textAlign: 'center' }}>
+                                {surat.status === 'Disetujui' && surat.file_balasan_url ? (
+                                  <a href={surat.file_balasan_url} target="_blank" rel="noopener noreferrer" style={{ color: 'white', backgroundColor: '#3498db', padding: '6px 12px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.75rem', display: 'inline-block' }}>📥 Download</a>
+                                ) : surat.status === 'Ditolak' ? (
+                                  <span style={{color: '#c62828', fontSize: '0.75rem', fontWeight: 'bold'}}>- Ditolak -</span>
+                                ) : (
+                                  <span style={{color: '#999', fontSize: '0.75rem', fontStyle: 'italic'}}>⏳ Diproses</span>
+                                )}
+                                
+                                {/* TOMBOL HAPUS UNTUK KADER */}
+                                <button onClick={() => handleHapusSurat(surat.id)} style={{ display: 'block', margin: '10px auto 0 auto', background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Riwayat Surat">🗑️</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
+
                 </div>
               </div>
             </div>
@@ -1069,7 +1102,7 @@ export default function DashboardKader() {
                       </div>
                       <div style={{ padding: '15px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {groupedPerpus[folderName].map((item: any) => (
-                           <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '8px' }}>
+                           <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '8px', flexWrap: 'wrap', gap: '5px' }}>
                              <span style={{ fontSize: '0.85rem', color: '#333' }}>{item.nama_file}</span>
                              <a href={item.link_file} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#f1c40f', color: '#333', padding: '4px 8px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #d4ac0d' }}>
                                Buka
@@ -1089,16 +1122,16 @@ export default function DashboardKader() {
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
               <p style={{ color: '#555', fontSize: '0.85rem', marginBottom: '20px', lineHeight: '1.5' }}>Punya masukan, kritik membangun, atau ide kegiatan untuk kepengurusan Rayon? Sampaikan melalui form di bawah ini. Aspirasi Anda akan langsung masuk ke Dashboard Admin Rayon.</p>
               
-              <form onSubmit={handleKirimSaran} style={{ maxWidth: '500px' }}>
+              <form onSubmit={handleKirimSaran} style={{ maxWidth: '500px', width: '100%' }}>
                 <textarea 
                   rows={5} 
                   required 
                   value={saranText} 
                   onChange={(e) => setSaranText(e.target.value)} 
                   placeholder="Ketik saran atau aspirasi Anda di sini..." 
-                  style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', outline: 'none', fontSize: '0.9rem', resize: 'vertical', marginBottom: '12px', backgroundColor: '#fdfdfd' }} 
+                  style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', outline: 'none', fontSize: '0.9rem', resize: 'vertical', marginBottom: '12px', backgroundColor: '#fdfdfd', boxSizing: 'border-box' }} 
                 />
-                <button disabled={isSubmittingSaran} type="submit" style={{ backgroundColor: isSubmittingSaran ? '#95a5a6' : '#1e824c', color: 'white', padding: '12px 25px', border: 'none', borderRadius: '30px', fontWeight: 'bold', cursor: isSubmittingSaran ? 'not-allowed' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button disabled={isSubmittingSaran} type="submit" style={{ backgroundColor: isSubmittingSaran ? '#95a5a6' : '#1e824c', color: 'white', padding: '12px 25px', border: 'none', borderRadius: '30px', fontWeight: 'bold', cursor: isSubmittingSaran ? 'not-allowed' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
                   {isSubmittingSaran ? 'Mengirim Aspirasi...' : '🚀 Kirim Aspirasi'}
                 </button>
               </form>
@@ -1140,8 +1173,8 @@ export default function DashboardKader() {
                 <thead>
                   <tr>
                     <th style={{ width: '5%' }}>No</th>
-                    <th style={{ width: '20%', textAlign: 'left' }}>Kode Materi</th>
-                    <th style={{ width: '45%', textAlign: 'left' }}>Nama Materi</th>
+                    <th style={{ width: '12%', textAlign: 'left' }}>Kode</th>
+                    <th style={{ width: '53%', textAlign: 'left' }}>Nama Materi</th>
                     <th style={{ width: '10%' }}>SKS</th>
                     <th style={{ width: '10%' }}>Nilai</th>
                     <th style={{ width: '10%' }}>SKS x Nilai</th>

@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { collection, getDocs, query, setDoc, doc, deleteDoc, addDoc, onSnapshot, where } from 'firebase/firestore';
+import { collection, getDocs, query, setDoc, doc, deleteDoc, addDoc, onSnapshot, where, orderBy, limit } from 'firebase/firestore';
 import { auth, db } from '../../../lib/firebase';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signOut as signOutSecondary } from 'firebase/auth';
+import * as XLSX from 'xlsx'; // Pastikan package 'xlsx' terinstall (npm install xlsx)
 
 export default function DashboardKomisariat() {
   const router = useRouter();
@@ -17,22 +18,49 @@ export default function DashboardKomisariat() {
   const [statGlobal, setStatGlobal] = useState({ totalRayon: 0, totalKaderAktif: 0, totalPendamping: 0, totalSuratKeluar: 0 });
   const [dataRayon, setDataRayon] = useState<any[]>([]);
   const [databaseKader, setDatabaseKader] = useState<any[]>([]);
-  const [masterKurikulum, setMasterKurikulum] = useState<any[]>([]);
-
-  // --- STATE FORM INPUT ---
-  const [formRayon, setFormRayon] = useState({ id_rayon: '', nama_rayon: '', password: '' });
-  const [formKurikulum, setFormKurikulum] = useState({ jenjang: 'MAPABA', kode: '', nama: '', muatan: '', bobot: 3 });
   
-  // --- STATE PENCARIAN KADER ---
-  const [searchKader, setSearchKader] = useState('');
-  const [filterRayonKader, setFilterRayonKader] = useState('');
+  // --- STATE MASTER KURIKULUM & TES PUSAT ---
+  const [masterKurikulum, setMasterKurikulum] = useState<any[]>([]);
+  const [masterTesPusat, setMasterTesPusat] = useState<any[]>([]);
 
   // --- STATE PENGUMUMAN LOGIN ---
   const [pengumumanList, setPengumumanList] = useState<string[]>([]);
   const [newPengumuman, setNewPengumuman] = useState('');
   const [isSavingPengumuman, setIsSavingPengumuman] = useState(false);
 
+  // --- STATE FITUR BARU: KALENDER, BROADCAST, LOG AKTIVITAS ---
+  const [jadwalKegiatan, setJadwalKegiatan] = useState<any[]>([]);
+  const [logAktivitas, setLogAktivitas] = useState<any[]>([]);
+  const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
+  const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Semua' });
+
+  // --- STATE FORM INPUT RAYON & PUSAT ---
+  const [formRayon, setFormRayon] = useState({ id_rayon: '', nama_rayon: '', password: '' });
+  const [formKurikulum, setFormKurikulum] = useState({ jenjang: 'MAPABA', kode: '', nama: '', muatan: '', bobot: 3 });
+  const [formTesPusat, setFormTesPusat] = useState({ judul: '', jenjang: 'MAPABA', soal: '' });
+  
+  // --- STATE PENCARIAN KADER ---
+  const [searchKader, setSearchKader] = useState('');
+  const [filterRayonKader, setFilterRayonKader] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ==========================================
+  // FUNGSI PENCATAT LOG AKTIVITAS (AUDIT TRAIL)
+  // ==========================================
+  const catatLogAktivitas = async (aksi: string) => {
+    try {
+      await addDoc(collection(db, "log_aktivitas"), {
+        aktor: "PK. PMII Sunan Ampel Malang",
+        role: "komisariat",
+        aksi: aksi,
+        timestamp: Date.now(),
+        waktu_format: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
+      });
+    } catch (e) {
+      console.error("Gagal mencatat log", e);
+    }
+  };
 
   // ==========================================
   // EFEK: AMBIL DATA REAL-TIME DARI FIREBASE & CEK ROLE
@@ -58,6 +86,7 @@ export default function DashboardKomisariat() {
       }
     });
 
+    // LISTENER USER GLOBAL (KADER, RAYON, PENDAMPING)
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
       let kaderCount = 0;
       let pendampingCount = 0;
@@ -83,28 +112,105 @@ export default function DashboardKomisariat() {
       setStatGlobal(prev => ({ ...prev, totalKaderAktif: kaderCount, totalPendamping: pendampingCount, totalRayon: rayonCount }));
     });
 
-    const unsubSurat = onSnapshot(collection(db, "pengajuan_surat"), (snap) => {
-      setStatGlobal(prev => ({ ...prev, totalSuratKeluar: snap.size }));
-    });
-
+    // LISTENER LAINNYA
+    const unsubSurat = onSnapshot(collection(db, "pengajuan_surat"), (snap) => { setStatGlobal(prev => ({ ...prev, totalSuratKeluar: snap.size })); });
+    
     const unsubKurikulumPusat = onSnapshot(collection(db, "master_kurikulum_pusat"), (snap) => {
-      const listMateri: any[] = [];
-      snap.forEach(doc => listMateri.push({ id: doc.id, ...doc.data() }));
-      setMasterKurikulum(listMateri);
+      const listMateri: any[] = []; snap.forEach(doc => listMateri.push({ id: doc.id, ...doc.data() })); setMasterKurikulum(listMateri);
     });
 
-    // Listener untuk Pengumuman Login
+    const unsubTesPusat = onSnapshot(collection(db, "master_tes_pusat"), (snap) => {
+      const listTes: any[] = []; snap.forEach(doc => listTes.push({ id: doc.id, ...doc.data() })); setMasterTesPusat(listTes);
+    });
+
     const unsubPengumuman = onSnapshot(doc(db, "pengaturan_sistem", "pengumuman"), (docSnap) => {
-      if (docSnap.exists() && docSnap.data().listTeks) {
-        setPengumumanList(docSnap.data().listTeks);
-      }
+      if (docSnap.exists() && docSnap.data().listTeks) setPengumumanList(docSnap.data().listTeks);
     });
 
-    return () => { unsubscribeAuth(); unsubUsers(); unsubSurat(); unsubKurikulumPusat(); unsubPengumuman(); };
+    // LISTENER FITUR BARU: JADWAL & LOG AKTIVITAS
+    const unsubJadwal = onSnapshot(query(collection(db, "jadwal_kegiatan"), orderBy("timestamp", "desc")), (snap) => {
+      const listJadwal: any[] = []; snap.forEach(doc => listJadwal.push({ id: doc.id, ...doc.data() })); setJadwalKegiatan(listJadwal);
+    });
+
+    const unsubLog = onSnapshot(query(collection(db, "log_aktivitas"), orderBy("timestamp", "desc"), limit(50)), (snap) => {
+      const listLog: any[] = []; snap.forEach(doc => listLog.push({ id: doc.id, ...doc.data() })); setLogAktivitas(listLog);
+    });
+
+    return () => { unsubscribeAuth(); unsubUsers(); unsubSurat(); unsubKurikulumPusat(); unsubTesPusat(); unsubPengumuman(); unsubJadwal(); unsubLog(); };
   }, [router]);
 
+
   // ==========================================
-  // FUNGSI MANAJEMEN PENGUMUMAN LOGIN 
+  // FUNGSI FITUR BARU: KALENDER, BROADCAST, EXPORT EXCEL
+  // ==========================================
+
+  // 1. EXPORT EXCEL KADER GLOBAL
+  const handleExportKaderGlobal = () => {
+    if (databaseKader.length === 0) return alert("Database Kader Kosong!");
+    
+    const dataToExport = databaseKader.map((k, i) => ({
+      "No": i + 1,
+      "NIM": k.nim || '-',
+      "Nama Lengkap": k.nama || '-',
+      "NIA": k.nia || '-',
+      "Rayon Asal": k.id_rayon || '-',
+      "Jenjang Terakhir": k.jenjang || 'MAPABA',
+      "Email": k.email || '-',
+      "Status": k.status || 'Aktif'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Database Kader");
+    XLSX.writeFile(workbook, `Database_Kader_Komisariat_${Date.now()}.xlsx`);
+
+    catatLogAktivitas("Mengekspor (Download Excel) seluruh database kader se-UIN.");
+  };
+
+  // 2. TAMBAH & HAPUS JADWAL KALENDER
+  const handleTambahJadwal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "jadwal_kegiatan"), {
+        ...formJadwal,
+        pembuat: "Komisariat",
+        timestamp: Date.now()
+      });
+      catatLogAktivitas(`Menambahkan jadwal kegiatan baru: ${formJadwal.judul}`);
+      alert("Jadwal kegiatan berhasil ditambahkan!");
+      setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
+    } catch (error) { alert("Gagal menyimpan jadwal."); } finally { setIsSubmitting(false); }
+  };
+
+  const handleHapusJadwal = async (id: string, judul: string) => {
+    if (!window.confirm(`Hapus jadwal "${judul}"?`)) return;
+    try {
+      await deleteDoc(doc(db, "jadwal_kegiatan", id));
+      catatLogAktivitas(`Menghapus jadwal kegiatan: ${judul}`);
+    } catch (error) { alert("Gagal menghapus."); }
+  };
+
+  // 3. KIRIM BROADCAST NOTIFIKASI
+  const handleKirimBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "notifikasi_global"), {
+        ...formBroadcast,
+        pengirim: "Pusat Komisariat",
+        tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
+        timestamp: Date.now()
+      });
+      catatLogAktivitas(`Mengirim Broadcast (${formBroadcast.target}): ${formBroadcast.judul}`);
+      alert("Pesan Broadcast berhasil disiarkan!");
+      setFormBroadcast({ judul: '', pesan: '', target: 'Semua' });
+    } catch (error) { alert("Gagal mengirim broadcast."); } finally { setIsSubmitting(false); }
+  };
+
+
+  // ==========================================
+  // FUNGSI LAMA (PENGUMUMAN, RAYON, KURIKULUM, TES)
   // ==========================================
   const handleTambahPengumuman = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,34 +220,21 @@ export default function DashboardKomisariat() {
   };
 
   const handleHapusPengumuman = (index: number) => {
-    const newList = [...pengumumanList];
-    newList.splice(index, 1);
-    setPengumumanList(newList);
+    const newList = [...pengumumanList]; newList.splice(index, 1); setPengumumanList(newList);
   };
 
   const handleSimpanPengumuman = async () => {
     setIsSavingPengumuman(true);
     try {
-      await setDoc(doc(db, "pengaturan_sistem", "pengumuman"), {
-        listTeks: pengumumanList,
-        terakhirDiubah: Date.now()
-      }, { merge: true });
+      await setDoc(doc(db, "pengaturan_sistem", "pengumuman"), { listTeks: pengumumanList, terakhirDiubah: Date.now() }, { merge: true });
+      catatLogAktivitas("Mengubah urutan/isi Teks Pengumuman Login.");
       alert("Pengumuman berhasil disebarkan ke halaman Login!");
-    } catch (error) {
-      alert("Gagal menyimpan pengumuman.");
-    } finally {
-      setIsSavingPengumuman(false);
-    }
+    } catch (error) { alert("Gagal menyimpan pengumuman."); } finally { setIsSavingPengumuman(false); }
   };
 
-  // ==========================================
-  // FUNGSI MANAJEMEN RAYON (DENGAN SECONDARY AUTH)
-  // ==========================================
   const handleBuatAkunRayon = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Inisialisasi Auth Kedua agar tidak terlogout
     const apps = getApps();
     const secondaryApp = apps.find(app => app.name === 'SecondaryApp') || initializeApp(auth.app.options, 'SecondaryApp');
     const secondaryAuth = getAuth(secondaryApp);
@@ -149,67 +242,50 @@ export default function DashboardKomisariat() {
     try {
       const safeUsername = formRayon.id_rayon.trim().toLowerCase();
       const emailBaru = `${safeUsername}@pmii-uinmalang.or.id`;
-      
-      // Buat akun menggunakan Auth Kedua
       await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formRayon.password);
-      
-      // Simpan Identitas ke Firestore
-      await setDoc(doc(db, "users", safeUsername), {
-        nama: formRayon.nama_rayon,
-        username: safeUsername, 
-        id_rayon: safeUsername, 
-        email: emailBaru,
-        role: "rayon",
-        status: "Aktif",
-        createdAt: Date.now()
-      });
-      
-      // Buat template settingan UI
-      await setDoc(doc(db, "settings_rayon", safeUsername), {
-        id: safeUsername,
-        nama: formRayon.nama_rayon,
-        pengumuman: `Selamat datang di Sistem Informasi dan Akademik Kaderisasi ${formRayon.nama_rayon}.`,
-        warnaUtama: "#004a87",
-        warnaAksen: "#f1c40f"
-      });
-
-      // Logout akun kedua dari background
+      await setDoc(doc(db, "users", safeUsername), { nama: formRayon.nama_rayon, username: safeUsername, id_rayon: safeUsername, email: emailBaru, role: "rayon", status: "Aktif", createdAt: Date.now() });
+      await setDoc(doc(db, "settings_rayon", safeUsername), { id: safeUsername, nama: formRayon.nama_rayon, pengumuman: `Selamat datang di Sistem Informasi dan Akademik Kaderisasi ${formRayon.nama_rayon}.`, warnaUtama: "#004a87", warnaAksen: "#f1c40f" });
       await signOutSecondary(secondaryAuth);
-
+      
+      catatLogAktivitas(`Mendaftarkan Instansi Rayon Baru: ${formRayon.nama_rayon}`);
       alert(`Sukses! Akun Admin untuk ${formRayon.nama_rayon} berhasil dibuat tanpa logout dari Komisariat.\n\nUsername Login: ${safeUsername}\nPassword: ${formRayon.password}`);
       setFormRayon({ id_rayon: '', nama_rayon: '', password: '' });
-      
-    } catch (error: any) {
-      alert("Gagal membuat akun Rayon: " + error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (error: any) { alert("Gagal membuat akun Rayon: " + error.message); } finally { setIsSubmitting(false); }
   };
 
-  // ==========================================
-  // FUNGSI MASTER KURIKULUM PUSAT
-  // ==========================================
   const handleTambahKurikulumPusat = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, "master_kurikulum_pusat"), {
-        jenjang: formKurikulum.jenjang,
-        kode: formKurikulum.kode,
-        nama: formKurikulum.nama,
-        muatan: formKurikulum.muatan,
-        bobot: Number(formKurikulum.bobot),
-        timestamp: Date.now()
-      });
+      await addDoc(collection(db, "master_kurikulum_pusat"), { jenjang: formKurikulum.jenjang, kode: formKurikulum.kode, nama: formKurikulum.nama, muatan: formKurikulum.muatan, bobot: Number(formKurikulum.bobot), timestamp: Date.now() });
+      catatLogAktivitas(`Menambahkan Master Kurikulum Pusat: [${formKurikulum.kode}] ${formKurikulum.nama}`);
       alert("Materi berhasil ditambahkan ke kurikulum standar pusat!");
       setFormKurikulum({ ...formKurikulum, kode: '', nama: '', muatan: '' });
-    } catch (error) {
-      alert("Gagal menyimpan materi pusat.");
+    } catch (error) { alert("Gagal menyimpan materi pusat."); }
+  };
+
+  const handleHapusKurikulumPusat = async (id: string, nama: string) => {
+    if(window.confirm("Hapus materi ini dari standar pusat?")) {
+      await deleteDoc(doc(db, "master_kurikulum_pusat", id));
+      catatLogAktivitas(`Menghapus Kurikulum Pusat: ${nama}`);
     }
   };
 
-  const handleHapusKurikulumPusat = async (id: string) => {
-    if(window.confirm("Hapus materi ini dari standar pusat?")) {
-      await deleteDoc(doc(db, "master_kurikulum_pusat", id));
+  const handleTambahTesPusat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formTesPusat.judul || !formTesPusat.soal) return;
+    const daftarSoalArray = formTesPusat.soal.split('\n').filter(s => s.trim() !== '');
+    try {
+      await addDoc(collection(db, "master_tes_pusat"), { judul: formTesPusat.judul, jenjang: formTesPusat.jenjang, daftar_soal: daftarSoalArray, timestamp: Date.now() });
+      catatLogAktivitas(`Membuat Master Tes Pusat: ${formTesPusat.judul}`);
+      alert("Tes berhasil ditambahkan ke standar pusat!");
+      setFormTesPusat({ judul: '', jenjang: 'MAPABA', soal: '' });
+    } catch (error) { alert("Gagal menyimpan tes pusat."); }
+  };
+
+  const handleHapusTesPusat = async (id: string, judul: string) => {
+    if (window.confirm("Hapus tes ini dari standar pusat?")) {
+      await deleteDoc(doc(db, "master_tes_pusat", id));
+      catatLogAktivitas(`Menghapus Master Tes Pusat: ${judul}`);
     }
   };
 
@@ -221,16 +297,17 @@ export default function DashboardKomisariat() {
     return matchSearch && matchRayon;
   });
 
-  // ==========================================
-  // LOGIKA NAMA HEADER DINAMIS
-  // ==========================================
   const getHeaderTitle = () => {
     switch (activeMenu) {
-      case 'beranda': return 'Dashboard Statistik Global';
-      case 'manajemen-rayon': return 'Manajemen Akun Rayon';
-      case 'master-kurikulum': return 'Master Kurikulum Pusat';
-      case 'database-kader': return 'Database Kader Se-UIN';
-      case 'pengumuman': return 'Pengaturan Teks Login';
+      case 'beranda': return 'Dashboard';
+      case 'kalender': return 'Kalender & Jadwal';
+      case 'broadcast': return 'Broadcast & Notifikasi';
+      case 'manajemen-rayon': return 'Manajemen Akun';
+      case 'master-kurikulum': return 'Manajemen Kurikulum';
+      case 'master-tes': return 'Manajemen Tes';
+      case 'database-kader': return 'Database Kader';
+      case 'pengumuman': return 'Pengumuman Login';
+      case 'log-aktivitas': return 'Log Aktivitas';
       default: return 'Pusat Komisariat';
     }
   };
@@ -240,60 +317,70 @@ export default function DashboardKomisariat() {
       
       {/* CSS KHUSUS UNTUK TAMPILAN WEB */}
       <style>{`
+        * { box-sizing: border-box; } /* KUNCI RESPONSIFITAS GLOBAL */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.4); }
+        input, select, textarea { max-width: 100%; }
         @media (min-width: 768px) { aside { left: 0 !important; } main { margin-left: 260px !important; } .menu-burger { display: none !important; } }
+        div[style*="overflowX: auto"], div[style*="overflow-x: auto"] { -webkit-overflow-scrolling: touch; }
         .tabel-utama { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; min-width: 600px; }
-        .tabel-utama thead tr { border-bottom: 2px solid #ddd; background-color: #f8f9fa; }
+        .tabel-utama thead tr { border-top: 2px solid #ddd; background-color: #f8f9fa; }
         .tabel-utama th { padding: 10px; color: #555; text-align: left; font-weight: bold; }
         .tabel-utama td { padding: 10px; border-bottom: 1px solid #eee; color: #333; }
+        
+        .print-layout-container { position: absolute !important; top: -9999px !important; left: -9999px !important; width: 1px !important; height: 1px !important; overflow: hidden !important; opacity: 0 !important; pointer-events: none !important; z-index: -9999 !important; }
+        @media screen { .bg-kertas-a4 { display: none !important; pointer-events: none !important; } }
+        @media print {
+          @page { size: A4 portrait; margin: 0; }
+          body, html { background-color: transparent !important; margin: 0; padding: 0; height: auto !important; }
+          div[style*="overflow: hidden"], div[style*="overflowY: auto"] { overflow: visible !important; height: auto !important; }
+          aside, main, header, .no-print { display: none !important; }
+          .print-layout-container { display: block !important; position: relative !important; top: 0 !important; left: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; background-color: transparent !important; opacity: 1 !important; z-index: 10 !important; }
+          .print-layout-container * { color: #000 !important; font-family: "Arial", "Arial Narrow", sans-serif !important; line-height: 1.15 !important; }
+          .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
+          .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
+          .print-content-area { position: relative !important; z-index: 10 !important; padding: 85mm 20mm 30mm 20mm !important; background-color: transparent !important; }
+          table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
+          tr { page-break-inside: avoid !important; background-color: transparent !important; }
+          th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; }
+          th { font-weight: bold !important; text-align: center !important; }
+          .tabel-biodata { margin-bottom: 15px !important; border: none !important; width: 100% !important; }
+          .tabel-biodata td, .tabel-biodata tr { border: none !important; padding: 3px 0 !important; text-align: left !important; }
+        }
       `}</style>
       
+      {isSidebarOpen && (
+        <div className="no-print" onClick={() => setIsSidebarOpen(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 45 }} />
+      )}
+
       {/* SIDEBAR KOMISARIAT */}
-      <aside style={{ 
-        width: '260px', 
-        background: 'linear-gradient(180deg, #0d1b2a 0%, #1b263b 100%)', 
-        color: 'white', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        boxShadow: '2px 0 10px rgba(0,0,0,0.1)',
-        position: 'fixed',
-        top: 0,
-        bottom: 0,
-        left: isSidebarOpen ? '0' : '-260px',
-        zIndex: 50,
-        transition: 'left 0.3s ease'
-      }}>
+      <aside style={{ width: '260px', background: 'linear-gradient(180deg, #0d1b2a 0%, #1b263b 100%)', color: 'white', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease' }}>
         <div style={{ padding: '20px 20px', fontSize: '1.2rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 215, 0, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
-            <span style={{ fontSize: '1.5rem' }}>🏛️</span>
-            <span style={{ color: '#f1c40f', letterSpacing: '1px' }}>SIAKAD PMII</span>
-          </div>
+          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><span style={{ fontSize: '1.5rem' }}>🏛️</span><span style={{ color: '#f1c40f', letterSpacing: '1px' }}>SIAKAD PMII</span></div>
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
         </div>
         
         <div style={{ padding: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
           <h4 style={{ fontSize: '1rem', marginBottom: '5px', color: '#fff', textTransform: 'uppercase' }}>Pusat Komisariat</h4>
-          <p style={{ fontSize: '0.75rem', color: '#bdc3c7', margin: 0 }}>Sistem Informasi Kaderisasi</p>
+          <p style={{ fontSize: '0.75rem', color: '#bdc3c7', margin: 0 }}>Sistem Informasi dan Akademik Kaderisasi</p>
         </div>
 
         <ul style={{ listStyle: 'none', padding: '15px 0', overflowY: 'auto', flex: 1, margin: 0 }}>
           {[
-            { id: 'beranda', icon: '📊', label: 'Dashboard Statistik' },
-            { id: 'manajemen-rayon', icon: '🏢', label: 'Manajemen Rayon' },
-            { id: 'master-kurikulum', icon: '📑', label: 'Master Kurikulum' },
-            { id: 'database-kader', icon: '🌐', label: 'Database Kader Global' },
+            { id: 'beranda', icon: '📊', label: 'Dashboard' },
+            { id: 'kalender', icon: '📅', label: 'Kalender & Jadwal' },
+            { id: 'broadcast', icon: '📡', label: 'Broadcast & Notifikasi' },
+            { id: 'manajemen-rayon', icon: '🏢', label: 'Manajemen Akun' },
+            { id: 'master-kurikulum', icon: '📑', label: 'Manajemen Kurikulum' },
+            { id: 'master-tes', icon: '📝', label: 'Manajemen Tes' },
+            { id: 'database-kader', icon: '🌐', label: 'Database Kader' },
             { id: 'pengumuman', icon: '📢', label: 'Pengumuman Login' },
+            { id: 'log-aktivitas', icon: '🕵️', label: 'Log Aktivitas' },
           ].map((item) => (
             <li key={item.id}>
-              <button 
-                onClick={() => { setActiveMenu(item.id); setIsSidebarOpen(false); }}
-                style={{ 
-                  width: '100%', textAlign: 'left', background: 'none', border: 'none', color: activeMenu === item.id ? '#f1c40f' : '#bdc3c7', 
-                  padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px', fontSize: '0.85rem', cursor: 'pointer',
-                  borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent',
-                  backgroundColor: activeMenu === item.id ? 'rgba(255, 215, 0, 0.05)' : 'transparent',
-                  transition: '0.2s', fontWeight: activeMenu === item.id ? 'bold' : 'normal'
-                }}
-              >
+              <button onClick={() => { setActiveMenu(item.id); setIsSidebarOpen(false); }} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: activeMenu === item.id ? '#f1c40f' : '#bdc3c7', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px', fontSize: '0.85rem', cursor: 'pointer', borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent', backgroundColor: activeMenu === item.id ? 'rgba(255, 215, 0, 0.05)' : 'transparent', transition: '0.2s', fontWeight: activeMenu === item.id ? 'bold' : 'normal' }}>
                 <span style={{ fontSize: '1.1rem' }}>{item.icon}</span> {item.label}
               </button>
             </li>
@@ -301,32 +388,18 @@ export default function DashboardKomisariat() {
         </ul>
 
         <div style={{ padding: '20px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-          <button onClick={handleLogout} style={{ width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#e74c3c', border: '1px solid #e74c3c', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', transition: '0.3s', fontSize: '0.85rem' }}>
-            🚪 Keluar Sistem
-          </button>
+          <button onClick={handleLogout} style={{ width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#e74c3c', border: '1px solid #e74c3c', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', transition: '0.3s', fontSize: '0.85rem' }}>🚪 Keluar Sistem</button>
         </div>
       </aside>
 
       {/* MAIN CONTENT CONTAINER */}
-      <main style={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        marginLeft: '0', 
-        width: '100%', 
-        overflowX: 'hidden' 
-      }}>
+      <main className="no-print" style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: '0', width: '100%', overflowX: 'hidden' }}>
         
-        {/* HEADER ATAS DINAMIS */}
         <header style={{ backgroundColor: '#fff', padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
           <button className="menu-burger" onClick={() => setIsSidebarOpen(true)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#0d1b2a' }}>☰</button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '10px' }}>
-            <h2 style={{ fontSize: '1rem', color: '#333', margin: 0, fontWeight: 'bold', textTransform: 'uppercase' }}>
-              {getHeaderTitle()}
-            </h2>
-            <span style={{ fontSize: '0.75rem', color: '#555', backgroundColor: '#fdf2e9', padding: '4px 12px', borderRadius: '20px', border: '1px solid #f1c40f', fontWeight: 'bold' }}>
-              Pusat Komisariat
-            </span>
+            <h2 style={{ fontSize: '1rem', color: '#333', margin: 0, fontWeight: 'bold', textTransform: 'uppercase' }}>{getHeaderTitle()}</h2>
+            <span style={{ fontSize: '0.75rem', color: '#555', backgroundColor: '#fdf2e9', padding: '4px 12px', borderRadius: '20px', border: '1px solid #f1c40f', fontWeight: 'bold' }}>Pusat Komisariat</span>
           </div>
         </header>
 
@@ -359,13 +432,13 @@ export default function DashboardKomisariat() {
                 </div>
               </div>
 
-              <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflowX: 'auto' }}>
+              <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                 <h4 style={{ marginTop: 0, color: '#0d1b2a', marginBottom: '15px' }}>Distribusi Rayon Aktif</h4>
                 <table className="tabel-utama" style={{ minWidth: '400px' }}>
                   <thead>
-                    <tr>
-                      <th>Nama Rayon</th>
-                      <th style={{ textAlign: 'center' }}>Total Kader Terdata</th>
+                    <tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Nama Rayon</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Total Kader Terdata</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -375,9 +448,9 @@ export default function DashboardKomisariat() {
                       dataRayon.map((rayon) => {
                         const jumlahKaderRayonIni = databaseKader.filter(k => k.id_rayon === rayon.id_rayon).length;
                         return (
-                          <tr key={rayon.id}>
-                            <td style={{ fontWeight: 'bold', color: '#0d1b2a' }}>{rayon.nama}</td>
-                            <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#3498db' }}>{jumlahKaderRayonIni} Kader</td>
+                          <tr key={rayon.id} style={{ borderBottom: '1px solid #eee' }}>
+                            <td style={{ padding: '10px', fontWeight: 'bold', color: '#0d1b2a' }}>{rayon.nama}</td>
+                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#3498db' }}>{jumlahKaderRayonIni} Kader</td>
                           </tr>
                         )
                       })
@@ -388,7 +461,79 @@ export default function DashboardKomisariat() {
             </div>
           )}
 
-          {/* MENU 2: MANAJEMEN RAYON */}
+          {/* MENU 2: KALENDER & JADWAL (FITUR BARU) */}
+          {activeMenu === 'kalender' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📅 Jadwal Kegiatan Terpusat</h3>
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                    <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px', fontSize: '0.9rem' }}>➕ Tambah Agenda Baru</h4>
+                    <form onSubmit={handleTambahJadwal} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <input type="text" placeholder="Judul Kegiatan (Cth: RTM Komisariat)" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                      <input type="datetime-local" required value={formJadwal.tanggal} onChange={e => setFormJadwal({...formJadwal, tanggal: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                      <input type="text" placeholder="Lokasi / Media" required value={formJadwal.lokasi} onChange={e => setFormJadwal({...formJadwal, lokasi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                      <textarea rows={3} placeholder="Deskripsi Singkat" value={formJadwal.deskripsi} onChange={e => setFormJadwal({...formJadwal, deskripsi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', resize: 'vertical', boxSizing: 'border-box' }} />
+                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Simpan Agenda</button>
+                    </form>
+                  </div>
+                  <div style={{ flex: '2 1 450px', overflowX: 'auto', boxSizing: 'border-box' }}>
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      {jadwalKegiatan.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999' }}>Belum ada agenda terjadwal.</div>
+                      ) : (
+                        jadwalKegiatan.map(jadwal => (
+                          <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', borderLeft: '4px solid #3498db', padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <h4 style={{ margin: '0 0 5px 0', color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
+                              <div style={{ fontSize: '0.8rem', color: '#e67e22', fontWeight: 'bold', marginBottom: '5px' }}>🗓️ {jadwal.tanggal.replace('T', ' - ')} | 📍 {jadwal.lokasi}</div>
+                              <p style={{ margin: 0, fontSize: '0.85rem', color: '#555', fontStyle: 'italic' }}>{jadwal.deskripsi}</p>
+                            </div>
+                            <button onClick={() => handleHapusJadwal(jadwal.id, jadwal.judul)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Jadwal">🗑️</button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MENU 3: BROADCAST NOTIFIKASI (FITUR BARU) */}
+          {activeMenu === 'broadcast' && (
+            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+              <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📡 Pusat Broadcast & Notifikasi</h3>
+              <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px' }}>Kirimkan pesan mendesak atau pengumuman penting yang akan muncul di notifikasi pengguna tujuan.</p>
+              
+              <div style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', maxWidth: '600px' }}>
+                <form onSubmit={handleKirimBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Judul Pesan</label>
+                    <input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} placeholder="Cth: Panggilan Rapat Darurat" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Isi Pesan Lengkap</label>
+                    <textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} placeholder="Detail pengumuman..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', resize: 'vertical' }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Target Penerima</label>
+                    <select value={formBroadcast.target} onChange={e => setFormBroadcast({...formBroadcast, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', cursor: 'pointer' }}>
+                      <option value="Semua">📢 Semua Pengguna (Rayon, Pendamping, Kader)</option>
+                      <option value="Rayon">🏢 Hanya Admin Rayon</option>
+                      <option value="Pendamping">👤 Hanya Para Pendamping</option>
+                      <option value="Kader">🎓 Hanya Seluruh Kader</option>
+                    </select>
+                  </div>
+                  <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0d1b2a', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                    {isSubmitting ? 'Mengirim...' : '🚀 Siarkan Pesan Sekarang'}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* MENU 4: MANAJEMEN RAYON */}
           {activeMenu === 'manajemen-rayon' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
@@ -419,13 +564,13 @@ export default function DashboardKomisariat() {
                     </form>
                   </div>
 
-                  <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                  <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start', boxSizing: 'border-box' }}>
                     <table className="tabel-utama" style={{ minWidth: '400px' }}>
                       <thead>
-                        <tr>
-                          <th>Nama Rayon</th>
-                          <th>Username Login Admin</th>
-                          <th style={{ textAlign: 'center' }}>Status</th>
+                        <tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Nama Rayon</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Username Login Admin</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -433,10 +578,10 @@ export default function DashboardKomisariat() {
                            <tr><td colSpan={3} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Belum ada data rayon.</td></tr>
                         ) : (
                           dataRayon.map((rayon) => (
-                            <tr key={rayon.id}>
-                              <td style={{ fontWeight: 'bold', color: '#0d1b2a' }}>{rayon.nama}</td>
-                              <td style={{ color: '#666' }}>{rayon.username}</td>
-                              <td style={{ textAlign: 'center' }}>
+                            <tr key={rayon.id} style={{ borderBottom: '1px solid #eee' }}>
+                              <td style={{ padding: '10px', fontWeight: 'bold', color: '#0d1b2a' }}>{rayon.nama}</td>
+                              <td style={{ padding: '10px', color: '#666' }}>{rayon.username}</td>
+                              <td style={{ padding: '10px', textAlign: 'center' }}>
                                 <span style={{ backgroundColor: '#eef2f3', color: '#2ecc71', fontWeight: 'bold', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem' }}>🟢 Aktif</span>
                               </td>
                             </tr>
@@ -450,7 +595,7 @@ export default function DashboardKomisariat() {
             </div>
           )}
 
-          {/* MENU 3: MASTER KURIKULUM PUSAT */}
+          {/* MENU 5: MASTER KURIKULUM PUSAT */}
           {activeMenu === 'master-kurikulum' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -496,15 +641,15 @@ export default function DashboardKomisariat() {
                   </form>
                 </div>
 
-                <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start', boxSizing: 'border-box' }}>
                   <table className="tabel-utama" style={{ minWidth: '550px' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}>
-                        <th style={{ width: '100px', color: 'white' }}>Jenjang</th>
-                        <th style={{ width: '80px', color: 'white' }}>Kode</th>
-                        <th style={{ color: 'white' }}>Nama Materi & Muatan Pembahasan</th>
-                        <th style={{ textAlign: 'center', width: '80px', color: 'white' }}>Bobot</th>
-                        <th style={{ textAlign: 'center', width: '80px', color: 'white' }}>Aksi</th>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '100px', color: 'white', textAlign: 'left' }}>Jenjang</th>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '80px', color: 'white', textAlign: 'left' }}>Kode</th>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', color: 'white', textAlign: 'left' }}>Nama Materi & Muatan Pembahasan</th>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '80px', color: 'white' }}>Bobot</th>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '80px', color: 'white' }}>Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -512,16 +657,16 @@ export default function DashboardKomisariat() {
                         <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada data kurikulum pusat.</td></tr>
                       ) : (
                         masterKurikulum.sort((a,b) => a.jenjang.localeCompare(b.jenjang)).map((materi) => (
-                          <tr key={materi.id}>
-                            <td style={{ fontWeight: 'bold', color: materi.jenjang === 'MAPABA' ? '#1e824c' : materi.jenjang === 'PKD' ? '#8e44ad' : '#e67e22' }}>{materi.jenjang}</td>
-                            <td style={{ color: '#666', fontWeight: 'bold' }}>{materi.kode}</td>
-                            <td>
+                          <tr key={materi.id} style={{ borderBottom: '1px solid #eee' }}>
+                            <td style={{ padding: '10px', fontWeight: 'bold', color: materi.jenjang === 'MAPABA' ? '#1e824c' : materi.jenjang === 'PKD' ? '#8e44ad' : '#e67e22' }}>{materi.jenjang}</td>
+                            <td style={{ padding: '10px', color: '#666', fontWeight: 'bold' }}>{materi.kode}</td>
+                            <td style={{ padding: '10px' }}>
                               <div style={{ color: '#333', fontWeight: 'bold', marginBottom: '2px', fontSize: '0.85rem' }}>{materi.nama}</div>
                               <div style={{ color: '#777', fontSize: '0.75rem', whiteSpace: 'pre-wrap' }}>{materi.muatan || '-'}</div>
                             </td>
-                            <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#555' }}>{materi.bobot}</td>
-                            <td style={{ textAlign: 'center' }}>
-                              <button onClick={() => handleHapusKurikulumPusat(materi.id)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }} title="Hapus Materi">🗑️</button>
+                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#555' }}>{materi.bobot}</td>
+                            <td style={{ padding: '10px', textAlign: 'center' }}>
+                              <button onClick={() => handleHapusKurikulumPusat(materi.id, materi.nama)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }} title="Hapus Materi">🗑️</button>
                             </td>
                           </tr>
                         ))
@@ -533,10 +678,93 @@ export default function DashboardKomisariat() {
             </div>
           )}
 
-          {/* MENU 4: DATABASE KADER GLOBAL */}
+          {/* MENU 6: MASTER TES PEMAHAMAN PUSAT */}
+          {activeMenu === 'master-tes' && (
+            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+              <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
+                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>Master Tes Pemahaman Kaderisasi</h3>
+                <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Susun standar pertanyaan tes (Pre-Test/Post-Test) yang dapat digunakan oleh seluruh Rayon.</p>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                  <form onSubmit={handleTambahTesPusat} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Jenjang Kaderisasi</label>
+                      <select required value={formTesPusat.jenjang} onChange={e => setFormTesPusat({...formTesPusat, jenjang: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontWeight: 'bold', marginTop: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }}>
+                        <option value="MAPABA">MAPABA</option>
+                        <option value="PKD">PKD</option>
+                        <option value="SIG">SIG (Sekolah Islam Gender)</option>
+                        <option value="SKP">SKP (Sekolah Kader Putri)</option>
+                        <option value="NONFORMAL">Non-Formal</option>
+                        <option value="Umum">Umum (Semua)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Judul Tes</label>
+                      <input type="text" placeholder="Misal: Post-Test Materi Aswaja" required value={formTesPusat.judul} onChange={e => setFormTesPusat({...formTesPusat, judul: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Daftar Pertanyaan</label>
+                      <p style={{ fontSize: '0.7rem', color: '#e67e22', margin: '3px 0 5px 0' }}>*Tekan Enter (baris baru) untuk memisahkan tiap pertanyaan.</p>
+                      <textarea rows={5} placeholder="1. Jelaskan definisi Aswaja!&#10;2. Sebutkan tokoh-tokoh penting!" required value={formTesPusat.soal} onChange={e => setFormTesPusat({...formTesPusat, soal: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                    </div>
+
+                    <button type="submit" style={{ backgroundColor: '#2ecc71', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', fontSize: '0.85rem' }}>+ Tambah Master Tes</button>
+                  </form>
+                </div>
+
+                <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start', boxSizing: 'border-box' }}>
+                  <table className="tabel-utama" style={{ minWidth: '550px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '100px', color: 'white', textAlign: 'left' }}>Jenjang</th>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', color: 'white', textAlign: 'left' }}>Judul Tes</th>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '80px', color: 'white' }}>Jml Soal</th>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '80px', color: 'white' }}>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {masterTesPusat.length === 0 ? (
+                        <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada data master tes pusat.</td></tr>
+                      ) : (
+                        masterTesPusat.sort((a,b) => a.jenjang.localeCompare(b.jenjang)).map((tes) => (
+                          <tr key={tes.id} style={{ borderBottom: '1px solid #eee' }}>
+                            <td style={{ padding: '10px', fontWeight: 'bold', color: tes.jenjang === 'MAPABA' ? '#1e824c' : tes.jenjang === 'PKD' ? '#8e44ad' : '#e67e22' }}>{tes.jenjang}</td>
+                            <td style={{ padding: '10px' }}>
+                              <div style={{ color: '#333', fontWeight: 'bold', marginBottom: '2px', fontSize: '0.85rem' }}>{tes.judul}</div>
+                              <details style={{ cursor: 'pointer', outline: 'none' }}>
+                                <summary style={{ fontSize: '0.75rem', color: '#3498db', fontWeight: 'bold' }}>Lihat Soal</summary>
+                                <ol style={{ fontSize: '0.75rem', color: '#555', paddingLeft: '15px', margin: '5px 0 0 0' }}>
+                                  {(tes.daftar_soal || []).map((s: string, i: number) => <li key={i} style={{ marginBottom: '4px' }}>{s}</li>)}
+                                </ol>
+                              </details>
+                            </td>
+                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#555' }}>{tes.daftar_soal?.length || 0}</td>
+                            <td style={{ padding: '10px', textAlign: 'center' }}>
+                              <button onClick={() => handleHapusTesPusat(tes.id, tes.judul)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }} title="Hapus Tes">🗑️</button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MENU 7: DATABASE KADER GLOBAL DENGAN FITUR EXPORT EXCEL */}
           {activeMenu === 'database-kader' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ color: '#0d1b2a', margin: 0, marginBottom: '15px', fontSize: '1.1rem' }}>Pencarian Kader Global</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>Pencarian Kader Global</h3>
+                <button onClick={handleExportKaderGlobal} style={{ backgroundColor: '#27ae60', color: 'white', padding: '8px 15px', borderRadius: '4px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  📥 Export Data Excel
+                </button>
+              </div>
               
               <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #eee', flexWrap: 'wrap' }}>
                 <input type="text" placeholder="Cari NIM / Nama Kader..." value={searchKader} onChange={(e) => setSearchKader(e.target.value)} style={{ flex: '1 1 200px', padding: '8px 12px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', outline: 'none' }} />
@@ -546,14 +774,14 @@ export default function DashboardKomisariat() {
                 </select>
               </div>
 
-              <div style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+              <div style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxSizing: 'border-box' }}>
                 <table className="tabel-utama" style={{ minWidth: '600px' }}>
                   <thead>
-                    <tr>
-                      <th>NIM</th>
-                      <th>Nama Lengkap</th>
-                      <th>Asal Rayon</th>
-                      <th style={{ textAlign: 'center' }}>Jenjang Terakhir</th>
+                    <tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>NIM</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Nama Lengkap</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Asal Rayon</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Jenjang Terakhir</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -561,11 +789,11 @@ export default function DashboardKomisariat() {
                       <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Data kader tidak ditemukan.</td></tr>
                     ) : (
                       filteredKader.map((kader) => (
-                        <tr key={kader.nim}>
-                          <td style={{ color: '#666', fontWeight: 'bold' }}>{kader.nim}</td>
-                          <td style={{ color: '#333', fontWeight: 'bold' }}>{kader.nama}</td>
-                          <td style={{ color: '#0d1b2a', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 'bold' }}>{kader.id_rayon}</td>
-                          <td style={{ textAlign: 'center' }}>
+                        <tr key={kader.nim} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ padding: '10px', color: '#666', fontWeight: 'bold' }}>{kader.nim}</td>
+                          <td style={{ padding: '10px', color: '#333', fontWeight: 'bold' }}>{kader.nama}</td>
+                          <td style={{ padding: '10px', color: '#0d1b2a', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 'bold' }}>{kader.id_rayon}</td>
+                          <td style={{ padding: '10px', textAlign: 'center' }}>
                             <span style={{ backgroundColor: kader.jenjang === 'MAPABA' ? '#e8f5e9' : '#f3e5f5', color: kader.jenjang === 'MAPABA' ? '#2e7d32' : '#7b1fa2', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>
                               {kader.jenjang || 'MAPABA'}
                             </span>
@@ -579,7 +807,7 @@ export default function DashboardKomisariat() {
             </div>
           )}
 
-          {/* MENU 5: PENGUMUMAN LOGIN */}
+          {/* MENU 8: PENGUMUMAN LOGIN */}
           {activeMenu === 'pengumuman' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
@@ -639,8 +867,49 @@ export default function DashboardKomisariat() {
             </div>
           )}
 
+          {/* MENU 9: LOG AKTIVITAS (FITUR BARU) */}
+          {activeMenu === 'log-aktivitas' && (
+            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+              <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
+                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>🕵️ Log Aktivitas Sistem (Audit Trail)</h3>
+                <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Rekaman aktivitas dan riwayat perubahan data yang dilakukan oleh Admin Pusat Komisariat (Maksimal 50 aktivitas terakhir).</p>
+              </div>
+
+              <div style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxSizing: 'border-box' }}>
+                <table className="tabel-utama" style={{ minWidth: '600px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left', width: '180px' }}>Waktu Sistem</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left', width: '150px' }}>Aktor</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Aktivitas / Aksi yang Dilakukan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logAktivitas.length === 0 ? (
+                      <tr><td colSpan={3} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada catatan aktivitas.</td></tr>
+                    ) : (
+                      logAktivitas.map((log) => (
+                        <tr key={log.id} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ padding: '10px', color: '#666', fontSize: '0.8rem' }}>{log.waktu_format}</td>
+                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#1e824c' }}>{log.aktor}</td>
+                          <td style={{ padding: '10px', color: '#333', fontStyle: 'italic', fontSize: '0.85rem' }}>{log.aksi}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
+
+      {/* STRUKTUR HIDDEN HTML KHUSUS UNTUK PRINT PDF AGAR RAPI BERULANG */}
+      <div id="hidden-print-container" className="print-layout-container">
+        {/* Kontainer Kosong (Komisariat belum ada fungsi print PDF) */}
+      </div>
+
     </div>
   );
 }

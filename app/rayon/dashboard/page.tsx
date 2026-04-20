@@ -69,8 +69,8 @@ export default function DashboardAdminRayon() {
   const [evaluasiKader, setEvaluasiKader] = useState<{ catatan: string }>({ catatan: '' });
   const [tabRaportAdmin, setTabRaportAdmin] = useState('raport'); 
   
-  // STATE PENILAIAN MATRIKS DETAIL
-  const [kategoriBobot, setKategoriBobot] = useState<{id: string, nama: string, persen: number}[]>([]);
+  // STATE PENILAIAN MATRIKS DETAIL (GLOBAL PER JENJANG)
+  const [kategoriBobotGlobal, setKategoriBobotGlobal] = useState<Record<string, any[]>>({}); // { 'MAPABA': [...], 'PKD': [...] }
   const [nilaiMentah, setNilaiMentah] = useState<Record<string, Record<string, number>>>({});
   const [formKategori, setFormKategori] = useState({ nama: '', persen: 0 });
   const [isSavingEvaluasi, setIsSavingEvaluasi] = useState(false);
@@ -91,6 +91,9 @@ export default function DashboardAdminRayon() {
   const [jawabanTesViewer, setJawabanTesViewer] = useState<any[]>([]);
   const [selectedTesHasil, setSelectedTesHasil] = useState<any>(null);
   const [formTes, setFormTes] = useState({ judul: '', jenjang: 'MAPABA', soal: '' });
+  
+  // ---> STATE BARU: TARIK TES DARI KOMISARIAT PUSAT <---
+  const [masterTesPusat, setMasterTesPusat] = useState<any[]>([]);
 
   const materiAktif = listKurikulum[selectedJenjangNilai] || [];
 
@@ -139,6 +142,15 @@ export default function DashboardAdminRayon() {
                 const rData = rayonSnap.data();
                 setNamaRayonAsli(rData.nama || currentRayonId);
                 setPengaturanCetak({ kopSuratUrl: rData.kopSuratUrl || '', footerUrl: rData.footerUrl || '' });
+              }
+            });
+
+            // 1. PENDENGAR: BOBOT GLOBAL PER RAYON (Bukan Per Kader lagi)
+            onSnapshot(doc(db, "pengaturan_rayon", currentRayonId), (docSnap) => {
+              if (docSnap.exists()) {
+                setKategoriBobotGlobal(docSnap.data().bobot_penilaian || {});
+              } else {
+                setKategoriBobotGlobal({});
               }
             });
             
@@ -191,6 +203,13 @@ export default function DashboardAdminRayon() {
               snap.forEach((doc) => riwayat.push({ id: doc.id, ...doc.data() }));
               setRiwayatTes(riwayat);
             });
+
+            // ---> LISTENER BARU: MASTER TES PUSAT KOMISARIAT <---
+            onSnapshot(collection(db, "master_tes_pusat"), (snap) => {
+              const listTesPusat: any[] = [];
+              snap.forEach(doc => listTesPusat.push({ id: doc.id, ...doc.data() }));
+              setMasterTesPusat(listTesPusat);
+            });
           }
         });
       } else {
@@ -202,7 +221,7 @@ export default function DashboardAdminRayon() {
   }, [router]);
 
   // ==========================================
-  // EFEK 2: PANTAU NILAI KADER (REAL-TIME MATRIKS)
+  // EFEK 2: PANTAU NILAI KADER (HANYA NILAI MENTAH SAJA)
   // ==========================================
   useEffect(() => {
     if (!selectedKaderNilai) return;
@@ -215,11 +234,10 @@ export default function DashboardAdminRayon() {
     const unsubscribeKeaktifan = onSnapshot(doc(db, "evaluasi_kader", selectedKaderNilai), (docSnap) => {
       if (docSnap.exists() && docSnap.data()[selectedJenjangNilai]) {
         const data = docSnap.data()[selectedJenjangNilai];
-        setKategoriBobot(data.bobot || []);
+        // Bobot tidak diambil dari sini lagi, melainkan dari pengaturan_rayon
         setNilaiMentah(data.nilai_mentah || {});
         setEvaluasiKader({ catatan: data.catatan || '' });
       } else {
-        setKategoriBobot([]);
         setNilaiMentah({});
         setEvaluasiKader({ catatan: '' });
       }
@@ -284,24 +302,28 @@ export default function DashboardAdminRayon() {
   const ipKader = totalSks > 0 ? (totalBobotNilai / totalSks).toFixed(2) : "0.00";
   const kaderDicetak = dataKader.find(k => k.nim === selectedKaderNilai) || {};
 
-  const totalBobotTersimpan = kategoriBobot.reduce((sum, k) => sum + k.persen, 0);
+  // Dapatkan bobot aktif untuk jenjang yang sedang dipilih
+  const kategoriBobotAktif = kategoriBobotGlobal[selectedJenjangNilai] || [];
+  const totalBobotTersimpan = kategoriBobotAktif.reduce((sum: number, k: any) => sum + k.persen, 0);
 
   // ==========================================
-  // FUNGSI PENILAIAN MATRIKS DETAIL
+  // FUNGSI PENILAIAN MATRIKS DETAIL (GLOBAL RAYON)
   // ==========================================
   const handleTambahKategoriBobot = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(!selectedKaderNilai || !formKategori.nama) return;
+    if(!formKategori.nama) return;
     if(totalBobotTersimpan + formKategori.persen > 100) return alert("Total bobot tidak boleh melebihi 100%!");
     
     setIsSavingEvaluasi(true);
     try {
-      const currentEvaluasi = (await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKaderNilai)))).docs[0]?.data() || {};
-      const jenjangData = currentEvaluasi[selectedJenjangNilai] || { bobot: [], nilai_mentah: {}, catatan: '' };
-      const newBobot = [...(jenjangData.bobot || []), { id: Date.now().toString(), nama: formKategori.nama, persen: formKategori.persen }];
+      const docRef = doc(db, "pengaturan_rayon", adminRayonId);
+      const newBobot = [...kategoriBobotAktif, { id: Date.now().toString(), nama: formKategori.nama, persen: formKategori.persen }];
       
-      await setDoc(doc(db, "evaluasi_kader", selectedKaderNilai), { 
-        ...currentEvaluasi, [selectedJenjangNilai]: { ...jenjangData, bobot: newBobot } 
+      await setDoc(docRef, { 
+        bobot_penilaian: {
+          ...kategoriBobotGlobal,
+          [selectedJenjangNilai]: newBobot
+        }
       }, { merge: true });
       
       setFormKategori({ nama: '', persen: 0 });
@@ -310,14 +332,16 @@ export default function DashboardAdminRayon() {
   };
 
   const handleHapusKategoriBobot = async (id: string) => {
-    if(!window.confirm("Hapus kategori bobot ini?")) return;
+    if(!window.confirm("Hapus kategori bobot ini dari jenjang " + selectedJenjangNilai + "?")) return;
     try {
-      const currentEvaluasi = (await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKaderNilai)))).docs[0]?.data();
-      const jenjangData = currentEvaluasi[selectedJenjangNilai];
-      const newBobot = jenjangData.bobot.filter((item: any) => item.id !== id);
+      const docRef = doc(db, "pengaturan_rayon", adminRayonId);
+      const newBobot = kategoriBobotAktif.filter((item: any) => item.id !== id);
       
-      await setDoc(doc(db, "evaluasi_kader", selectedKaderNilai), { 
-        ...currentEvaluasi, [selectedJenjangNilai]: { ...jenjangData, bobot: newBobot } 
+      await setDoc(docRef, { 
+        bobot_penilaian: {
+          ...kategoriBobotGlobal,
+          [selectedJenjangNilai]: newBobot
+        }
       }, { merge: true });
     } catch (error) { alert("Gagal menghapus."); }
   };
@@ -333,12 +357,12 @@ export default function DashboardAdminRayon() {
     try {
       const docRef = doc(db, "evaluasi_kader", selectedKaderNilai);
       const currentEvaluasi = (await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKaderNilai)))).docs[0]?.data() || {};
-      const jenjangData = currentEvaluasi[selectedJenjangNilai] || { bobot: kategoriBobot, nilai_mentah: {}, catatan: evaluasiKader.catatan };
+      const jenjangData = currentEvaluasi[selectedJenjangNilai] || { nilai_mentah: {}, catatan: evaluasiKader.catatan };
       
       await setDoc(docRef, { ...currentEvaluasi, [selectedJenjangNilai]: { ...jenjangData, nilai_mentah: nilaiMentah } }, { merge: true });
 
       let angkaAkhir = 0;
-      kategoriBobot.forEach(kat => {
+      kategoriBobotAktif.forEach((kat: any) => {
           const score = nilaiMentah[kodeMateri]?.[kat.nama] || 0;
           angkaAkhir += score * (kat.persen / 100);
       });
@@ -355,7 +379,7 @@ export default function DashboardAdminRayon() {
     setEvaluasiKader({ ...evaluasiKader, catatan: text });
     try {
       const currentEvaluasi = (await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKaderNilai)))).docs[0]?.data() || {};
-      const jenjangData = currentEvaluasi[selectedJenjangNilai] || { bobot: [], nilai_mentah: {}, catatan: '' };
+      const jenjangData = currentEvaluasi[selectedJenjangNilai] || { nilai_mentah: {}, catatan: '' };
       await setDoc(doc(db, "evaluasi_kader", selectedKaderNilai), { ...currentEvaluasi, [selectedJenjangNilai]: { ...jenjangData, catatan: text } }, { merge: true });
     } catch (error) { console.error(error); }
   };
@@ -382,6 +406,21 @@ export default function DashboardAdminRayon() {
       alert("Tes berhasil dibuat!"); setFormTes({ judul: '', jenjang: 'MAPABA', soal: '' });
       setActiveModal(null); // Tutup Modal
     } catch (error) { alert("Gagal."); }
+  };
+
+  // ---> FUNGSI BARU: TARIK TES DARI KOMISARIAT PUSAT <---
+  const handleTarikTesPusat = async (tesPusat: any) => {
+    try {
+      await addDoc(collection(db, "master_tes"), { 
+        id_rayon: adminRayonId, 
+        judul: tesPusat.judul, 
+        jenjang: tesPusat.jenjang, 
+        daftar_soal: tesPusat.daftar_soal || [], 
+        status: 'Tutup', 
+        timestamp: Date.now() 
+      });
+      alert("Tes dari Pusat Komisariat berhasil ditarik ke Rayon!");
+    } catch (error) { alert("Gagal menarik tes pusat."); }
   };
 
   const handleToggleStatusTes = async (idTes: string, statusSaatIni: string) => {
@@ -583,10 +622,10 @@ export default function DashboardAdminRayon() {
     switch (activeMenu) {
       case 'beranda': return 'Dashboard';
       case 'manajemen-akun': return 'Manajemen Akun';
-      case 'kurikulum': return 'Kurikulum';
+      case 'kurikulum': return 'Kurikulum Kaderisasi';
       case 'pantau-nilai': return 'Raport Kaderisasi';
       case 'master-tugas': return 'Manajemen Tugas';
-      case 'verifikasi-surat': return 'Layanan Administrasi';
+      case 'verifikasi-surat': return 'Layanan Persuratan';
       case 'perpus': return 'Perpustakaan Digital';
       case 'manajemen-tes': return 'Manajemen Tes';
       case 'saran': return 'Kotak Aspirasi';
@@ -604,95 +643,122 @@ export default function DashboardAdminRayon() {
       
       {/* CSS KHUSUS UNTUK TAMPILAN WEB & CETAK PDF A4 BACKGROUND */}
       <style>{`
+        * { box-sizing: border-box; } /* KUNCI RESPONSIFITAS GLOBAL */
+
+        /* Custom scrollbar elegan untuk Webkit (Chrome, Safari, Edge) */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.4); }
+
+        /* Mencegah input field melebihi layar di HP */
+        input, select, textarea { max-width: 100%; }
+
         @media (min-width: 768px) { aside { left: 0 !important; } main { margin-left: 260px !important; } .menu-burger { display: none !important; } }
         
+        /* Smooth scrolling di layar sentuh (iOS/Android) */
+        div[style*="overflowX: auto"], div[style*="overflow-x: auto"] {
+          -webkit-overflow-scrolling: touch;
+        }
+
         .tabel-utama { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; min-width: 600px; }
         .tabel-utama thead tr { border-top: 2px solid #555; border-bottom: 2px solid #555; background-color: #fff; }
         .tabel-utama th { padding: 10px; color: #333; text-align: center; font-weight: bold; }
         .tabel-utama td { padding: 8px 10px; border-bottom: 1px solid #ddd; color: #333; }
         
-        /* TAMPILAN LAYAR WEB (SEMBUNYIKAN PRINT WADAH DENGAN AMAN) */
+        /* LEMPAR WADAH PRINT JAUH KELUAR LAYAR AGAR TIDAK MENUTUPI TOMBOL DI HP */
+        .print-layout-container { 
+           position: absolute !important; 
+           top: -9999px !important; 
+           left: -9999px !important; 
+           width: 1px !important; 
+           height: 1px !important; 
+           overflow: hidden !important; 
+           opacity: 0 !important; 
+           pointer-events: none !important; 
+           z-index: -9999 !important;
+        }
+
+        /* MATIKAN GAMBAR BACKGROUND A4 SECARA PAKSA DI LAYAR HP/WEB */
         @media screen {
-          .print-layout-container { 
-             position: absolute !important;
-             top: 0 !important;
-             left: 0 !important;
-             width: 100% !important;
-             height: 0 !important; 
-             overflow: hidden !important; 
-             visibility: hidden !important; 
-             z-index: -999 !important;
-          }
-          .bg-kertas-a4 { display: none !important; }
+          .bg-kertas-a4 { display: none !important; pointer-events: none !important; }
         }
         
-        /* TAMPILAN SAAT CETAK PDF (CTRL+P) */
         @media print {
           @page { size: A4 portrait; margin: 0; }
           body, html { background-color: white !important; margin: 0; padding: 0; height: auto !important; }
           
-          /* Sembunyikan Elemen Web Yang Tidak Perlu */
-          aside, header, .no-print { display: none !important; }
-          main { margin-left: 0 !important; display: block !important; height: auto !important; overflow: visible !important; }
-          div[style*="overflow: hidden"], div[style*="overflowY: auto"] { overflow: visible !important; height: auto !important; }
+          /* BATALKAN OVERFLOW HIDDEN AGAR HALAMAN TIDAK TERPOTONG / BLANK */
+          div[style*="overflow: hidden"], div[style*="overflowY: auto"] {
+             overflow: visible !important;
+             height: auto !important;
+          }
+
+          /* SEMBUNYIKAN SIDEBAR DAN MAIN UI WEB */
+          aside, main, header, .no-print { display: none !important; }
           
-          /* Tampilkan Wadah Cetak Utama */
+          /* ------------------------------------------------------------------- */
+          /* PERBAIKAN BUG CETAK KHS: KEMBALIKAN POSISI KE LAYAR                 */
+          /* ------------------------------------------------------------------- */
           .print-layout-container { 
             display: block !important; 
             position: relative !important;
+            top: 0 !important;              /* MENGEMBALIKAN TABEL KE ATAS KERTAS */
+            left: 0 !important;             /* MENGEMBALIKAN TABEL KE ATAS KERTAS */
             width: 100% !important;
             height: auto !important;       
             overflow: visible !important;  
-            visibility: visible !important;
-            z-index: 1 !important; 
+            background-color: transparent !important;
+            opacity: 1 !important; 
+            z-index: 10 !important; 
           }
           
-          .print-layout-container * { 
+          .print-layout-container * {
             color: #000 !important; 
             font-family: "Arial", "Arial Narrow", sans-serif !important; 
-            line-height: 1.15 !important; 
+            line-height: 1.15 !important;
           }
           
-          /* Background Kertas A4 Mengunci Di Belakang */
-          .bg-kertas-a4 { 
-            position: fixed !important; 
-            top: 0; left: 0; right: 0; bottom: 0; 
-            width: 210mm !important; 
-            height: 297mm !important; 
-            z-index: -1 !important; 
-          }
-          .bg-kertas-a4 img { 
-            width: 210mm !important; 
-            height: 297mm !important; 
-            object-fit: fill !important; 
-          }
+          .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
+          .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
 
-          /* AREA KONTEN: Diberi margin/padding atas 110mm agar tidak menabrak KOP SURAT */
-          .print-content-area { 
-            position: relative !important; 
+          /* AREA KONTEN TENGAH (LAPISAN DEPAN): Diberi margin/padding atas 85mm agar tidak menabrak KOP SURAT */
+          .print-content-area {
+            position: relative !important;
             z-index: 10 !important; 
             padding: 50mm 25mm 30mm 25mm !important; 
             background-color: transparent !important; 
           }
 
           table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
-          tr { page-break-inside: avoid !important; }
+          tr { page-break-inside: avoid !important; background-color: transparent !important; }
           th, td { 
-            border: 1px solid #000 !important; 
-            padding: 6px 8px !important; 
-            font-size: 11pt !important; 
+             border: 1px solid #000 !important; 
+             padding: 4px 6px !important; 
+             font-size: 11pt !important; 
+             background-color: transparent !important; 
           }
           th { font-weight: bold !important; text-align: center !important; }
           
           .tabel-biodata { margin-bottom: 15px !important; border: none !important; width: 100% !important; }
-          .tabel-biodata td, .tabel-biodata tr { border: none !important; padding: 4px 0 !important; text-align: left !important; }
+          .tabel-biodata td, .tabel-biodata tr { border: none !important; padding: 3px 0 !important; text-align: left !important; }
           
+          .no-print { display: none !important; } 
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
 
+      {/* OVERLAY HP (Muncul saat sidebar terbuka, klik untuk menutup) */}
+      {isSidebarOpen && (
+        <div 
+          className="no-print"
+          onClick={() => setIsSidebarOpen(false)} 
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 45 }} 
+        />
+      )}
+
       {/* SIDEBAR ADMIN */}
-      <aside className="no-print" style={{ width: '260px', background: 'linear-gradient(135deg, #1e824c 0%, #154360 100%)', color: 'white', display: 'flex', flexDirection: 'column', overflowY: 'auto', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
+      <aside className="no-print" style={{ width: '260px', background: 'linear-gradient(135deg, #1e824c 0%, #154360 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
         <div style={{ padding: '20px', fontSize: '1.2rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>🏛️ SIAKAD PMII</span>
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
@@ -700,12 +766,12 @@ export default function DashboardAdminRayon() {
         <div style={{ padding: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
           <h4 style={{ fontSize: '1rem', margin: 0, color: '#f1c40f', lineHeight: '1.4' }}>{namaRayonAsli || 'Memuat...'}</h4>
         </div>
-        <ul style={{ listStyle: 'none', padding: '10px 0', margin: 0 }}>
+        <ul style={{ listStyle: 'none', padding: '10px 0', margin: 0, flex: 1, overflowY: 'auto' }}>
           {[
             { id: 'beranda', icon: '🏠', label: 'Dashboard' },
-            { id: 'verifikasi-surat', icon: '✉️', label: 'Layanan Administrasi', badge: suratMasuk.filter(s => s.status === 'Menunggu Verifikasi').length || null },
+            { id: 'verifikasi-surat', icon: '✉️', label: 'Layanan Persuratan', badge: suratMasuk.filter(s => s.status === 'Menunggu Verifikasi').length || null },
             { id: 'manajemen-akun', icon: '👥', label: 'Manajemen Akun' },
-            { id: 'kurikulum', icon: '📚', label: 'Kurikulum' }, 
+            { id: 'kurikulum', icon: '📚', label: 'Kurikulum Kaderisasi' }, 
             { id: 'pantau-nilai', icon: '📊', label: 'Raport Kaderisasi' }, 
             { id: 'manajemen-tes', icon: '📝', label: 'Manajemen Tes' },
             { id: 'master-tugas', icon: '📋', label: 'Manajemen Tugas' }, 
@@ -1002,7 +1068,7 @@ export default function DashboardAdminRayon() {
                 </div>
                 
                 <div style={{ width: '100%', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', marginBottom: '20px' }}>
-                  <div style={{backgroundColor: '#eef2f3', padding: '12px 15px', borderBottom: '1px solid #ddd'}}><h4 style={{margin: 0, color: '#0d1b2a', fontSize: '0.9rem'}}>✅ Kurikulum Rayon Saat Ini ({tabKurikulum})</h4></div>
+                  <div style={{backgroundColor: '#eef2f3', padding: '12px 15px', borderBottom: '1px solid #ddd'}}><h4 style={{margin: 0, color: '#0d1b2a', fontSize: '0.9rem'}}>Kurikulum Rayon Saat Ini ({tabKurikulum})</h4></div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem', minWidth: '450px' }}>
                     <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}><th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '40px' }}>No</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Kode</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Nama Materi & Muatan</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Bobot</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th></tr></thead>
                     <tbody>
@@ -1055,7 +1121,7 @@ export default function DashboardAdminRayon() {
                 </div>
 
                 <div style={{ backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #eee' }}>
-                  <h4 style={{ color: '#0d1b2a', margin: 0, padding: '15px', backgroundColor: '#fdfdfd', borderBottom: '1px solid #eee' }}>📌 Referensi Kurikulum Standar Pusat</h4>
+                  <h4 style={{ color: '#0d1b2a', margin: 0, padding: '15px', backgroundColor: '#fdfdfd', borderBottom: '1px solid #eee' }}>Kurikulum Standar MUSPIMNAS</h4>
                   <div style={{ width: '100%', overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem', minWidth: '400px' }}>
                       <thead><tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}><th style={{ padding: '8px', textAlign: 'center' }}>Kode</th><th style={{ padding: '8px', textAlign: 'center' }}>Nama Materi</th><th style={{ padding: '8px', textAlign: 'center' }}>Aksi</th></tr></thead>
@@ -1107,8 +1173,8 @@ export default function DashboardAdminRayon() {
               </div>
               
               <div className="no-print" style={{ display: 'flex', borderBottom: '1px solid #ddd', marginBottom: '0px', flexWrap: 'wrap' }}>
-                <button onClick={() => setTabRaportAdmin('raport')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'raport' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'raport' ? '#fff' : 'transparent', color: tabRaportAdmin === 'raport' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>📑 Raport Kaderisasi</button>
-                <button onClick={() => setTabRaportAdmin('persentase')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'persentase' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'persentase' ? '#fff' : 'transparent', color: tabRaportAdmin === 'persentase' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>📊 Input Nilai</button>
+                <button onClick={() => setTabRaportAdmin('raport')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'raport' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'raport' ? '#fff' : 'transparent', color: tabRaportAdmin === 'raport' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>Raport Kaderisasi</button>
+                <button onClick={() => setTabRaportAdmin('persentase')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'persentase' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'persentase' ? '#fff' : 'transparent', color: tabRaportAdmin === 'persentase' ? '#555' : '#007bff', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>Persentase & Nilai</button>
                 <button onClick={() => setTabRaportAdmin('pengaturan')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'pengaturan' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'pengaturan' ? '#fff' : 'transparent', color: tabRaportAdmin === 'pengaturan' ? '#555' : '#e67e22', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', marginLeft: 'auto', fontSize: '0.85rem' }}>⚙️ Pengaturan Cetak</button>
               </div>
 
@@ -1117,7 +1183,7 @@ export default function DashboardAdminRayon() {
                   <table className="tabel-utama" style={{ minWidth: '600px' }}>
                     <thead>
                       <tr>
-                        <th style={{ width: '5%' }}>No</th><th style={{ width: '8%', textAlign: 'center' }}>Kode</th><th style={{ width: '70', textAlign: 'center' }}>Nama Materi</th>
+                        <th style={{ width: '5%' }}>No</th><th style={{ width: '12%', textAlign: 'center' }}>Kode</th><th style={{ width: '53%', textAlign: 'center' }}>Nama Materi</th>
                         <th style={{ width: '8%' }}>SKS</th><th style={{ width: '8%' }}>Nilai Huruf</th><th style={{ width: '8%' }}>SKS x Nilai</th>
                       </tr>
                     </thead>
@@ -1145,7 +1211,7 @@ export default function DashboardAdminRayon() {
                     <div>
                       <h4 style={{ margin: '0 0 10px 0', color: '#1e824c', fontSize: '0.9rem' }}>⚙️ Kategori & Bobot Penilaian</h4>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        {kategoriBobot.map(kat => (
+                        {kategoriBobotAktif.map((kat: any) => (
                           <div key={kat.id} style={{ backgroundColor: '#eaf4fc', padding: '5px 10px', borderRadius: '20px', border: '1px solid #3498db', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontWeight: 'bold', color: '#2c3e50' }}>{kat.nama}: {kat.persen}%</span>
                             <button type="button" onClick={() => handleHapusKategoriBobot(kat.id)} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>×</button>
@@ -1166,13 +1232,13 @@ export default function DashboardAdminRayon() {
                         <th rowSpan={2} style={{ width: '3%' }}>No</th>
                         <th rowSpan={2} style={{ width: '10%', textAlign: 'center' }}>Kode</th>
                         <th rowSpan={2} style={{ width: '25%', textAlign: 'center' }}>Nama Materi</th>
-                        {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
+                        {kategoriBobotAktif.length > 0 && <th colSpan={kategoriBobotAktif.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
                         <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
                         <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
                         <th rowSpan={2} style={{ width: '8%' }}>SKS x Nilai Huruf</th>
                       </tr>
                       <tr>
-                        {kategoriBobot.map(kat => (
+                        {kategoriBobotAktif.map((kat: any) => (
                           <th key={kat.id} style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#1e824c', backgroundColor: '#f0fbf4' }}>
                             {kat.nama} <br/><span style={{color: '#e74c3c'}}>{kat.persen}%</span>
                           </th>
@@ -1183,11 +1249,11 @@ export default function DashboardAdminRayon() {
                     </thead>
                     <tbody>
                       {materiAktif.length === 0 ? (
-                        <tr><td colSpan={7 + kategoriBobot.length} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada materi untuk jenjang ini.</td></tr>
+                        <tr><td colSpan={7 + kategoriBobotAktif.length} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada materi untuk jenjang ini.</td></tr>
                       ) : (
                         materiAktif.map((materi, index) => {
                           let angkaAkhir = 0;
-                          kategoriBobot.forEach(kat => {
+                          kategoriBobotAktif.forEach((kat: any) => {
                               const score = nilaiMentah[materi.kode]?.[kat.nama] || 0;
                               angkaAkhir += (score * (kat.persen / 100));
                           });
@@ -1200,7 +1266,7 @@ export default function DashboardAdminRayon() {
                             <tr key={`rinci-${materi.kode}`}>
                               <td>{index + 1}</td><td style={{ textAlign: 'left' }}>{materi.kode}</td><td style={{ textAlign: 'left', fontWeight: 'bold' }}>{materi.nama}</td>
                               
-                              {kategoriBobot.map((kat) => (
+                              {kategoriBobotAktif.map((kat: any) => (
                                 <td key={kat.id} style={{ backgroundColor: '#fcfcfc' }}>
                                   <input 
                                     type="number" className="no-print" min="0" max="100" placeholder="0"
@@ -1222,13 +1288,13 @@ export default function DashboardAdminRayon() {
                         })
                       )}
                       <tr>
-                        <td colSpan={3 + kategoriBobot.length} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah SKS & Nilai</td>
+                        <td colSpan={3 + kategoriBobotAktif.length} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah SKS & Nilai</td>
                         <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td>
                         <td colSpan={2}></td>
                         <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td>
                       </tr>
                       <tr>
-                        <td colSpan={4 + kategoriBobot.length} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kader)</td>
+                        <td colSpan={4 + kategoriBobotAktif.length} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kader)</td>
                         <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1.1rem' }}>{ipKader}</td>
                       </tr>
                     </tbody>
@@ -1344,6 +1410,43 @@ export default function DashboardAdminRayon() {
                     <h4 style={{ margin: 0, color: '#1e824c', fontSize: '0.95rem' }}>Daftar Tes Rayon</h4>
                     <button onClick={() => setActiveModal('tambahTes')} style={{ backgroundColor: '#1e824c', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>➕ Buat Tes Baru</button>
                   </div>
+                  
+                  {/* TABEL MASTER TES PUSAT DARI KOMISARIAT */}
+                  <div style={{ backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #eee' }}>
+                    <h4 style={{ color: '#0d1b2a', margin: 0, padding: '15px', backgroundColor: '#fdfdfd', borderBottom: '1px solid #eee' }}>📥 Bank Soal / Tes Standar Komisariat</h4>
+                    <div style={{ width: '100%', overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem', minWidth: '400px' }}>
+                        <thead><tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}><th style={{ padding: '8px', textAlign: 'center' }}>Judul & Jenjang</th><th style={{ padding: '8px', textAlign: 'center' }}>Soal</th><th style={{ padding: '8px', textAlign: 'center' }}>Aksi</th></tr></thead>
+                        <tbody>
+                          {masterTesPusat.length === 0 ? (<tr><td colSpan={3} style={{ textAlign: 'center', padding: '15px', color: '#999' }}>Komisariat belum menetapkan standar tes.</td></tr>) : (
+                            masterTesPusat.sort((a,b) => a.jenjang.localeCompare(b.jenjang)).map((tesPusat) => {
+                              const isAlreadyAdded = listTes.some(t => t.judul === tesPusat.judul && t.jenjang === tesPusat.jenjang);
+                              return (
+                                <tr key={tesPusat.id} style={{ borderBottom: '1px solid #eee', backgroundColor: isAlreadyAdded ? '#f9f9f9' : 'white' }}>
+                                  <td style={{ padding: '8px' }}>
+                                    <div style={{fontWeight: 'bold', color: isAlreadyAdded ? '#000' : '#333'}}>{tesPusat.judul}</div>
+                                    <div style={{fontSize: '0.7rem', color: '#888'}}>Sasaran: {tesPusat.jenjang}</div>
+                                  </td>
+                                  <td style={{ padding: '8px', textAlign: 'center' }}>
+                                    <details style={{ cursor: 'pointer', outline: 'none', display: 'inline-block', textAlign: 'left' }}>
+                                      <summary style={{ fontSize: '0.75rem', color: '#3498db', fontWeight: 'bold' }}>Lihat {tesPusat.daftar_soal?.length || 0} Soal</summary>
+                                      <ol style={{ fontSize: '0.7rem', color: '#555', paddingLeft: '15px', margin: '5px 0 0 0', textAlign: 'left' }}>
+                                        {(tesPusat.daftar_soal || []).map((s: string, i: number) => <li key={i} style={{ marginBottom: '2px' }}>{s}</li>)}
+                                      </ol>
+                                    </details>
+                                  </td>
+                                  <td style={{ padding: '8px', textAlign: 'center' }}>
+                                    {isAlreadyAdded ? (<span style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.75rem' }}>✅ Ditarik</span>) : (<button onClick={() => handleTarikTesPusat(tesPusat)} style={{ backgroundColor: '#3498db', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.7rem' }}>➕ Tarik</button>)}
+                                  </td>
+                                </tr>
+                              )
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
                   <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '600px' }}>
                       <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}><th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>Judul & Jenjang</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Soal</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status</th><th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th></tr></thead>

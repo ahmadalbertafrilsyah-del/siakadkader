@@ -3,14 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, getDocs, query, where, doc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc, updateDoc, onSnapshot, addDoc, deleteDoc, orderBy, limit } from 'firebase/firestore';
 import { auth, db } from '../../../lib/firebase';
+import * as XLSX from 'xlsx';
 
 export default function DashboardPendamping() {
   const router = useRouter();
   const [activeMenu, setActiveMenu] = useState('beranda'); 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- STATE PROFIL PENDAMPING ---
   const [profilPendamping, setProfilPendamping] = useState({ 
@@ -38,7 +40,6 @@ export default function DashboardPendamping() {
   const [nilaiKaderRealtime, setNilaiKaderRealtime] = useState<Record<string, string>>({}); 
 
   const [tabInput, setTabInput] = useState('materi'); 
-
   const [selectedKader, setSelectedKader] = useState('');
   
   // Jenjang dikunci mati sesuai penugasan dari Admin Rayon
@@ -58,6 +59,31 @@ export default function DashboardPendamping() {
   const [selectedTesHasil, setSelectedTesHasil] = useState<any>(null);
   const [jawabanTesViewer, setJawabanTesViewer] = useState<any[]>([]);
 
+  // ---> STATE BARU: FITUR ENTERPRISE (KALENDER, BROADCAST, LOG) <---
+  const [jadwalKegiatan, setJadwalKegiatan] = useState<any[]>([]);
+  const [notifikasiGlobal, setNotifikasiGlobal] = useState<any[]>([]);
+  const [logAktivitas, setLogAktivitas] = useState<any[]>([]);
+  const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
+  const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Binaan' });
+
+  // ==========================================
+  // FUNGSI PENCATAT LOG AKTIVITAS (AUDIT TRAIL)
+  // ==========================================
+  const catatLogAktivitas = async (aksi: string) => {
+    if (!profilPendamping.username) return;
+    try {
+      await addDoc(collection(db, "log_aktivitas"), {
+        id_rayon: profilPendamping.id_rayon,
+        aktor: `Pendamping (${profilPendamping.nama})`,
+        username: profilPendamping.username,
+        role: "pendamping",
+        aksi: aksi,
+        timestamp: Date.now(),
+        waktu_format: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
+      });
+    } catch (e) { console.error("Gagal mencatat log", e); }
+  };
+
   // ==========================================
   // API HELPER: CLOUDINARY UPLOAD
   // ==========================================
@@ -65,7 +91,6 @@ export default function DashboardPendamping() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", "siakad_upload"); 
-    // PEMISAH JALUR RAW DAN IMAGE AGAR TERHINDAR ERROR 401
     const resourceType = file.type.startsWith('image/') ? 'image' : 'raw';
     
     const res = await fetch(`https://api.cloudinary.com/v1_1/dcmdaghbq/${resourceType}/upload`, {
@@ -88,7 +113,6 @@ export default function DashboardPendamping() {
           if (!snap.empty) {
             const p = snap.docs[0].data();
             
-            // 🛡️ Satpam Role: Hanya Pendamping yang Boleh Masuk
             if (p.role !== 'pendamping') {
               alert(`Akses Ditolak! Jabatan Anda adalah "${p.role}". Halaman ini khusus Pendamping.`);
               signOut(auth);
@@ -110,27 +134,19 @@ export default function DashboardPendamping() {
             ambilDataKaderBinaan(p.username);
             
             if(p.id_rayon){
-              // Tarik Nama Asli Rayon & Pengaturan Cetak Kop
               onSnapshot(doc(db, "users", p.id_rayon), (rayonSnap) => {
                 if (rayonSnap.exists()) {
                   const rData = rayonSnap.data();
                   setNamaRayonInduk(rData.nama || p.id_rayon);
-                  setPengaturanCetak({ 
-                    kopSuratUrl: rData.kopSuratUrl || '', 
-                    footerUrl: rData.footerUrl || '' 
-                  });
+                  setPengaturanCetak({ kopSuratUrl: rData.kopSuratUrl || '', footerUrl: rData.footerUrl || '' });
                 }
               });
 
-              // MENDENGARKAN PENGATURAN BOBOT DARI RAYON SECARA GLOBAL
               onSnapshot(doc(db, "pengaturan_rayon", p.id_rayon), (docSnap) => {
                 if (docSnap.exists() && docSnap.data().bobot_penilaian) {
-                  // Ambil bobot khusus untuk jenjang tugas pendamping ini
                   const bobotJenjangIni = docSnap.data().bobot_penilaian[p.jenjangTugas || 'MAPABA'] || [];
                   setKategoriBobot(bobotJenjangIni);
-                } else {
-                  setKategoriBobot([]);
-                }
+                } else { setKategoriBobot([]); }
               });
 
               onSnapshot(doc(db, "kurikulum_rayon", p.id_rayon), (docSnap) => {
@@ -150,6 +166,43 @@ export default function DashboardPendamping() {
                 snap.forEach((doc) => tesList.push({ id: doc.id, ...doc.data() }));
                 setListTes(tesList);
               });
+
+              // ---> PENDENGAR FITUR BARU: JADWAL & NOTIFIKASI <---
+              onSnapshot(collection(db, "jadwal_kegiatan"), (snap) => {
+                const listJadwal: any[] = [];
+                snap.forEach(doc => {
+                  const d = doc.data();
+                  // Tampilkan jadwal Komisariat, jadwal Rayon sendiri, atau jadwal bikinan pendamping ini sendiri
+                  if (d.pembuat === "Komisariat" || d.id_rayon === p.id_rayon) {
+                    listJadwal.push({ id: doc.id, ...d });
+                  }
+                });
+                listJadwal.sort((a, b) => b.timestamp - a.timestamp);
+                setJadwalKegiatan(listJadwal);
+              });
+
+              onSnapshot(collection(db, "notifikasi_global"), (snap) => {
+                const listNotif: any[] = [];
+                snap.forEach(doc => {
+                  const d = doc.data();
+                  // Tampilkan jika target Semua, Pendamping, atau jika dia sendiri pengirimnya
+                  if (d.target === "Semua" || d.target === "Pendamping" || d.pengirim_id === p.username) {
+                     if (d.pengirim === "Pusat Komisariat" || d.id_rayon === p.id_rayon) {
+                       listNotif.push({ id: doc.id, ...d });
+                     }
+                  }
+                });
+                listNotif.sort((a, b) => b.timestamp - a.timestamp);
+                setNotifikasiGlobal(listNotif);
+              });
+
+              // Log aktivitas khusus milik dia sendiri
+              onSnapshot(query(collection(db, "log_aktivitas"), where("username", "==", p.username)), (snap) => {
+                const listLog: any[] = [];
+                snap.forEach(doc => listLog.push({ id: doc.id, ...doc.data() }));
+                listLog.sort((a, b) => b.timestamp - a.timestamp);
+                setLogAktivitas(listLog.slice(0, 50));
+              });
             }
           }
         });
@@ -166,13 +219,11 @@ export default function DashboardPendamping() {
   useEffect(() => {
     if (!selectedKader) return;
     
-    // Tarik Hasil KHS Akhir (A/B/C/D)
     const unsubscribeNilai = onSnapshot(doc(db, "nilai_khs", selectedKader), (docSnap) => {
       if (docSnap.exists()) setNilaiKaderRealtime(docSnap.data());
       else setNilaiKaderRealtime({});
     });
 
-    // Tarik Data Evaluasi (Matriks Nilai) -> BOBOT SUDAH DARI PENGATURAN RAYON
     const unsubscribeKeaktifan = onSnapshot(doc(db, "evaluasi_kader", selectedKader), (docSnap) => {
       if (docSnap.exists() && docSnap.data()[selectedJenjang]) {
         const data = docSnap.data()[selectedJenjang];
@@ -205,7 +256,6 @@ export default function DashboardPendamping() {
            setBerkasTugas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         });
 
-        // Ambil Data Jawaban Tes Hanya Untuk Binaan Saja
         const qTes = query(collection(db, "jawaban_tes"), where("nim", "in", listKader.map(k => k.nim)));
         onSnapshot(qTes, (snap) => {
           setRiwayatTesBinaan(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -229,6 +279,7 @@ export default function DashboardPendamping() {
       let finalFotoUrl = profilPendamping.fotoUrl;
       if (fotoFile) finalFotoUrl = await uploadToCloudinary(fotoFile); 
       await updateDoc(doc(db, "users", profilPendamping.username), { noHp: profilPendamping.noHp, alamat: profilPendamping.alamat, fotoUrl: finalFotoUrl });
+      catatLogAktivitas("Memperbarui foto/data profil pendamping.");
       alert("Profil diperbarui!");
       setIsEditingProfil(false); setFotoFile(null);
     } catch (error) { alert("Gagal simpan"); } finally { setIsSavingProfil(false); }
@@ -237,21 +288,86 @@ export default function DashboardPendamping() {
   const handleVerifikasiTugas = async (idBerkas: string) => {
     try {
       await updateDoc(doc(db, "berkas_kader", idBerkas), { status: 'Selesai' });
+      catatLogAktivitas(`Memverifikasi (ACC) tugas kader.`);
       alert("Tugas Terverifikasi Selesai.");
     } catch (error) { alert("Error verifikasi tugas."); }
   };
 
   const handleLihatHasilTes = (tes: any) => {
     setSelectedTesHasil(tes);
-    // Filter jawaban tes hanya yang dikerjakan oleh kader binaan
     const jawabanBinaan = riwayatTesBinaan.filter(r => r.id_tes === tes.id);
     jawabanBinaan.sort((a: any, b: any) => b.timestamp - a.timestamp);
     setJawabanTesViewer(jawabanBinaan);
   };
 
-  const handleDownloadPDF = () => {
-    window.print();
+  const handleDownloadPDF = () => { window.print(); };
+
+  // ---> FITUR BARU: EXPORT EXCEL BINAAN <---
+  const handleExportKaderBinaan = () => {
+    if (kaderBinaan.length === 0) return alert("Belum ada data kader binaan!");
+    const dataToExport = kaderBinaan.map((k, i) => ({
+      "No": i + 1,
+      "NIM": k.nim || '-',
+      "Nama Lengkap": k.nama || '-',
+      "NIA": k.nia || '-',
+      "Jenjang Terakhir": k.jenjang || 'MAPABA',
+      "Email": k.email || '-',
+      "Status": k.status || 'Aktif'
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Kader Binaan");
+    XLSX.writeFile(workbook, `Data_Binaan_${profilPendamping.nama}_${Date.now()}.xlsx`);
+    catatLogAktivitas("Mengekspor (Download Excel) daftar kader binaan.");
   };
+
+  // ---> FITUR BARU: KALENDER JADWAL <---
+  const handleTambahJadwal = async (e: React.FormEvent) => {
+    e.preventDefault(); setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "jadwal_kegiatan"), {
+        ...formJadwal,
+        id_rayon: profilPendamping.id_rayon,
+        pembuat: `Pendamping (${profilPendamping.nama})`,
+        pendamping_id: profilPendamping.username,
+        timestamp: Date.now()
+      });
+      catatLogAktivitas(`Menambahkan jadwal mentoring/binaan: ${formJadwal.judul}`);
+      alert("Jadwal berhasil ditambahkan!");
+      setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
+    } catch (error) { alert("Gagal menyimpan jadwal."); } finally { setIsSubmitting(false); }
+  };
+
+  const handleHapusJadwal = async (id: string, judul: string, pembuat: string) => {
+    if (!pembuat.includes(profilPendamping.username) && !pembuat.includes(profilPendamping.nama)) {
+      return alert("Anda hanya bisa menghapus jadwal yang Anda buat sendiri.");
+    }
+    if (!window.confirm(`Hapus jadwal "${judul}"?`)) return;
+    try {
+      await deleteDoc(doc(db, "jadwal_kegiatan", id));
+      catatLogAktivitas(`Menghapus jadwal mentoring: ${judul}`);
+    } catch (error) { alert("Gagal menghapus."); }
+  };
+
+  // ---> FITUR BARU: BROADCAST NOTIFIKASI <---
+  const handleKirimBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault(); setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "notifikasi_global"), {
+        ...formBroadcast,
+        target: "Binaan", 
+        id_rayon: profilPendamping.id_rayon,
+        pengirim: `Pendamping (${profilPendamping.nama})`,
+        pengirim_id: profilPendamping.username,
+        tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
+        timestamp: Date.now()
+      });
+      catatLogAktivitas(`Mengirim Broadcast ke Kader Binaan: ${formBroadcast.judul}`);
+      alert("Pesan Broadcast berhasil dikirim ke Binaan Anda!");
+      setFormBroadcast({ ...formBroadcast, judul: '', pesan: '' });
+    } catch (error) { alert("Gagal mengirim broadcast."); } finally { setIsSubmitting(false); }
+  };
+
 
   // ==========================================
   // PERHITUNGAN RAPORT KHS
@@ -286,10 +402,7 @@ export default function DashboardPendamping() {
         <td className="col-cetak" style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 'bold', color: '#555' }}>{materi.kode}</td>
         <td className="col-cetak" style={{ padding: '6px 10px', textAlign: 'left', color: '#333' }}>{materi.nama}</td>
         <td className="col-cetak" style={{ padding: '6px 10px', textAlign: 'center' }}>{materi.bobot}</td>
-        {/* HANYA READ ONLY DI RAPORT KHS */}
-        <td className="col-cetak" style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: nilaiHuruf !== '-' ? '#27ae60' : '#555' }}>
-           {nilaiHuruf}
-        </td>
+        <td className="col-cetak" style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: nilaiHuruf !== '-' ? '#27ae60' : '#555' }}>{nilaiHuruf}</td>
         <td className="col-cetak" style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: '#1e824c' }}>{nilaiHuruf === '-' ? 0 : sksKaliNilai}</td>
       </tr>
     );
@@ -300,20 +413,11 @@ export default function DashboardPendamping() {
   const totalBobotTersimpan = kategoriBobot.reduce((sum, k) => sum + k.persen, 0);
 
   // ==========================================
-  // FUNGSI PENILAIAN MATRIKS DETAIL (PENDAMPING)
+  // FUNGSI PENILAIAN MATRIKS DETAIL
   // ==========================================
   const handleInputNilaiMentah = (kodeMateri: string, namaKategori: string, value: string) => {
-    let valNum = Number(value);
-    if (valNum > 100) valNum = 100;
-    if (valNum < 0) valNum = 0;
-
-    const updatedNilai = {
-      ...nilaiMentah,
-      [kodeMateri]: {
-        ...(nilaiMentah[kodeMateri] || {}),
-        [namaKategori]: valNum
-      }
-    };
+    let valNum = Number(value); if (valNum > 100) valNum = 100; if (valNum < 0) valNum = 0;
+    const updatedNilai = { ...nilaiMentah, [kodeMateri]: { ...(nilaiMentah[kodeMateri] || {}), [namaKategori]: valNum } };
     setNilaiMentah(updatedNilai);
   };
 
@@ -326,21 +430,19 @@ export default function DashboardPendamping() {
       
       await setDoc(docRef, { ...currentEvaluasi, [selectedJenjang]: { ...jenjangData, nilai_mentah: nilaiMentah } }, { merge: true });
 
-      // Hitung Angka Akhir Berdasarkan Bobot
       let angkaAkhir = 0;
       kategoriBobot.forEach(kat => {
           const score = nilaiMentah[kodeMateri]?.[kat.nama] || 0;
           angkaAkhir += score * (kat.persen / 100);
       });
 
-      // Hitung Konversi Huruf
       const hurufAkhir = getNilaiHuruf(angkaAkhir);
 
-      // Simpan Ke KHS Utama Secara Realtime
       await setDoc(doc(db, "nilai_khs", selectedKader), { 
         [kodeMateri]: hurufAkhir, terakhirDiubah: Date.now(), diubahOleh: `Pendamping (${profilPendamping.nama})` 
       }, { merge: true });
-
+      
+      catatLogAktivitas(`Menyimpan/Update nilai Matriks (${kodeMateri}) untuk kader: ${selectedKader}`);
     } catch (error) { console.error("Gagal auto-save nilai", error); }
   };
 
@@ -350,6 +452,7 @@ export default function DashboardPendamping() {
       const currentEvaluasi = (await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKader)))).docs[0]?.data() || {};
       const jenjangData = currentEvaluasi[selectedJenjang] || { bobot: kategoriBobot, nilai_mentah: nilaiMentah, catatan: '' };
       await setDoc(doc(db, "evaluasi_kader", selectedKader), { ...currentEvaluasi, [selectedJenjang]: { ...jenjangData, catatan: text } }, { merge: true });
+      catatLogAktivitas(`Menulis catatan evaluasi untuk kader: ${selectedKader}`);
     } catch (error) { console.error(error); }
   };
 
@@ -358,11 +461,14 @@ export default function DashboardPendamping() {
   const getHeaderTitle = () => {
     switch (activeMenu) {
       case 'beranda': return 'Dashboard';
+      case 'kalender': return 'Jadwal & Agenda';
+      case 'broadcast': return 'Broadcast';
       case 'profil': return 'Profil Saya';
-      case 'daftar-kader': return 'Binaan Saya';
+      case 'daftar-kader': return 'Daftar Binaan';
       case 'input-nilai': return 'Raport Kaderisasi';
       case 'berkas-tugas': return 'Verifikasi Tugas';
-      case 'tes-pemahaman': return 'Tes Pemahaman';
+      case 'tes-pemahaman': return 'Hasil Tes Binaan';
+      case 'log-aktivitas': return 'Log Aktivitas';
       default: return 'Dashboard Pendamping';
     }
   };
@@ -373,121 +479,47 @@ export default function DashboardPendamping() {
       {/* CSS KHUSUS UNTUK TAMPILAN WEB & CETAK PDF A4 BACKGROUND */}
       <style>{`
         * { box-sizing: border-box; } /* KUNCI RESPONSIFITAS GLOBAL */
-
-        /* Custom scrollbar elegan untuk Webkit (Chrome, Safari, Edge) */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.4); }
-
-        /* Mencegah input field melebihi layar di HP */
         input, select, textarea { max-width: 100%; }
-
         @media (min-width: 768px) { aside { left: 0 !important; } main { margin-left: 260px !important; } .menu-burger { display: none !important; } }
-        
-        /* Smooth scrolling di layar sentuh (iOS/Android) */
-        div[style*="overflowX: auto"], div[style*="overflow-x: auto"] {
-          -webkit-overflow-scrolling: touch;
-        }
-
+        div[style*="overflowX: auto"], div[style*="overflow-x: auto"] { -webkit-overflow-scrolling: touch; }
         .tabel-utama { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; min-width: 600px; }
         .tabel-utama thead tr { border-top: 2px solid #555; border-bottom: 2px solid #555; background-color: #fff; }
         .tabel-utama th { padding: 10px; color: #333; text-align: center; font-weight: bold; }
         .tabel-utama td { padding: 8px 10px; border-bottom: 1px solid #ddd; color: #333; }
-        
-        /* LEMPAR WADAH PRINT JAUH KELUAR LAYAR AGAR TIDAK MENUTUPI TOMBOL DI HP */
-        .print-layout-container { 
-           position: absolute !important; 
-           top: -9999px !important; 
-           left: -9999px !important; 
-           width: 1px !important; 
-           height: 1px !important; 
-           overflow: hidden !important; 
-           opacity: 0 !important; 
-           pointer-events: none !important; 
-           z-index: -9999 !important;
-        }
-
-        /* MATIKAN GAMBAR BACKGROUND A4 SECARA PAKSA DI LAYAR HP/WEB */
-        @media screen {
-          .bg-kertas-a4 { display: none !important; pointer-events: none !important; }
-        }
+        .print-layout-container { position: absolute !important; top: -9999px !important; left: -9999px !important; width: 1px !important; height: 1px !important; overflow: hidden !important; opacity: 0 !important; pointer-events: none !important; z-index: -9999 !important; }
+        @media screen { .bg-kertas-a4 { display: none !important; pointer-events: none !important; } }
         
         @media print {
           @page { size: A4 portrait; margin: 0; }
           body, html { background-color: transparent !important; margin: 0; padding: 0; height: auto !important; }
-          
-          /* BATALKAN OVERFLOW HIDDEN AGAR HALAMAN TIDAK TERPOTONG / BLANK */
-          div[style*="overflow: hidden"], div[style*="overflowY: auto"] {
-             overflow: visible !important;
-             height: auto !important;
-          }
-
-          /* SEMBUNYIKAN SIDEBAR DAN MAIN UI WEB */
+          div[style*="overflow: hidden"], div[style*="overflowY: auto"] { overflow: visible !important; height: auto !important; }
           aside, main, header, .no-print { display: none !important; }
-          
-          /* ------------------------------------------------------------------- */
-          /* PERBAIKAN BUG CETAK KHS: KEMBALIKAN POSISI KE LAYAR                 */
-          /* ------------------------------------------------------------------- */
-          .print-layout-container { 
-            display: block !important; 
-            position: relative !important;
-            top: 0 !important;              /* MENGEMBALIKAN TABEL KE ATAS KERTAS */
-            left: 0 !important;             /* MENGEMBALIKAN TABEL KE ATAS KERTAS */
-            width: 100% !important;
-            height: auto !important;       
-            overflow: visible !important;  
-            background-color: transparent !important;
-            opacity: 1 !important; 
-            z-index: 10 !important; 
-          }
-          
-          .print-layout-container * {
-            color: #000 !important; 
-            font-family: "Arial", "Arial Narrow", sans-serif !important; 
-            line-height: 1.15 !important;
-          }
-          
+          .print-layout-container { display: block !important; position: relative !important; top: 0 !important; left: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; background-color: transparent !important; opacity: 1 !important; z-index: 10 !important; }
+          .print-layout-container * { color: #000 !important; font-family: "Arial", "Arial Narrow", sans-serif !important; line-height: 1.15 !important; }
           .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
           .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
-
-          /* AREA KONTEN TENGAH (LAPISAN DEPAN): Diberi margin/padding atas 85mm agar tidak menabrak KOP SURAT */
-          .print-content-area {
-            position: relative !important;
-            z-index: 10 !important; 
-            padding: 50mm 25mm 30mm 25mm !important; 
-            background-color: transparent !important; 
-          }
-
+          .print-content-area { position: relative !important; z-index: 10 !important; padding: 85mm 20mm 30mm 20mm !important; background-color: transparent !important; }
           table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
           tr { page-break-inside: avoid !important; background-color: transparent !important; }
-          th, td { 
-             border: 1px solid #000 !important; 
-             padding: 4px 6px !important; 
-             font-size: 11pt !important; 
-             background-color: transparent !important; 
-          }
+          th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; }
           th { font-weight: bold !important; text-align: center !important; }
-          
           .tabel-biodata { margin-bottom: 15px !important; border: none !important; width: 100% !important; }
           .tabel-biodata td, .tabel-biodata tr { border: none !important; padding: 3px 0 !important; text-align: left !important; }
-          
           .no-print { display: none !important; } 
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
       `}</style>
 
-      {/* OVERLAY HP (Muncul saat sidebar terbuka, klik untuk menutup) */}
       {isSidebarOpen && (
-        <div 
-          className="no-print"
-          onClick={() => setIsSidebarOpen(false)} 
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 45 }} 
-        />
+        <div className="no-print" onClick={() => setIsSidebarOpen(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 45 }} />
       )}
       
       {/* SIDEBAR PENDAMPING */}
-      <aside className="no-print" style={{ width: '260px', background: 'linear-gradient(135deg, #1e824c 0%, #154360 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
+      <aside className="no-print" style={{ width: '260px', background: 'linear-gradient(135deg, #0000FF 0%, #000090 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
         <div style={{ padding: '20px', fontSize: '1.2rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>🏛️ SIAKAD PMII</span>
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
@@ -499,11 +531,14 @@ export default function DashboardPendamping() {
         <ul style={{ listStyle: 'none', padding: '10px 0', flex: 1, margin: 0, overflowY: 'auto' }}>
           {[
             { id: 'beranda', icon: '🏠', label: 'Dashboard' }, 
+            { id: 'kalender', icon: '📅', label: 'Jadwal Mentoring' },
+            { id: 'broadcast', icon: '📡', label: 'Pengumuman Binaan' },
             { id: 'profil', icon: '👤', label: 'Profil Saya' }, 
             { id: 'daftar-kader', icon: '👥', label: 'Daftar Binaan' }, 
             { id: 'input-nilai', icon: '📊', label: 'Raport Kaderisasi' }, 
             { id: 'berkas-tugas', icon: '📋', label: 'Verifikasi Tugas', badge: berkasTugas.filter(b => b.status === 'Menunggu Verifikasi').length || null },
             { id: 'tes-pemahaman', icon: '📝', label: 'Hasil Tes Binaan' },
+            { id: 'log-aktivitas', icon: '🕵️', label: 'Log Aktivitas' },
           ].map((item) => (
             <li key={item.id}>
               <button onClick={() => { setActiveMenu(item.id); setIsSidebarOpen(false); }} style={{ width: '100%', textAlign: 'left', background: activeMenu === item.id ? 'rgba(255, 255, 255, 0.1)' : 'transparent', border: 'none', color: activeMenu === item.id ? '#f1c40f' : '#d1d1d1', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent', transition: '0.2s', fontWeight: activeMenu === item.id ? 'bold' : 'normal', fontSize: '0.85rem' }}>
@@ -558,7 +593,6 @@ export default function DashboardPendamping() {
                 </div>
               </div>
               
-              {/* PAPAN INFORMASI RAYON */}
               <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
                 <div style={{ flex: '1 1 300px', backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
                   <h4 style={{ margin: '0 0 15px 0', color: '#1e824c' }}>📌 Papan Instruksi Tugas Rayon</h4>
@@ -574,8 +608,104 @@ export default function DashboardPendamping() {
 
             </div>
           )}
+
+          {/* MENU 2: KALENDER & JADWAL (FITUR BARU) */}
+          {activeMenu === 'kalender' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📅 Jadwal Kegiatan & Mentoring</h3>
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                    <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px', fontSize: '0.9rem' }}>➕ Jadwalkan Mentoring</h4>
+                    <form onSubmit={handleTambahJadwal} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <input type="text" placeholder="Judul Kegiatan (Cth: Kumpul Binaan)" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                      <input type="datetime-local" required value={formJadwal.tanggal} onChange={e => setFormJadwal({...formJadwal, tanggal: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                      <input type="text" placeholder="Lokasi / Media" required value={formJadwal.lokasi} onChange={e => setFormJadwal({...formJadwal, lokasi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                      <textarea rows={3} placeholder="Deskripsi Singkat" value={formJadwal.deskripsi} onChange={e => setFormJadwal({...formJadwal, deskripsi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', resize: 'vertical', boxSizing: 'border-box' }} />
+                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Simpan Agenda</button>
+                    </form>
+                  </div>
+                  <div style={{ flex: '2 1 450px', overflowX: 'auto', boxSizing: 'border-box' }}>
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      {jadwalKegiatan.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999' }}>Belum ada agenda terjadwal.</div>
+                      ) : (
+                        jadwalKegiatan.map(jadwal => {
+                          const isMine = jadwal.pendamping_id === profilPendamping.username;
+                          const labelPembuat = jadwal.pembuat === 'Komisariat' ? 'Pusat Komisariat' : jadwal.pembuat === 'Rayon' ? `Pengurus Rayon` : isMine ? 'Jadwal Anda' : 'Pendamping Lain';
+                          const colorLabel = jadwal.pembuat === 'Komisariat' ? '#f1c40f' : jadwal.pembuat === 'Rayon' ? '#e74c3c' : '#3498db';
+
+                          return (
+                            <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', borderLeft: `4px solid ${colorLabel}`, padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
+                                  <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
+                                  <span style={{ backgroundColor: '#f8f9fa', color: '#555', padding: '2px 6px', borderRadius: '10px', fontSize: '0.65rem', border: '1px solid #ddd' }}>{labelPembuat}</span>
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: '#e67e22', fontWeight: 'bold', marginBottom: '5px' }}>🗓️ {jadwal.tanggal.replace('T', ' - ')} | 📍 {jadwal.lokasi}</div>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: '#555', fontStyle: 'italic' }}>{jadwal.deskripsi}</p>
+                              </div>
+                              {isMine && (
+                                <button onClick={() => handleHapusJadwal(jadwal.id, jadwal.judul, jadwal.pembuat)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Jadwal Anda">🗑️</button>
+                              )}
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MENU 3: BROADCAST NOTIFIKASI (FITUR BARU) */}
+          {activeMenu === 'broadcast' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📡 Pusat Pengumuman Binaan</h3>
+                <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px' }}>Kirimkan pesan mendesak atau instruksi tugas yang akan muncul di notifikasi khusus untuk kader binaan Anda.</p>
+                
+                <div style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', maxWidth: '600px' }}>
+                  <form onSubmit={handleKirimBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Judul Pesan</label>
+                      <input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} placeholder="Cth: Panggilan Kumpul Binaan" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Isi Pesan Lengkap</label>
+                      <textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} placeholder="Detail pengumuman..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', resize: 'vertical' }} />
+                    </div>
+                    <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                      {isSubmitting ? 'Mengirim...' : '🚀 Siarkan ke Seluruh Binaan'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                 <h4 style={{ margin: '0 0 15px 0', color: '#0d1b2a', fontSize: '1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>🔔 Kotak Masuk Notifikasi Anda</h4>
+                 <div style={{ display: 'grid', gap: '10px' }}>
+                    {notifikasiGlobal.length === 0 ? (
+                      <p style={{ color: '#999', fontSize: '0.85rem', fontStyle: 'italic' }}>Belum ada pengumuman masuk untuk Anda.</p>
+                    ) : (
+                      notifikasiGlobal.map(notif => (
+                        <div key={notif.id} style={{ padding: '15px', backgroundColor: '#fcfcfc', border: '1px solid #eee', borderLeft: '4px solid #f1c40f', borderRadius: '4px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                            <strong style={{ color: '#333' }}>{notif.judul}</strong>
+                            <span style={{ fontSize: '0.7rem', color: '#888' }}>{notif.tanggal}</span>
+                          </div>
+                          <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#555' }}>{notif.pesan}</p>
+                          <div style={{ fontSize: '0.7rem', color: '#1e824c', fontWeight: 'bold' }}>Dari: {notif.pengirim}</div>
+                        </div>
+                      ))
+                    )}
+                 </div>
+              </div>
+            </div>
+          )}
           
-          {/* MENU 1: PROFIL */}
+          {/* MENU 4: PROFIL */}
           {activeMenu === 'profil' && (
             <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', overflow: 'hidden' }}>
               <div style={{ backgroundColor: '#4a637d', padding: '15px 20px', color: 'white', fontWeight: 'bold' }}>PROFIL SAYA</div>
@@ -628,10 +758,16 @@ export default function DashboardPendamping() {
             </div>
           )}
 
-          {/* MENU 2: DAFTAR KADER */}
+          {/* MENU 5: DAFTAR KADER */}
           {activeMenu === 'daftar-kader' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-              <p style={{ color: '#555', fontSize: '0.85rem', marginBottom: '15px' }}>Daftar kader yang diplotkan langsung kepada Anda sebagai pendamping.</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                <p style={{ color: '#555', fontSize: '0.85rem', margin: 0 }}>Daftar kader yang diplotkan langsung kepada Anda sebagai pendamping.</p>
+                <button onClick={handleExportKaderBinaan} style={{ backgroundColor: '#27ae60', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  📥 Export Excel Binaan
+                </button>
+              </div>
+
               <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '500px' }}>
                   <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#333' }}><th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>NIM</th><th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Nama Kader</th><th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #ddd' }}>Aksi</th></tr></thead>
@@ -653,7 +789,7 @@ export default function DashboardPendamping() {
             </div>
           )}
 
-          {/* MENU 3: INPUT NILAI MATRIKS (AUTO-CALC) */}
+          {/* MENU 6: INPUT NILAI MATRIKS (AUTO-CALC) */}
           {activeMenu === 'input-nilai' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               
@@ -701,8 +837,8 @@ export default function DashboardPendamping() {
                       <thead>
                         <tr>
                           <th style={{ width: '5%' }}>No</th>
-                          <th style={{ width: '12%', textAlign: 'center' }}>Kode</th>
-                          <th style={{ width: '53%', textAlign: 'center' }}>Nama Materi</th>
+                          <th style={{ width: '12%', textAlign: 'left' }}>Kode Materi</th>
+                          <th style={{ width: '53%', textAlign: 'left' }}>Nama Materi</th>
                           <th style={{ width: '10%' }}>SKS</th>
                           <th style={{ width: '10%' }}>Nilai Huruf</th>
                           <th style={{ width: '10%' }}>SKS x Nilai</th>
@@ -836,7 +972,7 @@ export default function DashboardPendamping() {
             </div>
           )}
 
-          {/* MENU 4: VERIFIKASI TUGAS */}
+          {/* MENU 7: VERIFIKASI TUGAS */}
           {activeMenu === 'berkas-tugas' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <h3 style={{ color: '#1e824c', margin: '0 0 15px 0', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>Verifikasi Tugas Kader Binaan</h3>
@@ -860,7 +996,7 @@ export default function DashboardPendamping() {
             </div>
           )}
 
-          {/* MENU 5: HASIL TES PEMAHAMAN BINAAN */}
+          {/* MENU 8: HASIL TES PEMAHAMAN BINAAN */}
           {activeMenu === 'tes-pemahaman' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {selectedTesHasil ? (
@@ -1001,6 +1137,39 @@ export default function DashboardPendamping() {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* MENU 9: LOG AKTIVITAS (FITUR BARU) */}
+          {activeMenu === 'log-aktivitas' && (
+            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+              <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
+                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>🕵️ Log Aktivitas Sistem Saya</h3>
+                <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Rekaman aktivitas yang Anda lakukan sebagai Pendamping (Maksimal 50 aktivitas terakhir).</p>
+              </div>
+
+              <div style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxSizing: 'border-box' }}>
+                <table className="tabel-utama" style={{ minWidth: '600px' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left', width: '180px' }}>Waktu Sistem</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Aktivitas / Aksi yang Dilakukan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logAktivitas.length === 0 ? (
+                      <tr><td colSpan={2} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada catatan aktivitas.</td></tr>
+                    ) : (
+                      logAktivitas.map((log) => (
+                        <tr key={log.id} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ padding: '10px', color: '#666', fontSize: '0.8rem' }}>{log.waktu_format}</td>
+                          <td style={{ padding: '10px', color: '#333', fontStyle: 'italic', fontSize: '0.85rem' }}>{log.aksi}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

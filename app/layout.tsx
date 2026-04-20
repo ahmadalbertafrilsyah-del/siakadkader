@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import "@/app/globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,18 +12,46 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// --- KODINGAN SEO GOOGLE (UPGRADED) ---
 export const metadata: Metadata = {
-  title: "SIAKAD PMII",
-  description: "Sistem Informasi dan Akademik Kaderisasi PK. PMII Sunan Ampel Malang",
+  title: {
+    default: "SIAKAD PMII - PK. PMII Sunan Ampel Malang",
+    template: "%s | SIAKAD PMII"
+  },
+  description: "Sistem Informasi dan Akademik Kaderisasi (SIAKAD) PK. PMII Sunan Ampel Malang. Platform digitalisasi untuk manajemen kader, raport, kurikulum, dan administrasi persuratan.",
+  keywords: [
+    "PMII", 
+    "SIAKAD PMII", 
+    "Kaderisasi PMII", 
+    "PK PMII Sunan Ampel Malang", 
+    "PMII UIN Malang",
+    "Aplikasi Kaderisasi", 
+    "Manajemen Kader"
+  ],
+  authors: [{ name: "PK. PMII Sunan Ampel Malang" }],
+  openGraph: {
+    title: "SIAKAD PMII - PK. PMII Sunan Ampel Malang",
+    description: "Platform digital manajemen kader PMII yang adaptif dan cakap digital untuk PK. PMII Sunan Ampel Malang.",
+    url: "https://siakad.pmii-uinmalang.or.id",
+    siteName: "SIAKAD PMII",
+    locale: "id_ID",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  }
 };
+// --------------------------------------
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // lang diubah ke "id" agar sesuai dengan bahasa website
   return (
-    <html lang="en">
+    <html lang="id">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

@@ -40,7 +40,10 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
-  }
+  },
+  verification: {
+    google: "9WAeDKwCccLxdpW0BAlYJmDJOg-hwNzAqkiSs0PL9WI",
+  },
 };
 // --------------------------------------
 

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     default: "SIAKAD PMII Sunan Ampel Malang",
     template: "%s | SIAKAD PMII"
   },
-  description: "Sistem Informasi dan Akademik Kaderisasi (SIAKAD) PK. PMII Sunan Ampel Malang. Platform digitalisasi untuk manajemen kader, raport, kurikulum, dan administrasi persuratan.",
+  description: "Sistem Informasi Akademik dan Kaderisasi (SIAKAD) PK. PMII Sunan Ampel Malang. Platform digitalisasi untuk manajemen kader, raport, kurikulum, dan administrasi persuratan.",
   keywords: [
     "PMII", 
     "SIAKAD PMII", 

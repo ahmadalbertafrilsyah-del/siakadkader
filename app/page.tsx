@@ -8,7 +8,7 @@ import React, { useState, useEffect } from 'react';
 
 // --- TAMPILAN DEFAULT LOGIN ---
 const defaultDesign = {
-  nama: "Sistem Informasi dan Akademik Kaderisasi (SIAKAD)",
+  nama: "Sistem Informasi Akademik dan Kaderisasi (SIAKAD)",
   logo: "https://i.ibb.co.com/nNhTXzYD/Asset-6-4x.png", 
   warnaUtama: "#004a87", 
   warnaAksen: "#f1c40f", 
@@ -189,7 +189,7 @@ export default function PintuMasukSiKader() {
 
       {/* JUDUL BESAR */}
       <div style={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', textAlign: 'center', padding: '15px 5%', borderBottom: `3px solid ${design.warnaAksen}` }}>
-        <h2 style={{ letterSpacing: '2px', margin: 0, color: design.warnaUtama, fontSize: 'clamp(1.1rem, 3vw, 1.4rem)' }}>GERBANG MASUK SIAKAD</h2>
+        <h2 style={{ letterSpacing: '2px', margin: 0, color: design.warnaUtama, fontSize: 'clamp(1.1rem, 3vw, 1.4rem)' }}>SISTEM INFORMASI AKADEMIK DAN KADERISASI (SIAKAD)</h2>
       </div>
 
       {/* PENGUMUMAN BERJALAN (SLIDER) */}

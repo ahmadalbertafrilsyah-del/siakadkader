@@ -12,10 +12,9 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// --- KODINGAN SEO GOOGLE (UPGRADED) ---
 export const metadata: Metadata = {
   title: {
-    default: "SIAKAD PMII - PK. PMII Sunan Ampel Malang",
+    default: "SIAKAD PMII Sunan Ampel Malang",
     template: "%s | SIAKAD PMII"
   },
   description: "Sistem Informasi dan Akademik Kaderisasi (SIAKAD) PK. PMII Sunan Ampel Malang. Platform digitalisasi untuk manajemen kader, raport, kurikulum, dan administrasi persuratan.",
@@ -30,7 +29,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "PK. PMII Sunan Ampel Malang" }],
   openGraph: {
-    title: "SIAKAD PMII - PK. PMII Sunan Ampel Malang",
+    title: "SIAKAD PMII Sunan Ampel Malang",
     description: "Platform digital manajemen kader PMII yang adaptif dan cakap digital untuk PK. PMII Sunan Ampel Malang.",
     url: "https://siakad.pmii-uinmalang.or.id",
     siteName: "SIAKAD PMII",
@@ -45,14 +44,12 @@ export const metadata: Metadata = {
     google: "9WAeDKwCccLxdpW0BAlYJmDJOg-hwNzAqkiSs0PL9WI",
   },
 };
-// --------------------------------------
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // lang diubah ke "id" agar sesuai dengan bahasa website
   return (
     <html lang="id">
       <body

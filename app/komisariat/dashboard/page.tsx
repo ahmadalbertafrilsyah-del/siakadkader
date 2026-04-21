@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { collection, getDocs, query, setDoc, doc, deleteDoc, addDoc, onSnapshot, where, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, query, setDoc, doc, deleteDoc, addDoc, onSnapshot, where, orderBy, limit, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../../../lib/firebase';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signOut as signOutSecondary } from 'firebase/auth';
-import * as XLSX from 'xlsx'; // Pastikan package 'xlsx' terinstall (npm install xlsx)
+import * as XLSX from 'xlsx';
 
 export default function DashboardKomisariat() {
   const router = useRouter();
@@ -23,6 +23,11 @@ export default function DashboardKomisariat() {
   const [masterKurikulum, setMasterKurikulum] = useState<any[]>([]);
   const [masterTesPusat, setMasterTesPusat] = useState<any[]>([]);
 
+  // --- STATE FILTER & EDIT KURIKULUM PUSAT ---
+  const [filterJenjangKurikulum, setFilterJenjangKurikulum] = useState('MAPABA');
+  const [editingKurikulumId, setEditingKurikulumId] = useState<string | null>(null);
+  const [editKurikulumForm, setEditKurikulumForm] = useState({ kode: '', nama: '', muatan: '', bobot: 0 });
+
   // --- STATE PENGUMUMAN LOGIN ---
   const [pengumumanList, setPengumumanList] = useState<string[]>([]);
   const [newPengumuman, setNewPengumuman] = useState('');
@@ -31,8 +36,10 @@ export default function DashboardKomisariat() {
   // --- STATE FITUR BARU: KALENDER, BROADCAST, LOG AKTIVITAS ---
   const [jadwalKegiatan, setJadwalKegiatan] = useState<any[]>([]);
   const [logAktivitas, setLogAktivitas] = useState<any[]>([]);
+  const [riwayatBroadcast, setRiwayatBroadcast] = useState<any[]>([]); // Menyimpan riwayat broadcast
+
   const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
-  const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Semua' });
+  const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Semua', batas_waktu: '' });
 
   // --- STATE FORM INPUT RAYON & PUSAT ---
   const [formRayon, setFormRayon] = useState({ id_rayon: '', nama_rayon: '', password: '' });
@@ -112,7 +119,6 @@ export default function DashboardKomisariat() {
       setStatGlobal(prev => ({ ...prev, totalKaderAktif: kaderCount, totalPendamping: pendampingCount, totalRayon: rayonCount }));
     });
 
-    // LISTENER LAINNYA
     const unsubSurat = onSnapshot(collection(db, "pengajuan_surat"), (snap) => { setStatGlobal(prev => ({ ...prev, totalSuratKeluar: snap.size })); });
     
     const unsubKurikulumPusat = onSnapshot(collection(db, "master_kurikulum_pusat"), (snap) => {
@@ -127,16 +133,23 @@ export default function DashboardKomisariat() {
       if (docSnap.exists() && docSnap.data().listTeks) setPengumumanList(docSnap.data().listTeks);
     });
 
-    // LISTENER FITUR BARU: JADWAL & LOG AKTIVITAS
     const unsubJadwal = onSnapshot(query(collection(db, "jadwal_kegiatan"), orderBy("timestamp", "desc")), (snap) => {
       const listJadwal: any[] = []; snap.forEach(doc => listJadwal.push({ id: doc.id, ...doc.data() })); setJadwalKegiatan(listJadwal);
+    });
+
+    // LISTENER UNTUK RIWAYAT BROADCAST
+    const unsubBroadcast = onSnapshot(query(collection(db, "notifikasi_global"), where("pengirim", "==", "Pusat Komisariat")), (snap) => {
+      const listNotif: any[] = [];
+      snap.forEach(doc => listNotif.push({ id: doc.id, ...doc.data() }));
+      listNotif.sort((a, b) => b.timestamp - a.timestamp); // Sort in memory untuk menghindari error index
+      setRiwayatBroadcast(listNotif);
     });
 
     const unsubLog = onSnapshot(query(collection(db, "log_aktivitas"), orderBy("timestamp", "desc"), limit(50)), (snap) => {
       const listLog: any[] = []; snap.forEach(doc => listLog.push({ id: doc.id, ...doc.data() })); setLogAktivitas(listLog);
     });
 
-    return () => { unsubscribeAuth(); unsubUsers(); unsubSurat(); unsubKurikulumPusat(); unsubTesPusat(); unsubPengumuman(); unsubJadwal(); unsubLog(); };
+    return () => { unsubscribeAuth(); unsubUsers(); unsubSurat(); unsubKurikulumPusat(); unsubTesPusat(); unsubPengumuman(); unsubJadwal(); unsubBroadcast(); unsubLog(); };
   }, [router]);
 
 
@@ -191,7 +204,7 @@ export default function DashboardKomisariat() {
     } catch (error) { alert("Gagal menghapus."); }
   };
 
-  // 3. KIRIM BROADCAST NOTIFIKASI
+  // 3. KIRIM & HAPUS BROADCAST NOTIFIKASI
   const handleKirimBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -204,8 +217,16 @@ export default function DashboardKomisariat() {
       });
       catatLogAktivitas(`Mengirim Broadcast (${formBroadcast.target}): ${formBroadcast.judul}`);
       alert("Pesan Broadcast berhasil disiarkan!");
-      setFormBroadcast({ judul: '', pesan: '', target: 'Semua' });
+      setFormBroadcast({ judul: '', pesan: '', target: 'Semua', batas_waktu: '' });
     } catch (error) { alert("Gagal mengirim broadcast."); } finally { setIsSubmitting(false); }
+  };
+
+  const handleHapusBroadcast = async (id: string, judul: string) => {
+    if (!window.confirm(`Hapus/tarik pesan broadcast "${judul}"?`)) return;
+    try {
+      await deleteDoc(doc(db, "notifikasi_global", id));
+      catatLogAktivitas(`Menarik/Menghapus pesan Broadcast: ${judul}`);
+    } catch (error) { alert("Gagal menghapus broadcast."); }
   };
 
 
@@ -253,6 +274,31 @@ export default function DashboardKomisariat() {
     } catch (error: any) { alert("Gagal membuat akun Rayon: " + error.message); } finally { setIsSubmitting(false); }
   };
 
+  // ---> FUNGSI MENGUBAH STATUS & MENGHAPUS RAYON <---
+  const handleUbahStatusRayon = async (idRayon: string, statusSekarang: string) => {
+    const statusBaru = statusSekarang === "Aktif" ? "Pasif" : "Aktif";
+    if (!window.confirm(`Ubah status akun rayon ini menjadi ${statusBaru}?`)) return;
+    try {
+      await updateDoc(doc(db, "users", idRayon), { status: statusBaru });
+      catatLogAktivitas(`Mengubah status Rayon ${idRayon} menjadi ${statusBaru}.`);
+    } catch (error) {
+      alert("Gagal mengubah status rayon.");
+    }
+  };
+
+  const handleHapusRayon = async (idRayon: string, namaRayon: string) => {
+    if (!window.confirm(`PERINGATAN!\nAnda yakin ingin menghapus permanen akun Rayon "${namaRayon}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    try {
+      await deleteDoc(doc(db, "users", idRayon));
+      await deleteDoc(doc(db, "settings_rayon", idRayon)); // Hapus juga settingannya
+      catatLogAktivitas(`Menghapus permanen akun Rayon: ${namaRayon}`);
+      alert(`Akun Rayon ${namaRayon} berhasil dihapus.`);
+    } catch (error) {
+      alert("Gagal menghapus rayon.");
+    }
+  };
+
+  // ---> FUNGSI TAMBAH, HAPUS, & EDIT KURIKULUM PUSAT <---
   const handleTambahKurikulumPusat = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -268,6 +314,21 @@ export default function DashboardKomisariat() {
       await deleteDoc(doc(db, "master_kurikulum_pusat", id));
       catatLogAktivitas(`Menghapus Kurikulum Pusat: ${nama}`);
     }
+  };
+
+  const handleSimpanEditKurikulumPusat = async (materiId: string) => {
+    if (!editKurikulumForm.kode || !editKurikulumForm.nama) return alert("Kode dan Nama materi tidak boleh kosong!");
+    try {
+      await updateDoc(doc(db, "master_kurikulum_pusat", materiId), {
+        kode: editKurikulumForm.kode,
+        nama: editKurikulumForm.nama,
+        muatan: editKurikulumForm.muatan,
+        bobot: Number(editKurikulumForm.bobot)
+      });
+      catatLogAktivitas(`Mengedit Kurikulum Pusat: [${editKurikulumForm.kode}] ${editKurikulumForm.nama}`);
+      setEditingKurikulumId(null);
+      alert("Materi berhasil diperbarui!");
+    } catch(err) { alert("Gagal mengedit materi."); }
   };
 
   const handleTambahTesPusat = async (e: React.FormEvent) => {
@@ -301,10 +362,10 @@ export default function DashboardKomisariat() {
     switch (activeMenu) {
       case 'beranda': return 'Dashboard';
       case 'kalender': return 'Kalender & Jadwal';
-      case 'broadcast': return 'Broadcast & Notifikasi';
-      case 'manajemen-rayon': return 'Manajemen Akun';
-      case 'master-kurikulum': return 'Manajemen Kurikulum';
-      case 'master-tes': return 'Manajemen Tes';
+      case 'broadcast': return 'Pusat Broadcast';
+      case 'manajemen-rayon': return 'Manajemen Rayon';
+      case 'master-kurikulum': return 'Master Kurikulum';
+      case 'master-tes': return 'Master Test';
       case 'database-kader': return 'Database Kader';
       case 'pengumuman': return 'Pengumuman Login';
       case 'log-aktivitas': return 'Log Aktivitas';
@@ -356,28 +417,28 @@ export default function DashboardKomisariat() {
       )}
 
       {/* SIDEBAR KOMISARIAT */}
-      <aside style={{ width: '260px', background: 'linear-gradient(180deg, #0000FF 0%, #000090 100%)', color: 'white', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease' }}>
+      <aside style={{ width: '260px', background: 'linear-gradient(100deg, #0000af 100%)', color: 'white', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease' }}>
         <div style={{ padding: '20px 20px', fontSize: '1.2rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 215, 0, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}><span style={{ fontSize: '1.5rem' }}>🏛️</span><span style={{ color: '#f1c40f', letterSpacing: '1px' }}>SIAKAD PMII</span></div>
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
         </div>
         
         <div style={{ padding: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-          <h4 style={{ fontSize: '1rem', marginBottom: '5px', color: '#fff', textTransform: 'uppercase' }}>Pusat Komisariat</h4>
-          <p style={{ fontSize: '0.75rem', color: '#bdc3c7', margin: 0 }}>Sistem Informasi dan Akademik Kaderisasi</p>
+          <h4 style={{ fontSize: '1rem', marginBottom: '5px', color: '#fff', textTransform: 'uppercase' }}>Pengurus Komisariat</h4>
+          <p style={{ fontSize: '0.75rem', color: '#bdc3c7', margin: 0 }}>Sunan Ampel Malang</p>
         </div>
 
         <ul style={{ listStyle: 'none', padding: '15px 0', overflowY: 'auto', flex: 1, margin: 0 }}>
           {[
-            { id: 'beranda', icon: '📊', label: 'Dashboard' },
+            { id: 'beranda', icon: '📊', label: 'Dashboard Statistik' },
             { id: 'kalender', icon: '📅', label: 'Kalender & Jadwal' },
             { id: 'broadcast', icon: '📡', label: 'Broadcast & Notifikasi' },
-            { id: 'manajemen-rayon', icon: '🏢', label: 'Manajemen Akun' },
-            { id: 'master-kurikulum', icon: '📑', label: 'Manajemen Kurikulum' },
-            { id: 'master-tes', icon: '📝', label: 'Manajemen Tes' },
+            { id: 'manajemen-rayon', icon: '🏢', label: 'Manajemen Rayon' },
+            { id: 'master-kurikulum', icon: '📑', label: 'Master Kurikulum' },
+            { id: 'master-tes', icon: '📝', label: 'Master Tes' },
             { id: 'database-kader', icon: '🌐', label: 'Database Kader' },
             { id: 'pengumuman', icon: '📢', label: 'Pengumuman Login' },
-            { id: 'log-aktivitas', icon: '🕵️', label: 'Log Aktivitas' },
+            { id: 'log-aktivitas', icon: '🕵️', label: 'Log Aktivitas Sistem' },
           ].map((item) => (
             <li key={item.id}>
               <button onClick={() => { setActiveMenu(item.id); setIsSidebarOpen(false); }} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', color: activeMenu === item.id ? '#f1c40f' : '#bdc3c7', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '15px', fontSize: '0.85rem', cursor: 'pointer', borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent', backgroundColor: activeMenu === item.id ? 'rgba(255, 215, 0, 0.05)' : 'transparent', transition: '0.2s', fontWeight: activeMenu === item.id ? 'bold' : 'normal' }}>
@@ -409,7 +470,7 @@ export default function DashboardKomisariat() {
           {activeMenu === 'beranda' && (
             <div>
               <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
-                <h2 style={{color: '#0d1b2a', marginTop: 0, fontSize: '1.5rem'}}>Overview Kaderisasi Komisariat 🏛️</h2>
+                <h2 style={{color: '#0d1b2a', marginTop: 0, fontSize: '1.5rem'}}>Dashboard SIAKAD Komisariat 🏛️</h2>
                 <p style={{color: '#555', lineHeight: '1.6', margin: 0, fontSize: '0.9rem'}}>Pantau pergerakan kader, aktivitas Rayon, dan persebaran data seluruh anggota PMII di tingkat Komisariat.</p>
               </div>
               
@@ -461,7 +522,7 @@ export default function DashboardKomisariat() {
             </div>
           )}
 
-          {/* MENU 2: KALENDER & JADWAL (FITUR BARU) */}
+          {/* MENU 2: KALENDER & JADWAL */}
           {activeMenu === 'kalender' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
@@ -500,35 +561,82 @@ export default function DashboardKomisariat() {
             </div>
           )}
 
-          {/* MENU 3: BROADCAST NOTIFIKASI (FITUR BARU) */}
+          {/* MENU 3: BROADCAST NOTIFIKASI */}
           {activeMenu === 'broadcast' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📡 Pusat Broadcast & Notifikasi</h3>
-              <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px' }}>Kirimkan pesan mendesak atau pengumuman penting yang akan muncul di notifikasi pengguna tujuan.</p>
+              <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
+                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>📡 Pusat Broadcast & Notifikasi</h3>
+                <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Kirimkan pesan mendesak atau pengumuman penting yang akan muncul di notifikasi pengguna tujuan.</p>
+              </div>
               
-              <div style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', maxWidth: '600px' }}>
-                <form onSubmit={handleKirimBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Judul Pesan</label>
-                    <input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} placeholder="Cth: Panggilan Rapat Darurat" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Isi Pesan Lengkap</label>
-                    <textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} placeholder="Detail pengumuman..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', resize: 'vertical' }} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Target Penerima</label>
-                    <select value={formBroadcast.target} onChange={e => setFormBroadcast({...formBroadcast, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', cursor: 'pointer' }}>
-                      <option value="Semua">📢 Semua Pengguna (Rayon, Pendamping, Kader)</option>
-                      <option value="Rayon">🏢 Hanya Admin Rayon</option>
-                      <option value="Pendamping">👤 Hanya Para Pendamping</option>
-                      <option value="Kader">🎓 Hanya Seluruh Kader</option>
-                    </select>
-                  </div>
-                  <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0d1b2a', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                    {isSubmitting ? 'Mengirim...' : '🚀 Siarkan Pesan Sekarang'}
-                  </button>
-                </form>
+              <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                {/* KIRI: FORM BROADCAST */}
+                <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                  <form onSubmit={handleKirimBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Judul Pesan</label>
+                      <input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} placeholder="Cth: Panggilan Rapat Darurat" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Isi Pesan Lengkap</label>
+                      <textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} placeholder="Detail pengumuman..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', resize: 'vertical' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Batas Waktu Siar</label>
+                      <input type="date" required value={formBroadcast.batas_waktu} onChange={e => setFormBroadcast({...formBroadcast, batas_waktu: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Target Penerima</label>
+                      <select value={formBroadcast.target} onChange={e => setFormBroadcast({...formBroadcast, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', cursor: 'pointer' }}>
+                        <option value="Semua">📢 Semua Pengguna (Rayon, Pendamping, Kader)</option>
+                        <option value="Rayon">🏢 Hanya Admin Rayon</option>
+                        <option value="Pendamping">👤 Hanya Para Pendamping</option>
+                        <option value="Kader">🎓 Hanya Seluruh Kader</option>
+                      </select>
+                    </div>
+                    <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0d1b2a', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                      {isSubmitting ? 'Mengirim...' : '🚀 Siarkan Pesan'}
+                    </button>
+                  </form>
+                </div>
+
+                {/* KANAN: RIWAYAT BROADCAST */}
+                <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxSizing: 'border-box' }}>
+                  <table className="tabel-utama" style={{ minWidth: '550px' }}>
+                    <thead>
+                      <tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', color: 'white', textAlign: 'left' }}>Judul & Pesan Broadcast</th>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', color: 'white', width: '100px' }}>Target</th>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', color: 'white', width: '120px' }}>Batas Waktu</th>
+                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', color: 'white', width: '80px' }}>Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {riwayatBroadcast.length === 0 ? (
+                        <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada riwayat broadcast yang dikirim.</td></tr>
+                      ) : (
+                        riwayatBroadcast.map((notif) => (
+                          <tr key={notif.id} style={{ borderBottom: '1px solid #eee' }}>
+                            <td style={{ padding: '10px' }}>
+                              <div style={{ fontWeight: 'bold', color: '#1e824c', fontSize: '0.9rem' }}>{notif.judul}</div>
+                              <div style={{ fontSize: '0.8rem', color: '#555', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{notif.pesan}</div>
+                              <div style={{ fontSize: '0.7rem', color: '#aaa', marginTop: '4px' }}>Dibuat: {notif.tanggal}</div>
+                            </td>
+                            <td style={{ padding: '10px', textAlign: 'center' }}>
+                              <span style={{ backgroundColor: '#f1c40f', color: '#0d1b2a', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold' }}>{notif.target}</span>
+                            </td>
+                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#e74c3c', fontSize: '0.8rem' }}>
+                              {notif.batas_waktu || '-'}
+                            </td>
+                            <td style={{ padding: '10px', textAlign: 'center' }}>
+                              <button onClick={() => handleHapusBroadcast(notif.id, notif.judul)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }} title="Tarik / Hapus Pesan">🗑️</button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
@@ -571,18 +679,24 @@ export default function DashboardKomisariat() {
                           <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Nama Rayon</th>
                           <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Username Login Admin</th>
                           <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th>
                         </tr>
                       </thead>
                       <tbody>
                         {dataRayon.length === 0 ? (
-                           <tr><td colSpan={3} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Belum ada data rayon.</td></tr>
+                           <tr><td colSpan={4} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Belum ada data rayon.</td></tr>
                         ) : (
                           dataRayon.map((rayon) => (
                             <tr key={rayon.id} style={{ borderBottom: '1px solid #eee' }}>
                               <td style={{ padding: '10px', fontWeight: 'bold', color: '#0d1b2a' }}>{rayon.nama}</td>
                               <td style={{ padding: '10px', color: '#666' }}>{rayon.username}</td>
                               <td style={{ padding: '10px', textAlign: 'center' }}>
-                                <span style={{ backgroundColor: '#eef2f3', color: '#2ecc71', fontWeight: 'bold', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem' }}>🟢 Aktif</span>
+                                <button onClick={() => handleUbahStatusRayon(rayon.id, rayon.status || 'Aktif')} style={{ padding: '4px 8px', border: 'none', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: (!rayon.status || rayon.status === 'Aktif') ? '#e8f5e9' : '#ffebee', color: (!rayon.status || rayon.status === 'Aktif') ? '#2e7d32' : '#c62828' }}>
+                                  {(!rayon.status || rayon.status === 'Aktif') ? '🟢 Aktif' : '🔴 Pasif'}
+                                </button>
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center' }}>
+                                <button onClick={() => handleHapusRayon(rayon.id, rayon.nama)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Rayon">🗑️</button>
                               </td>
                             </tr>
                           ))
@@ -595,7 +709,7 @@ export default function DashboardKomisariat() {
             </div>
           )}
 
-          {/* MENU 5: MASTER KURIKULUM PUSAT */}
+          {/* MENU 5: MASTER KURIKULUM PUSAT (EDITABLE & SORTED) */}
           {activeMenu === 'master-kurikulum' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -604,7 +718,10 @@ export default function DashboardKomisariat() {
               </div>
               
               <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                
+                {/* FORM TAMBAH BARU */}
                 <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                  <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px', fontSize: '0.9rem' }}>➕ Tambah Kurikulum</h4>
                   <form onSubmit={handleTambahKurikulumPusat} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div>
                       <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Jenjang Kaderisasi</label>
@@ -613,13 +730,14 @@ export default function DashboardKomisariat() {
                         <option value="PKD">PKD</option>
                         <option value="SIG">SIG (Sekolah Islam Gender)</option>
                         <option value="SKP">SKP (Sekolah Kader Putri)</option>
+                        <option value="NONFORMAL">Non-Formal</option>
                       </select>
                     </div>
                     
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <div style={{ flex: 1 }}>
                         <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Kode</label>
-                        <input type="text" placeholder="Cth: SIG-01" required value={formKurikulum.kode} onChange={e => setFormKurikulum({...formKurikulum, kode: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                        <input type="text" placeholder="Cth: 01" required value={formKurikulum.kode} onChange={e => setFormKurikulum({...formKurikulum, kode: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Bobot (SKS)</label>
@@ -641,38 +759,93 @@ export default function DashboardKomisariat() {
                   </form>
                 </div>
 
-                <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start', boxSizing: 'border-box' }}>
-                  <table className="tabel-utama" style={{ minWidth: '550px' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}>
-                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '100px', color: 'white', textAlign: 'left' }}>Jenjang</th>
-                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '80px', color: 'white', textAlign: 'left' }}>Kode</th>
-                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', color: 'white', textAlign: 'left' }}>Nama Materi & Muatan Pembahasan</th>
-                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '80px', color: 'white' }}>Bobot</th>
-                        <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '80px', color: 'white' }}>Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {masterKurikulum.length === 0 ? (
-                        <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada data kurikulum pusat.</td></tr>
-                      ) : (
-                        masterKurikulum.sort((a,b) => a.jenjang.localeCompare(b.jenjang)).map((materi) => (
-                          <tr key={materi.id} style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: '10px', fontWeight: 'bold', color: materi.jenjang === 'MAPABA' ? '#1e824c' : materi.jenjang === 'PKD' ? '#8e44ad' : '#e67e22' }}>{materi.jenjang}</td>
-                            <td style={{ padding: '10px', color: '#666', fontWeight: 'bold' }}>{materi.kode}</td>
-                            <td style={{ padding: '10px' }}>
-                              <div style={{ color: '#333', fontWeight: 'bold', marginBottom: '2px', fontSize: '0.85rem' }}>{materi.nama}</div>
-                              <div style={{ color: '#777', fontSize: '0.75rem', whiteSpace: 'pre-wrap' }}>{materi.muatan || '-'}</div>
-                            </td>
-                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#555' }}>{materi.bobot}</td>
-                            <td style={{ padding: '10px', textAlign: 'center' }}>
-                              <button onClick={() => handleHapusKurikulumPusat(materi.id, materi.nama)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }} title="Hapus Materi">🗑️</button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                {/* TABEL LIST MATERI (FILTERED & EDITABLE) */}
+                <div style={{ flex: '2 1 450px', display: 'flex', flexDirection: 'column' }}>
+                  
+                  {/* DROPDOWN FILTER JENJANG */}
+                  <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f8f9fa', padding: '10px', borderRadius: '8px', border: '1px solid #eee' }}>
+                    <label style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '0.85rem' }}>Filter Jenjang:</label>
+                    <select 
+                      value={filterJenjangKurikulum} 
+                      onChange={(e) => setFilterJenjangKurikulum(e.target.value)}
+                      style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '4px', outline: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', color: '#1e824c' }}
+                    >
+                      <option value="MAPABA">MAPABA</option>
+                      <option value="PKD">PKD</option>
+                      <option value="SIG">SIG</option>
+                      <option value="SKP">SKP</option>
+                      <option value="NONFORMAL">Non-Formal</option>
+                    </select>
+                  </div>
+
+                  <div style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxSizing: 'border-box' }}>
+                    <table className="tabel-utama" style={{ minWidth: '550px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '100px', color: 'white', textAlign: 'center' }}>Jenjang</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', width: '80px', color: 'white', textAlign: 'center' }}>Kode</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', color: 'white', textAlign: 'center' }}>Nama Materi & Muatan</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '80px', color: 'white' }}>Bobot</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '100px', color: 'white' }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(() => {
+                          const filteredKurikulum = masterKurikulum
+                            .filter(m => m.jenjang === filterJenjangKurikulum)
+                            .sort((a, b) => a.kode.localeCompare(b.kode, undefined, { numeric: true, sensitivity: 'base' }));
+
+                          if (filteredKurikulum.length === 0) {
+                            return <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada data kurikulum pusat untuk jenjang {filterJenjangKurikulum}.</td></tr>;
+                          }
+
+                          return filteredKurikulum.map((materi) => {
+                            // MODE EDIT BARIS
+                            if (editingKurikulumId === materi.id) {
+                              return (
+                                <tr key={materi.id} style={{ borderBottom: '1px solid #eee', backgroundColor: '#fff9e6' }}>
+                                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#1e824c' }}>{materi.jenjang}</td>
+                                  <td style={{ padding: '10px' }}>
+                                    <input type="text" value={editKurikulumForm.kode} onChange={(e) => setEditKurikulumForm({...editKurikulumForm, kode: e.target.value})} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }}/>
+                                  </td>
+                                  <td style={{ padding: '10px' }}>
+                                    <input type="text" value={editKurikulumForm.nama} onChange={(e) => setEditKurikulumForm({...editKurikulumForm, nama: e.target.value})} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '4px' }}/>
+                                    <textarea value={editKurikulumForm.muatan} onChange={(e) => setEditKurikulumForm({...editKurikulumForm, muatan: e.target.value})} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} rows={2}/>
+                                  </td>
+                                  <td style={{ padding: '10px', textAlign: 'center' }}>
+                                    <input type="number" value={editKurikulumForm.bobot} onChange={(e) => setEditKurikulumForm({...editKurikulumForm, bobot: Number(e.target.value)})} style={{ width: '50px', padding: '4px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center' }}/>
+                                  </td>
+                                  <td style={{ padding: '10px', textAlign: 'center' }}>
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '5px'}}>
+                                      <button onClick={() => handleSimpanEditKurikulumPusat(materi.id)} style={{ color: 'white', backgroundColor: '#2ecc71', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Simpan</button>
+                                      <button onClick={() => setEditingKurikulumId(null)} style={{ color: 'white', backgroundColor: '#95a5a6', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Batal</button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            }
+
+                            // MODE NORMAL BARIS
+                            return (
+                              <tr key={materi.id} style={{ borderBottom: '1px solid #eee' }}>
+                                <td style={{ padding: '10px', fontWeight: 'bold', color: materi.jenjang === 'MAPABA' ? '#1e824c' : materi.jenjang === 'PKD' ? '#8e44ad' : '#e67e22' }}>{materi.jenjang}</td>
+                                <td style={{ padding: '10px', color: '#666', fontWeight: 'bold' }}>{materi.kode}</td>
+                                <td style={{ padding: '10px' }}>
+                                  <div style={{ color: '#333', fontWeight: 'bold', marginBottom: '2px', fontSize: '0.85rem' }}>{materi.nama}</div>
+                                  <div style={{ color: '#777', fontSize: '0.75rem', whiteSpace: 'pre-wrap' }}>{materi.muatan || '-'}</div>
+                                </td>
+                                <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#555' }}>{materi.bobot}</td>
+                                <td style={{ padding: '10px', textAlign: 'center' }}>
+                                  <button onClick={() => { setEditingKurikulumId(materi.id); setEditKurikulumForm({ kode: materi.kode, nama: materi.nama, muatan: materi.muatan || '', bobot: materi.bobot }); }} style={{ color: '#3498db', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', marginRight: '5px' }} title="Edit Materi">✏️</button>
+                                  <button onClick={() => handleHapusKurikulumPusat(materi.id, materi.nama)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }} title="Hapus Materi">🗑️</button>
+                                </td>
+                              </tr>
+                            );
+                          });
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>

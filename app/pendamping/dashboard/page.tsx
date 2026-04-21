@@ -61,10 +61,12 @@ export default function DashboardPendamping() {
 
   // ---> STATE BARU: FITUR ENTERPRISE (KALENDER, BROADCAST, LOG) <---
   const [jadwalKegiatan, setJadwalKegiatan] = useState<any[]>([]);
-  const [notifikasiGlobal, setNotifikasiGlobal] = useState<any[]>([]);
+  const [notifikasiGlobal, setNotifikasiGlobal] = useState<any[]>([]); // Inbox (Notif dari atas)
+  const [riwayatBroadcast, setRiwayatBroadcast] = useState<any[]>([]); // Sent (Notif yang pendamping kirim)
   const [logAktivitas, setLogAktivitas] = useState<any[]>([]);
+  
   const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
-  const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Binaan' });
+  const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Binaan', batas_waktu: '' });
 
   // ==========================================
   // FUNGSI PENCATAT LOG AKTIVITAS (AUDIT TRAIL)
@@ -167,7 +169,7 @@ export default function DashboardPendamping() {
                 setListTes(tesList);
               });
 
-              // ---> PENDENGAR FITUR BARU: JADWAL & NOTIFIKASI <---
+              // ---> PENDENGAR FITUR BARU: JADWAL, INBOX NOTIF & SENT BROADCAST <---
               onSnapshot(collection(db, "jadwal_kegiatan"), (snap) => {
                 const listJadwal: any[] = [];
                 snap.forEach(doc => {
@@ -181,11 +183,12 @@ export default function DashboardPendamping() {
                 setJadwalKegiatan(listJadwal);
               });
 
+              // INBOX: Notifikasi yang diterima dari atas (Komisariat/Rayon)
               onSnapshot(collection(db, "notifikasi_global"), (snap) => {
                 const listNotif: any[] = [];
                 snap.forEach(doc => {
                   const d = doc.data();
-                  // Tampilkan jika target Semua, Pendamping, atau jika dia sendiri pengirimnya
+                  // Tampilkan jika target Semua, Pendamping, ATAU jika dia sendiri pengirimnya (biar history lengkap)
                   if (d.target === "Semua" || d.target === "Pendamping" || d.pengirim_id === p.username) {
                      if (d.pengirim === "Pusat Komisariat" || d.id_rayon === p.id_rayon) {
                        listNotif.push({ id: doc.id, ...d });
@@ -194,6 +197,14 @@ export default function DashboardPendamping() {
                 });
                 listNotif.sort((a, b) => b.timestamp - a.timestamp);
                 setNotifikasiGlobal(listNotif);
+              });
+
+              // SENT BROADCAST: Riwayat pengumuman yang pendamping ini kirim ke Binaan
+              onSnapshot(query(collection(db, "notifikasi_global"), where("pengirim_id", "==", p.username)), (snap) => {
+                const listSent: any[] = [];
+                snap.forEach(doc => listSent.push({ id: doc.id, ...doc.data() }));
+                listSent.sort((a, b) => b.timestamp - a.timestamp);
+                setRiwayatBroadcast(listSent);
               });
 
               // Log aktivitas khusus milik dia sendiri
@@ -349,7 +360,7 @@ export default function DashboardPendamping() {
     } catch (error) { alert("Gagal menghapus."); }
   };
 
-  // ---> FITUR BARU: BROADCAST NOTIFIKASI <---
+  // ---> FITUR BARU: KIRIM & HAPUS BROADCAST NOTIFIKASI <---
   const handleKirimBroadcast = async (e: React.FormEvent) => {
     e.preventDefault(); setIsSubmitting(true);
     try {
@@ -364,8 +375,16 @@ export default function DashboardPendamping() {
       });
       catatLogAktivitas(`Mengirim Broadcast ke Kader Binaan: ${formBroadcast.judul}`);
       alert("Pesan Broadcast berhasil dikirim ke Binaan Anda!");
-      setFormBroadcast({ ...formBroadcast, judul: '', pesan: '' });
+      setFormBroadcast({ ...formBroadcast, judul: '', pesan: '', batas_waktu: '' });
     } catch (error) { alert("Gagal mengirim broadcast."); } finally { setIsSubmitting(false); }
+  };
+
+  const handleHapusBroadcast = async (id: string, judul: string) => {
+    if (!window.confirm(`Hapus/tarik pesan broadcast "${judul}"?`)) return;
+    try {
+      await deleteDoc(doc(db, "notifikasi_global", id));
+      catatLogAktivitas(`Menarik/Menghapus pesan Broadcast: ${judul}`);
+    } catch (error) { alert("Gagal menghapus broadcast."); }
   };
 
 
@@ -462,12 +481,12 @@ export default function DashboardPendamping() {
     switch (activeMenu) {
       case 'beranda': return 'Dashboard';
       case 'kalender': return 'Jadwal & Agenda';
-      case 'broadcast': return 'Broadcast';
+      case 'broadcast': return 'Pengumuman Binaan';
       case 'profil': return 'Profil Saya';
-      case 'daftar-kader': return 'Daftar Binaan';
+      case 'daftar-kader': return 'Binaan Saya';
       case 'input-nilai': return 'Raport Kaderisasi';
-      case 'berkas-tugas': return 'Verifikasi Tugas';
-      case 'tes-pemahaman': return 'Hasil Tes Binaan';
+      case 'berkas-tugas': return 'Tugas Kader';
+      case 'tes-pemahaman': return 'Tes Pemahaman';
       case 'log-aktivitas': return 'Log Aktivitas';
       default: return 'Dashboard Pendamping';
     }
@@ -502,7 +521,7 @@ export default function DashboardPendamping() {
           .print-layout-container * { color: #000 !important; font-family: "Arial", "Arial Narrow", sans-serif !important; line-height: 1.15 !important; }
           .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
           .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
-          .print-content-area { position: relative !important; z-index: 10 !important; padding: 85mm 20mm 30mm 20mm !important; background-color: transparent !important; }
+          .print-content-area { position: relative !important; z-index: 10 !important; padding: 50mm 25mm 30mm 25mm !important; background-color: transparent !important; }
           table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
           tr { page-break-inside: avoid !important; background-color: transparent !important; }
           th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; }
@@ -519,7 +538,7 @@ export default function DashboardPendamping() {
       )}
       
       {/* SIDEBAR PENDAMPING */}
-      <aside className="no-print" style={{ width: '260px', background: 'linear-gradient(135deg, #0000FF 0%, #000090 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
+      <aside className="no-print" style={{ width: '260px', background: 'linear-gradient(100deg, #0000af 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
         <div style={{ padding: '20px', fontSize: '1.2rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>🏛️ SIAKAD PMII</span>
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
@@ -530,7 +549,7 @@ export default function DashboardPendamping() {
         </div>
         <ul style={{ listStyle: 'none', padding: '10px 0', flex: 1, margin: 0, overflowY: 'auto' }}>
           {[
-            { id: 'beranda', icon: '🏠', label: 'Dashboard' }, 
+            { id: 'beranda', icon: '🏠', label: 'Beranda' }, 
             { id: 'kalender', icon: '📅', label: 'Jadwal Mentoring' },
             { id: 'broadcast', icon: '📡', label: 'Pengumuman Binaan' },
             { id: 'profil', icon: '👤', label: 'Profil Saya' }, 
@@ -538,7 +557,7 @@ export default function DashboardPendamping() {
             { id: 'input-nilai', icon: '📊', label: 'Raport Kaderisasi' }, 
             { id: 'berkas-tugas', icon: '📋', label: 'Verifikasi Tugas', badge: berkasTugas.filter(b => b.status === 'Menunggu Verifikasi').length || null },
             { id: 'tes-pemahaman', icon: '📝', label: 'Hasil Tes Binaan' },
-            { id: 'log-aktivitas', icon: '🕵️', label: 'Log Aktivitas' },
+            { id: 'log-aktivitas', icon: '🕵️', label: 'Log Aktivitas Saya' },
           ].map((item) => (
             <li key={item.id}>
               <button onClick={() => { setActiveMenu(item.id); setIsSidebarOpen(false); }} style={{ width: '100%', textAlign: 'left', background: activeMenu === item.id ? 'rgba(255, 255, 255, 0.1)' : 'transparent', border: 'none', color: activeMenu === item.id ? '#f1c40f' : '#d1d1d1', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent', transition: '0.2s', fontWeight: activeMenu === item.id ? 'bold' : 'normal', fontSize: '0.85rem' }}>
@@ -666,28 +685,70 @@ export default function DashboardPendamping() {
                 <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📡 Pusat Pengumuman Binaan</h3>
                 <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px' }}>Kirimkan pesan mendesak atau instruksi tugas yang akan muncul di notifikasi khusus untuk kader binaan Anda.</p>
                 
-                <div style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', maxWidth: '600px' }}>
-                  <form onSubmit={handleKirimBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <div>
-                      <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Judul Pesan</label>
-                      <input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} placeholder="Cth: Panggilan Kumpul Binaan" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Isi Pesan Lengkap</label>
-                      <textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} placeholder="Detail pengumuman..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', resize: 'vertical' }} />
-                    </div>
-                    <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                      {isSubmitting ? 'Mengirim...' : '🚀 Siarkan ke Seluruh Binaan'}
-                    </button>
-                  </form>
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                  {/* KIRI: FORM BROADCAST */}
+                  <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                    <form onSubmit={handleKirimBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Judul Pesan</label>
+                        <input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} placeholder="Cth: Panggilan Kumpul Binaan" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Isi Pesan Lengkap</label>
+                        <textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} placeholder="Detail pengumuman..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', resize: 'vertical' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Batas Waktu Siar</label>
+                        <input type="date" required value={formBroadcast.batas_waktu} onChange={e => setFormBroadcast({...formBroadcast, batas_waktu: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
+                      </div>
+                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                        {isSubmitting ? 'Mengirim...' : '🚀 Siarkan ke Binaan'}
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* KANAN: RIWAYAT BROADCAST YANG DIKIRIM */}
+                  <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxSizing: 'border-box' }}>
+                    <table className="tabel-utama" style={{ minWidth: '550px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', color: 'white', textAlign: 'left' }}>Judul & Pesan Broadcast</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', color: 'white', width: '120px' }}>Batas Waktu</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', color: 'white', width: '80px' }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {riwayatBroadcast.length === 0 ? (
+                          <tr><td colSpan={3} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada riwayat broadcast yang Anda kirim.</td></tr>
+                        ) : (
+                          riwayatBroadcast.map((notif) => (
+                            <tr key={notif.id} style={{ borderBottom: '1px solid #eee' }}>
+                              <td style={{ padding: '10px' }}>
+                                <div style={{ fontWeight: 'bold', color: '#1e824c', fontSize: '0.9rem' }}>{notif.judul}</div>
+                                <div style={{ fontSize: '0.8rem', color: '#555', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{notif.pesan}</div>
+                                <div style={{ fontSize: '0.7rem', color: '#aaa', marginTop: '4px' }}>Dibuat: {notif.tanggal}</div>
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#e74c3c', fontSize: '0.8rem' }}>
+                                {notif.batas_waktu || '-'}
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center' }}>
+                                <button onClick={() => handleHapusBroadcast(notif.id, notif.judul)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }} title="Tarik / Hapus Pesan">🗑️</button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
 
+              {/* KOTAK MASUK NOTIFIKASI DARI ATAS */}
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
                  <h4 style={{ margin: '0 0 15px 0', color: '#0d1b2a', fontSize: '1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>🔔 Kotak Masuk Notifikasi Anda</h4>
                  <div style={{ display: 'grid', gap: '10px' }}>
                     {notifikasiGlobal.length === 0 ? (
-                      <p style={{ color: '#999', fontSize: '0.85rem', fontStyle: 'italic' }}>Belum ada pengumuman masuk untuk Anda.</p>
+                      <p style={{ color: '#999', fontSize: '0.85rem', fontStyle: 'italic' }}>Belum ada pengumuman masuk untuk Anda dari Komisariat atau Rayon.</p>
                     ) : (
                       notifikasiGlobal.map(notif => (
                         <div key={notif.id} style={{ padding: '15px', backgroundColor: '#fcfcfc', border: '1px solid #eee', borderLeft: '4px solid #f1c40f', borderRadius: '4px' }}>
@@ -695,7 +756,7 @@ export default function DashboardPendamping() {
                             <strong style={{ color: '#333' }}>{notif.judul}</strong>
                             <span style={{ fontSize: '0.7rem', color: '#888' }}>{notif.tanggal}</span>
                           </div>
-                          <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#555' }}>{notif.pesan}</p>
+                          <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#555', whiteSpace: 'pre-wrap' }}>{notif.pesan}</p>
                           <div style={{ fontSize: '0.7rem', color: '#1e824c', fontWeight: 'bold' }}>Dari: {notif.pengirim}</div>
                         </div>
                       ))
@@ -837,7 +898,7 @@ export default function DashboardPendamping() {
                       <thead>
                         <tr>
                           <th style={{ width: '5%' }}>No</th>
-                          <th style={{ width: '12%', textAlign: 'left' }}>Kode Materi</th>
+                          <th style={{ width: '12%', textAlign: 'left' }}>Kode</th>
                           <th style={{ width: '53%', textAlign: 'left' }}>Nama Materi</th>
                           <th style={{ width: '10%' }}>SKS</th>
                           <th style={{ width: '10%' }}>Nilai Huruf</th>

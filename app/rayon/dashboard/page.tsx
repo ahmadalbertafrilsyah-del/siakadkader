@@ -98,8 +98,11 @@ export default function DashboardAdminRayon() {
   // ---> STATE BARU: FITUR ENTERPRISE (KALENDER, BROADCAST, LOG) <---
   const [jadwalKegiatan, setJadwalKegiatan] = useState<any[]>([]);
   const [logAktivitas, setLogAktivitas] = useState<any[]>([]);
+  const [riwayatBroadcast, setRiwayatBroadcast] = useState<any[]>([]);
+  const [notifikasiInbox, setNotifikasiInbox] = useState<any[]>([]); // Kotak Masuk dr Komisariat
+
   const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
-  const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Semua' });
+  const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Semua', batas_waktu: '' });
 
   const materiAktif = listKurikulum[selectedJenjangNilai] || [];
 
@@ -229,7 +232,7 @@ export default function DashboardAdminRayon() {
               setMasterTesPusat(listTesPusat);
             });
 
-            // ---> PENDENGAR JADWAL KALENDER & LOG AKTIVITAS <---
+            // ---> PENDENGAR JADWAL KALENDER, LOG AKTIVITAS & BROADCAST <---
             onSnapshot(collection(db, "jadwal_kegiatan"), (snap) => {
               const listJadwal: any[] = [];
               snap.forEach(doc => {
@@ -247,7 +250,31 @@ export default function DashboardAdminRayon() {
               const listLog: any[] = [];
               snap.forEach(doc => listLog.push({ id: doc.id, ...doc.data() }));
               listLog.sort((a, b) => b.timestamp - a.timestamp);
-              setLogAktivitas(listLog.slice(0, 50)); // Tampilkan 50 aktivitas terakhir
+              setLogAktivitas(listLog.slice(0, 50)); 
+            });
+
+            // ---> PENGAMBILAN NOTIFIKASI (TERKIRIM OLEH RAYON & MASUK DARI KOMISARIAT) <---
+            onSnapshot(collection(db, "notifikasi_global"), (snap) => {
+              const listSent: any[] = [];
+              const listInbox: any[] = [];
+              
+              snap.forEach(doc => {
+                const d = doc.data();
+                // 1. Notifikasi yang DIKIRIM oleh Rayon ini (Riwayat Broadcast)
+                if (d.id_rayon === currentRayonId && d.pengirim?.includes("Admin Rayon")) {
+                  listSent.push({ id: doc.id, ...d });
+                }
+                // 2. Notifikasi yang MASUK dari Komisariat (Target Semua / Rayon)
+                if (d.pengirim === "Pusat Komisariat" && (d.target === "Semua" || d.target === "Rayon")) {
+                  listInbox.push({ id: doc.id, ...d });
+                }
+              });
+              
+              listSent.sort((a, b) => b.timestamp - a.timestamp);
+              listInbox.sort((a, b) => b.timestamp - a.timestamp);
+              
+              setRiwayatBroadcast(listSent);
+              setNotifikasiInbox(listInbox);
             });
           }
         });
@@ -469,7 +496,7 @@ export default function DashboardAdminRayon() {
     } catch (error) { alert("Gagal menghapus."); }
   };
 
-  // ---> FITUR BARU: BROADCAST NOTIFIKASI <---
+  // ---> FITUR BARU: KIRIM & HAPUS BROADCAST NOTIFIKASI <---
   const handleKirimBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -483,8 +510,16 @@ export default function DashboardAdminRayon() {
       });
       catatLogAktivitas(`Mengirim Broadcast (${formBroadcast.target}): ${formBroadcast.judul}`);
       alert("Pesan Broadcast berhasil disiarkan ke Rayon Anda!");
-      setFormBroadcast({ judul: '', pesan: '', target: 'Semua' });
+      setFormBroadcast({ judul: '', pesan: '', target: 'Semua', batas_waktu: '' });
     } catch (error) { alert("Gagal mengirim broadcast."); } finally { setIsSubmitting(false); }
+  };
+
+  const handleHapusBroadcast = async (id: string, judul: string) => {
+    if (!window.confirm(`Hapus/tarik pesan broadcast "${judul}"?`)) return;
+    try {
+      await deleteDoc(doc(db, "notifikasi_global", id));
+      catatLogAktivitas(`Menarik/Menghapus pesan Broadcast: ${judul}`);
+    } catch (error) { alert("Gagal menghapus broadcast."); }
   };
 
   const handleSimpanPengaturanCetak = async (e: React.FormEvent) => {
@@ -731,7 +766,7 @@ export default function DashboardAdminRayon() {
     switch (activeMenu) {
       case 'beranda': return 'Dashboard';
       case 'kalender': return 'Kalender & Jadwal';
-      case 'broadcast': return 'Broadcast Notifikasi';
+      case 'broadcast': return 'Pusat Broadcast';
       case 'manajemen-akun': return 'Manajemen Akun';
       case 'kurikulum': return 'Kurikulum Kaderisasi';
       case 'pantau-nilai': return 'Raport Kaderisasi';
@@ -870,7 +905,7 @@ export default function DashboardAdminRayon() {
       )}
 
       {/* SIDEBAR ADMIN RAYON */}
-      <aside className="no-print" style={{ width: '260px', background: 'linear-gradient(135deg, #0000FF 0%, #000090 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
+      <aside className="no-print" style={{ width: '260px', background: 'linear-gradient(100deg, #0000af 100%)', color: 'white', display: 'flex', flexDirection: 'column', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'left 0.3s ease', boxShadow: '2px 0 10px rgba(0,0,0,0.1)' }}>
         <div style={{ padding: '20px', fontSize: '1.2rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>🏛️ SIAKAD PMII</span>
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
@@ -983,7 +1018,7 @@ export default function DashboardAdminRayon() {
             </div>
           )}
 
-          {/* MENU 2: KALENDER & JADWAL (FITUR BARU) */}
+          {/* MENU 2: KALENDER & JADWAL */}
           {activeMenu === 'kalender' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
@@ -1027,32 +1062,100 @@ export default function DashboardAdminRayon() {
 
           {/* MENU 3: BROADCAST NOTIFIKASI (FITUR BARU) */}
           {activeMenu === 'broadcast' && (
-            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📡 Pusat Broadcast & Notifikasi Rayon</h3>
-              <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px' }}>Kirimkan pesan mendesak atau pengumuman penting yang akan muncul di notifikasi pengguna Rayon Anda.</p>
-              
-              <div style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', maxWidth: '600px' }}>
-                <form onSubmit={handleKirimBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Judul Pesan</label>
-                    <input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} placeholder="Cth: Panggilan Kumpul Binaan" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📡 Pusat Broadcast & Notifikasi Rayon</h3>
+                <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px' }}>Kirimkan pesan mendesak atau pengumuman penting yang akan muncul di notifikasi pengguna Rayon Anda.</p>
+                
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                  {/* KIRI: FORM BROADCAST */}
+                  <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                    <form onSubmit={handleKirimBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Judul Pesan</label>
+                        <input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} placeholder="Cth: Panggilan Kumpul Binaan" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Isi Pesan Lengkap</label>
+                        <textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} placeholder="Detail pengumuman..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', resize: 'vertical' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Batas Waktu Siar</label>
+                        <input type="date" required value={formBroadcast.batas_waktu} onChange={e => setFormBroadcast({...formBroadcast, batas_waktu: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Target Penerima</label>
+                        <select value={formBroadcast.target} onChange={e => setFormBroadcast({...formBroadcast, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', cursor: 'pointer' }}>
+                          <option value="Semua">📢 Semua Pengguna (Pendamping & Kader)</option>
+                          <option value="Pendamping">👤 Hanya Para Pendamping</option>
+                          <option value="Kader">🎓 Hanya Seluruh Kader</option>
+                        </select>
+                      </div>
+                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                        {isSubmitting ? 'Mengirim...' : '🚀 Siarkan Pesan'}
+                      </button>
+                    </form>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Isi Pesan Lengkap</label>
-                    <textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} placeholder="Detail pengumuman..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', resize: 'vertical' }} />
+
+                  {/* KANAN: RIWAYAT BROADCAST */}
+                  <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxSizing: 'border-box' }}>
+                    <table className="tabel-utama" style={{ minWidth: '550px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', color: 'white', textAlign: 'left' }}>Judul & Pesan Broadcast</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', color: 'white', width: '100px' }}>Target</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', color: 'white', width: '120px' }}>Batas Waktu</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', color: 'white', width: '80px' }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {riwayatBroadcast.length === 0 ? (
+                          <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada riwayat broadcast yang dikirim.</td></tr>
+                        ) : (
+                          riwayatBroadcast.map((notif) => (
+                            <tr key={notif.id} style={{ borderBottom: '1px solid #eee' }}>
+                              <td style={{ padding: '10px' }}>
+                                <div style={{ fontWeight: 'bold', color: '#1e824c', fontSize: '0.9rem' }}>{notif.judul}</div>
+                                <div style={{ fontSize: '0.8rem', color: '#555', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{notif.pesan}</div>
+                                <div style={{ fontSize: '0.7rem', color: '#aaa', marginTop: '4px' }}>Dibuat: {notif.tanggal}</div>
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center' }}>
+                                <span style={{ backgroundColor: '#f1c40f', color: '#0d1b2a', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold' }}>{notif.target}</span>
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#e74c3c', fontSize: '0.8rem' }}>
+                                {notif.batas_waktu || '-'}
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center' }}>
+                                <button onClick={() => handleHapusBroadcast(notif.id, notif.judul)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }} title="Tarik / Hapus Pesan">🗑️</button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Target Penerima (Rayon {namaRayonAsli})</label>
-                    <select value={formBroadcast.target} onChange={e => setFormBroadcast({...formBroadcast, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', cursor: 'pointer' }}>
-                      <option value="Semua">📢 Semua Pengguna (Pendamping & Kader)</option>
-                      <option value="Pendamping">👤 Hanya Para Pendamping</option>
-                      <option value="Kader">🎓 Hanya Seluruh Kader</option>
-                    </select>
-                  </div>
-                  <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '8px' }}>
-                    {isSubmitting ? 'Mengirim...' : '🚀 Siarkan Pesan Sekarang'}
-                  </button>
-                </form>
+                </div>
+              </div>
+
+              {/* KOTAK MASUK NOTIFIKASI DARI KOMISARIAT */}
+              <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                 <h4 style={{ margin: '0 0 15px 0', color: '#0d1b2a', fontSize: '1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>🔔 Kotak Masuk Notifikasi dari Komisariat</h4>
+                 <div style={{ display: 'grid', gap: '10px' }}>
+                    {notifikasiInbox.length === 0 ? (
+                      <p style={{ color: '#999', fontSize: '0.85rem', fontStyle: 'italic' }}>Belum ada pengumuman masuk dari Pusat Komisariat.</p>
+                    ) : (
+                      notifikasiInbox.map(notif => (
+                        <div key={notif.id} style={{ padding: '15px', backgroundColor: '#fcfcfc', border: '1px solid #eee', borderLeft: '4px solid #f1c40f', borderRadius: '4px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                            <strong style={{ color: '#333' }}>{notif.judul}</strong>
+                            <span style={{ fontSize: '0.7rem', color: '#888' }}>{notif.tanggal}</span>
+                          </div>
+                          <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#555', whiteSpace: 'pre-wrap' }}>{notif.pesan}</p>
+                          <div style={{ fontSize: '0.7rem', color: '#1e824c', fontWeight: 'bold' }}>Dari: {notif.pengirim}</div>
+                        </div>
+                      ))
+                    )}
+                 </div>
               </div>
             </div>
           )}

@@ -8,7 +8,7 @@ import React, { useState, useEffect } from 'react';
 
 // --- TAMPILAN DEFAULT LOGIN ---
 const defaultDesign = {
-  nama: "Sistem Informasi Akademik dan Kaderisasi (SIAKAD)",
+  nama: "Sistem Informasi Akademik dan Kaderisasi",
   logo: "https://i.ibb.co.com/nNhTXzYD/Asset-6-4x.png", 
   warnaUtama: "#004a87", 
   warnaAksen: "#f1c40f", 

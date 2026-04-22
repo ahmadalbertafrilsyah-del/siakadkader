@@ -911,11 +911,11 @@ export default function DashboardAdminRayon() {
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
         </div>
         <div style={{ padding: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <h4 style={{ fontSize: '1rem', margin: 0, color: '#f1c40f', lineHeight: '1.4' }}>{namaRayonAsli || 'Memuat...'}</h4>
+          <h4 style={{ fontSize: '1rem', margin: 0, color: 'white', lineHeight: '1.4' }}>{namaRayonAsli || 'Memuat...'}</h4>
         </div>
         <ul style={{ listStyle: 'none', padding: '10px 0', margin: 0, flex: 1, overflowY: 'auto' }}>
           {[
-            { id: 'beranda', icon: '🏠', label: 'Dashboard' },
+            { id: 'beranda', icon: '🏠', label: 'Dashboard Statistik' },
             { id: 'kalender', icon: '📅', label: 'Kalender & Jadwal' },
             { id: 'broadcast', icon: '📡', label: 'Broadcast Notifikasi' },
             { id: 'verifikasi-surat', icon: '✉️', label: 'Layanan Persuratan', badge: suratMasuk.filter(s => s.status === 'Menunggu Verifikasi').length || null },
@@ -931,7 +931,7 @@ export default function DashboardAdminRayon() {
             <li key={item.id}>
               <button 
                 onClick={() => { setActiveMenu(item.id); setIsSidebarOpen(false); }} 
-                style={{ width: '100%', textAlign: 'left', background: activeMenu === item.id ? 'rgba(255, 255, 255, 0.1)' : 'transparent', border: 'none', color: activeMenu === item.id ? '#fff' : '#d1d1d1', padding: '15px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.9rem', cursor: 'pointer', borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent', transition: '0.2s' }}
+                style={{ width: '100%', textAlign: 'left', background: activeMenu === item.id ? 'rgba(255, 255, 255, 0.1)' : 'transparent', border: 'none', color: activeMenu === item.id ? '#f1c40f' : '#d1d1d1', padding: '15px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.9rem', cursor: 'pointer', borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent', transition: '0.2s', fontWeight: activeMenu === item.id ? 'bold' : 'normal' }}
               >
                 <div style={{ display: 'flex', gap: '15px' }}><span>{item.icon}</span> {item.label}</div>
                 {item.badge && <span style={{ backgroundColor: '#e74c3c', color: 'white', padding: '2px 6px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 'bold' }}>{item.badge}</span>}
@@ -951,7 +951,7 @@ export default function DashboardAdminRayon() {
           <button className="menu-burger" onClick={() => setIsSidebarOpen(true)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#0d1b2a' }}>☰</button>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <h2 style={{ fontSize: '1rem', color: '#333', margin: 0, textTransform: 'uppercase', fontWeight: 'bold' }}>{getHeaderTitle()}</h2>
-            <div style={{ fontSize: '0.8rem', color: '#1e824c', fontWeight: 'bold' }}>👤: {adminRayonId}</div>
+            <div style={{ fontSize: '0.8rem', color: '#0000af', fontWeight: 'bold' }}>👤: {adminRayonId}</div>
           </div>
         </header>
 
@@ -962,7 +962,7 @@ export default function DashboardAdminRayon() {
           {activeMenu === 'beranda' && (
             <div>
               <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
-                <h2 style={{color: '#1e824c', marginTop: 0, fontSize: '1.5rem'}}>Selamat Datang di Pusat Kendali {namaRayonAsli}!</h2>
+                <h2 style={{color: '#0d1b2a', marginTop: 0, fontSize: '1.5rem'}}>Dashboard {namaRayonAsli}!</h2>
                 <p style={{color: '#555', lineHeight: '1.6', margin: 0, fontSize: '0.9rem'}}>Kelola data kaderisasi, master tugas, surat, akun kader, dan perpustakaan secara real-time melalui panel ini.</p>
               </div>
 
@@ -1031,7 +1031,7 @@ export default function DashboardAdminRayon() {
                       <input type="datetime-local" required value={formJadwal.tanggal} onChange={e => setFormJadwal({...formJadwal, tanggal: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
                       <input type="text" placeholder="Lokasi / Media" required value={formJadwal.lokasi} onChange={e => setFormJadwal({...formJadwal, lokasi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
                       <textarea rows={3} placeholder="Deskripsi Singkat" value={formJadwal.deskripsi} onChange={e => setFormJadwal({...formJadwal, deskripsi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', resize: 'vertical', boxSizing: 'border-box' }} />
-                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Simpan Agenda</button>
+                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Simpan Agenda</button>
                     </form>
                   </div>
                   <div style={{ flex: '2 1 450px', overflowX: 'auto', boxSizing: 'border-box' }}>
@@ -1091,7 +1091,7 @@ export default function DashboardAdminRayon() {
                           <option value="Kader">🎓 Hanya Seluruh Kader</option>
                         </select>
                       </div>
-                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '8px' }}>
+                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '8px' }}>
                         {isSubmitting ? 'Mengirim...' : '🚀 Siarkan Pesan'}
                       </button>
                     </form>
@@ -1165,8 +1165,8 @@ export default function DashboardAdminRayon() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                   <h3 style={{ color: '#1e824c', margin: 0 }}>Pengaturan Jenis Layanan Surat</h3>
-                   <button onClick={() => setActiveModal('tambahLayananSurat')} style={{ backgroundColor: '#2ecc71', color: 'white', padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>➕ Tambah Layanan</button>
+                   <h3 style={{ color: '#0d1b2a', margin: 0 }}>Pengaturan Jenis Layanan Surat</h3>
+                   <button onClick={() => setActiveModal('tambahLayananSurat')} style={{ backgroundColor: '#0000af', color: 'white', padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>➕ Tambah Layanan</button>
                 </div>
                 
                 <div style={{ width: '100%', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxSizing: 'border-box' }}>
@@ -1185,7 +1185,7 @@ export default function DashboardAdminRayon() {
               </div>
 
               <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', minHeight: '400px' }}>
-                <div style={{ backgroundColor: '#4a637d', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white', flexWrap: 'wrap', gap: '10px', borderRadius: '8px 8px 0 0' }}>
+                <div style={{ backgroundColor: '#0000af', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white', flexWrap: 'wrap', gap: '10px', borderRadius: '8px 8px 0 0' }}>
                   <span style={{ fontSize: '0.9rem', fontWeight: 'bold', letterSpacing: '1px' }}>DAFTAR PENGAJUAN SURAT KADER</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', backgroundColor: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '20px' }}>{suratMasuk.filter(s => s.status === 'Menunggu Verifikasi').length} Menunggu Verifikasi</div>
                 </div>
@@ -1231,25 +1231,25 @@ export default function DashboardAdminRayon() {
               
               {/* HEADER MANAJEMEN AKUN */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-                <h3 style={{ color: '#1e824c', margin: 0 }}>Manajemen Akun & Data</h3>
+                <h3 style={{ color: '#0d1b2a', margin: 0 }}>Manajemen Akun & Data</h3>
                 {tabAkun === 'kader' && (
-                  <button onClick={handleExportKaderRayon} style={{ backgroundColor: '#27ae60', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <button onClick={handleExportKaderRayon} style={{ backgroundColor: '#0000af', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                     📥 Export Data Kader
                   </button>
                 )}
               </div>
               
               <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                <button onClick={() => setTabAkun('kader')} style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabAkun === 'kader' ? '#1e824c' : '#f4f6f9', color: tabAkun === 'kader' ? 'white' : '#555', flex: '1 1 auto', textAlign: 'center', fontSize: '0.85rem' }}>🎓 Akun Kader</button>
-                <button onClick={() => setTabAkun('pendamping')} style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabAkun === 'pendamping' ? '#1e824c' : '#f4f6f9', color: tabAkun === 'pendamping' ? 'white' : '#555', flex: '1 1 auto', textAlign: 'center', fontSize: '0.85rem' }}>👤 Akun Pendamping</button>
+                <button onClick={() => setTabAkun('kader')} style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabAkun === 'kader' ? '#0000af' : '#f4f6f9', color: tabAkun === 'kader' ? 'white' : '#555', flex: '1 1 auto', textAlign: 'center', fontSize: '0.85rem' }}>🎓 Akun Kader</button>
+                <button onClick={() => setTabAkun('pendamping')} style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabAkun === 'pendamping' ? '#0000af' : '#f4f6f9', color: tabAkun === 'pendamping' ? 'white' : '#555', flex: '1 1 auto', textAlign: 'center', fontSize: '0.85rem' }}>👤 Akun Pendamping</button>
               </div>
 
               {tabAkun === 'kader' && (
                 <div style={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ padding: '15px', borderBottom: '1px solid #eee', backgroundColor: '#fdfdfd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                    <h4 style={{ margin: 0, color: '#1e824c', fontSize: '0.95rem' }}>🔄 Daftar Kader, Plotting & Jenjang</h4>
+                    <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '0.95rem' }}>🔄 Daftar Kader, Plotting & Jenjang</h4>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      <button onClick={() => setActiveModal('buatAkunKader')} style={{ backgroundColor: '#2ecc71', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>➕ Buat Akun</button>
+                      <button onClick={() => setActiveModal('buatAkunKader')} style={{ backgroundColor: '#0000af', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>➕ Buat Akun</button>
                       <button onClick={() => setActiveModal('importKader')} style={{ backgroundColor: '#f1c40f', color: '#333', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>📗 Import Excel</button>
                       <button onClick={() => setActiveModal('bersihKader')} style={{ backgroundColor: '#e74c3c', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>🧹 Bersihkan Data</button>
                       <select value={filterJenjangKader} onChange={(e) => setFilterJenjangKader(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '20px', outline: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
@@ -1262,7 +1262,7 @@ export default function DashboardAdminRayon() {
                   <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: '950px' }}>
                       <thead>
-                        <tr style={{ backgroundColor: '#f8f9fa', color: '#333', textAlign: 'left' }}>
+                        <tr style={{ backgroundColor: '#f8f9fa', color: '#333', textAlign: 'center' }}>
                           <th style={{ padding: '10px' }}>NIM / Tahun</th>
                           <th style={{ padding: '10px' }}>Nama Kader</th>
                           <th style={{ padding: '10px' }}>Nomor NIA</th>
@@ -1278,7 +1278,7 @@ export default function DashboardAdminRayon() {
                             const thnMasuk = k.createdAt ? new Date(k.createdAt).getFullYear() : '-';
                             return (
                               <tr key={k.id} style={{ borderBottom: '1px solid #eee' }}>
-                                <td style={{ padding: '10px', fontWeight: 'bold', color: '#555' }}>{k.nim} <br/> <span style={{fontSize: '0.7rem', color: '#1e824c'}}>Agt. {thnMasuk}</span></td>
+                                <td style={{ padding: '10px', fontWeight: 'bold', color: '#555' }}>{k.nim} <br/> <span style={{fontSize: '0.7rem', color: '#0d1b2a'}}>Agt. {thnMasuk}</span></td>
                                 <td style={{ padding: '10px', fontWeight: 'bold', color: '#333' }}>{k.nama}</td>
                                 <td style={{ padding: '10px' }}>
                                   <input 
@@ -1295,7 +1295,7 @@ export default function DashboardAdminRayon() {
                                   </select>
                                 </td>
                                 <td style={{ padding: '10px' }}>
-                                   <select value={k.pendampingId || ""} onChange={(e) => handleUbahPlottingPendamping(k.nim, e.target.value)} style={{ padding: '4px', border: '1px solid #2ecc71', borderRadius: '4px', backgroundColor: '#fff', fontWeight: 'bold', cursor: 'pointer', width: '100%', maxWidth: '130px', fontSize: '0.75rem' }}>
+                                   <select value={k.pendampingId || ""} onChange={(e) => handleUbahPlottingPendamping(k.nim, e.target.value)} style={{ padding: '4px', border: '1px solid #0000af', borderRadius: '4px', backgroundColor: '#fff', fontWeight: 'bold', cursor: 'pointer', width: '100%', maxWidth: '130px', fontSize: '0.75rem' }}>
                                      <option value="">- Kosong -</option>
                                      {dataPendamping.map(p => <option key={p.id} value={p.username}>{p.nama}</option>)}
                                    </select>
@@ -1320,8 +1320,8 @@ export default function DashboardAdminRayon() {
                 <div style={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px' }}>
                   <div style={{ padding: '15px', borderBottom: '1px solid #eee', backgroundColor: '#fdfdfd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <h4 style={{ margin: 0, color: '#1e824c', fontSize: '0.95rem' }}>📋 Daftar Pendamping</h4>
-                      <button onClick={() => setActiveModal('buatAkunPendamping')} style={{ backgroundColor: '#2ecc71', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }}>➕ Buat Akun</button>
+                      <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '0.95rem' }}>📋 Daftar Pendamping</h4>
+                      <button onClick={() => setActiveModal('buatAkunPendamping')} style={{ backgroundColor: '#0000af', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }}>➕ Buat Akun</button>
                     </div>
                     <input type="text" placeholder="🔍 Cari Nama/Username..." value={searchPendamping} onChange={(e) => setSearchPendamping(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '20px', outline: 'none', fontSize: '0.8rem' }} />
                   </div>
@@ -1357,13 +1357,13 @@ export default function DashboardAdminRayon() {
               <div style={{ padding: '20px' }}>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap', justifyContent: 'space-between', width: '100%' }}>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <button onClick={() => setTabKurikulum('MAPABA')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'MAPABA' ? '#1e824c' : '#f4f6f9', color: tabKurikulum === 'MAPABA' ? 'white' : '#555', fontSize: '0.85rem' }}>📘 MAPABA</button>
-                    <button onClick={() => setTabKurikulum('PKD')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'PKD' ? '#1e824c' : '#f4f6f9', color: tabKurikulum === 'PKD' ? 'white' : '#555', fontSize: '0.85rem' }}>📙 PKD</button>
-                    <button onClick={() => setTabKurikulum('SIG')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'SIG' ? '#1e824c' : '#f4f6f9', color: tabKurikulum === 'SIG' ? 'white' : '#555', fontSize: '0.85rem' }}>📕 SIG</button>
-                    <button onClick={() => setTabKurikulum('SKP')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'SKP' ? '#1e824c' : '#f4f6f9', color: tabKurikulum === 'SKP' ? 'white' : '#555', fontSize: '0.85rem' }}>👩 SKP</button>
-                    <button onClick={() => setTabKurikulum('NONFORMAL')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'NONFORMAL' ? '#1e824c' : '#f4f6f9', color: tabKurikulum === 'NONFORMAL' ? 'white' : '#555', fontSize: '0.85rem' }}>📗 Non-Formal</button>
+                    <button onClick={() => setTabKurikulum('MAPABA')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'MAPABA' ? '#0000af' : '#f4f6f9', color: tabKurikulum === 'MAPABA' ? 'white' : '#555', fontSize: '0.85rem' }}>📘 MAPABA</button>
+                    <button onClick={() => setTabKurikulum('PKD')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'PKD' ? '#0000af' : '#f4f6f9', color: tabKurikulum === 'PKD' ? 'white' : '#555', fontSize: '0.85rem' }}>📙 PKD</button>
+                    <button onClick={() => setTabKurikulum('SIG')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'SIG' ? '#0000af' : '#f4f6f9', color: tabKurikulum === 'SIG' ? 'white' : '#555', fontSize: '0.85rem' }}>📕 SIG</button>
+                    <button onClick={() => setTabKurikulum('SKP')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'SKP' ? '#0000af' : '#f4f6f9', color: tabKurikulum === 'SKP' ? 'white' : '#555', fontSize: '0.85rem' }}>👩 SKP</button>
+                    <button onClick={() => setTabKurikulum('NONFORMAL')} style={{ padding: '8px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabKurikulum === 'NONFORMAL' ? '#0000af' : '#f4f6f9', color: tabKurikulum === 'NONFORMAL' ? 'white' : '#555', fontSize: '0.85rem' }}>📗 Non-Formal</button>
                   </div>
-                  <button onClick={() => setActiveModal('tambahMateriLokal')} style={{ backgroundColor: '#1e824c', color: 'white', padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>➕ Tambah Materi Lokal</button>
+                  <button onClick={() => setActiveModal('tambahMateriLokal')} style={{ backgroundColor: '#0000af', color: 'white', padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>➕ Tambah Materi Lokal</button>
                 </div>
                 
                 <div style={{ width: '100%', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', marginBottom: '20px' }}>
@@ -1508,7 +1508,7 @@ export default function DashboardAdminRayon() {
                 <div style={{ width: '100%', overflowX: 'auto', padding: '10px 0' }}>
                   <div className="no-print" style={{ marginBottom: '15px', background: '#fdfdfd', padding: '15px', borderRadius: '6px', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '15px' }}>
                     <div>
-                      <h4 style={{ margin: '0 0 10px 0', color: '#1e824c', fontSize: '0.9rem' }}>⚙️ Kategori & Bobot Penilaian</h4>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#0000af', fontSize: '0.9rem' }}>⚙️ Kategori & Bobot Penilaian</h4>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         {kategoriBobotAktif.map((kat: any) => (
                           <div key={kat.id} style={{ backgroundColor: '#eaf4fc', padding: '5px 10px', borderRadius: '20px', border: '1px solid #3498db', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1522,7 +1522,7 @@ export default function DashboardAdminRayon() {
                         {totalBobotTersimpan < 100 && <span style={{ fontStyle: 'italic', marginLeft: '5px', color: '#e74c3c' }}>(Harap lengkapi hingga 100% agar nilai akurat)</span>}
                       </div>
                     </div>
-                    <button onClick={() => setActiveModal('tambahKategoriBobot')} style={{ background: '#28a745', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>➕ Tambah Kategori</button>
+                    <button onClick={() => setActiveModal('tambahKategoriBobot')} style={{ background: '#0000af', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>➕ Tambah Kategori</button>
                   </div>
 
                   <table className="tabel-utama" style={{ textAlign: 'center', minWidth: '900px', fontSize: '0.85rem' }}>
@@ -1617,7 +1617,7 @@ export default function DashboardAdminRayon() {
                       {pengaturanCetak.kopSuratUrl && <img src={pengaturanCetak.kopSuratUrl} alt="Kop Saat Ini" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', border: '1px solid #ccc', backgroundColor: '#fff', padding: '5px' }} />}
                       <input type="file" accept="image/png, image/jpeg" onChange={(e) => setFileKop(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', border: '1px dashed #ccc', width: '100%', backgroundColor: '#fff', boxSizing: 'border-box', fontSize: '0.8rem' }} />
                     </div>
-                    <button type="submit" disabled={isSavingPengaturan} style={{ backgroundColor: '#1e824c', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSavingPengaturan ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}>{isSavingPengaturan ? 'Mengupload...' : '💾 Simpan Template A4'}</button>
+                    <button type="submit" disabled={isSavingPengaturan} style={{ backgroundColor: '#0000af', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSavingPengaturan ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}>{isSavingPengaturan ? 'Mengupload...' : '💾 Simpan Template A4'}</button>
                   </form>
                 </div>
               )}
@@ -1706,8 +1706,8 @@ export default function DashboardAdminRayon() {
               ) : (
                 <div style={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px' }}>
                   <div style={{ padding: '15px', borderBottom: '1px solid #eee', backgroundColor: '#fdfdfd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h4 style={{ margin: 0, color: '#1e824c', fontSize: '0.95rem' }}>Daftar Tes Rayon</h4>
-                    <button onClick={() => setActiveModal('tambahTes')} style={{ backgroundColor: '#1e824c', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>➕ Buat Tes Baru</button>
+                    <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '0.95rem' }}>Daftar Tes Rayon</h4>
+                    <button onClick={() => setActiveModal('tambahTes')} style={{ backgroundColor: '#0000af', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>➕ Buat Tes Baru</button>
                   </div>
                   
                   {/* TABEL MASTER TES PUSAT DARI KOMISARIAT */}
@@ -1776,8 +1776,8 @@ export default function DashboardAdminRayon() {
             <div style={{ background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px' }}>
                 <div style={{ padding: '15px', borderBottom: '1px solid #eee', backgroundColor: '#fdfdfd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 style={{ margin: 0, color: '#1e824c', fontSize: '0.95rem' }}>Daftar Tugas Rayon</h4>
-                  <button onClick={() => setActiveModal('tambahTugas')} style={{ backgroundColor: '#2ecc71', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>➕ Tambah Tugas</button>
+                  <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '0.95rem' }}>Daftar Tugas Rayon</h4>
+                  <button onClick={() => setActiveModal('tambahTugas')} style={{ backgroundColor: '#0000af', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>➕ Tambah Tugas</button>
                 </div>
                 <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '400px' }}>
@@ -1798,7 +1798,7 @@ export default function DashboardAdminRayon() {
             <div style={{ background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '1rem' }}>Materi Perpustakaan</h4>
-                <button onClick={() => setActiveModal('tambahPerpus')} style={{ backgroundColor: '#004a87', color: 'white', padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>📤 Upload Materi</button>
+                <button onClick={() => setActiveModal('tambahPerpus')} style={{ backgroundColor: '#0000af', color: 'white', padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>📤 Upload Materi</button>
               </div>
 
               <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
@@ -1845,7 +1845,7 @@ export default function DashboardAdminRayon() {
           {activeMenu === 'log-aktivitas' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
-                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>🕵️ Log Aktivitas Sistem (Audit Trail)</h3>
+                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>🕵️ Log Aktivitas Sistem</h3>
                 <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Rekaman aktivitas dan riwayat perubahan data yang dilakukan oleh Admin Rayon (Maksimal 50 aktivitas terakhir).</p>
               </div>
 
@@ -1853,9 +1853,9 @@ export default function DashboardAdminRayon() {
                 <table className="tabel-utama" style={{ minWidth: '600px' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}>
-                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left', width: '180px' }}>Waktu Sistem</th>
-                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left', width: '150px' }}>Aktor</th>
-                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Aktivitas / Aksi yang Dilakukan</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '130px' }}>Waktu Sistem</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '270px' }}>Aktor</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aktivitas / Aksi yang Dilakukan</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1865,7 +1865,7 @@ export default function DashboardAdminRayon() {
                       logAktivitas.map((log) => (
                         <tr key={log.id} style={{ borderBottom: '1px solid #eee' }}>
                           <td style={{ padding: '10px', color: '#666', fontSize: '0.8rem' }}>{log.waktu_format}</td>
-                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#1e824c' }}>{log.aktor}</td>
+                          <td style={{ padding: '10px', color: '#0000af' }}>{log.aktor}</td>
                           <td style={{ padding: '10px', color: '#333', fontStyle: 'italic', fontSize: '0.85rem' }}>{log.aksi}</td>
                         </tr>
                       ))
@@ -1896,7 +1896,7 @@ export default function DashboardAdminRayon() {
                 <form onSubmit={handleTambahJenisSurat} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   <input type="text" placeholder="Nama / Jenis Surat" required value={newJenisSurat} onChange={(e) => setNewJenisSurat(e.target.value)} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', boxSizing: 'border-box' }} />
                   <textarea rows={3} placeholder="Instruksi Isian Wajib (Misal: Sebutkan tgl kegiatan)" value={newSyaratSurat} onChange={(e) => setNewSyaratSurat(e.target.value)} required style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', resize: 'vertical', boxSizing: 'border-box' }} />
-                  <button disabled={isSavingJenisSurat} type="submit" style={{ backgroundColor: '#2ecc71', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSavingJenisSurat ? 'not-allowed' : 'pointer' }}>{isSavingJenisSurat ? 'Menyimpan...' : 'Tambahkan Layanan'}</button>
+                  <button disabled={isSavingJenisSurat} type="submit" style={{ backgroundColor: '#0000af', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSavingJenisSurat ? 'not-allowed' : 'pointer' }}>{isSavingJenisSurat ? 'Menyimpan...' : 'Tambahkan Layanan'}</button>
                 </form>
               </div>
             )}
@@ -1914,7 +1914,7 @@ export default function DashboardAdminRayon() {
                     <option value="" disabled>-- Pilih Pendamping --</option>
                     {dataPendamping.map(p => <option key={p.id} value={p.username}>{p.nama}</option>)}
                   </select>
-                  <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#2ecc71', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>{isSubmitting ? 'Memproses...' : 'Buat Akun'}</button>
+                  <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>{isSubmitting ? 'Memproses...' : 'Buat Akun'}</button>
                 </form>
               </div>
             )}
@@ -1922,11 +1922,11 @@ export default function DashboardAdminRayon() {
             {/* Modal: Import Kader Excel */}
             {activeModal === 'importKader' && (
               <div>
-                <h4 style={{ marginTop: 0, color: '#1e824c', borderBottom: '1px dashed #a5d6a7', paddingBottom: '8px' }}>📗 Import Massal (Excel)</h4>
+                <h4 style={{ marginTop: 0, color: '#0d1b2a', borderBottom: '1px dashed #a5d6a7', paddingBottom: '8px' }}>📗 Import Massal (Excel)</h4>
                 <p style={{fontSize: '0.75rem', color: '#555', margin: '5px 0'}}>Format: <b>NIM | NIA | Nama | TanggalLahir | Pendamping</b></p>
                 <form onSubmit={handleImportExcel} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <input type="file" accept=".xlsx, .xls" required style={{ padding: '6px', border: '1px dashed #1e824c', borderRadius: '4px', backgroundColor: '#fff', fontSize: '0.8rem' }} />
-                  <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#1e824c', color: 'white', padding: '8px', borderRadius: '4px', fontWeight: 'bold', cursor: isSubmitting ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}>🚀 Proses Data Excel</button>
+                  <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#0000af', color: 'white', padding: '8px', borderRadius: '4px', fontWeight: 'bold', cursor: isSubmitting ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}>🚀 Proses Data Excel</button>
                   {importProgress && <div style={{fontSize: '0.75rem', color: '#e67e22', fontWeight: 'bold', textAlign: 'center'}}>{importProgress}</div>}
                 </form>
               </div>
@@ -1952,7 +1952,7 @@ export default function DashboardAdminRayon() {
                   <select required value={formPendamping.jenjangTugas} onChange={e => setFormPendamping({...formPendamping, jenjangTugas: e.target.value})} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontWeight: 'bold', color: '#2c3e50', fontSize: '0.85rem' }}>
                     <option value="MAPABA">Tugas Pendamping MAPABA</option><option value="PKD">Tugas Pendamping PKD</option><option value="SIG">Tugas Pendamping SIG</option><option value="SKP">Tugas Pendamping SKP</option>
                   </select>
-                  <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#1e824c', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>Buat Akun</button>
+                  <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>Buat Akun</button>
                 </form>
               </div>
             )}
@@ -1966,7 +1966,7 @@ export default function DashboardAdminRayon() {
                   <input type="text" placeholder="Nama Materi Lokal" required value={formMateri.nama} onChange={(e) => setFormMateri({...formMateri, nama: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', boxSizing: 'border-box' }} />
                   <textarea rows={2} placeholder="Muatan / Pembahasan (Opsional)" value={formMateri.muatan} onChange={(e) => setFormMateri({...formMateri, muatan: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', fontSize: '0.8rem', boxSizing: 'border-box' }} />
                   <input type="number" placeholder="Bobot SKS/Jam (1 SKS = 30 Mnt)" required value={formMateri.bobot} onChange={(e) => setFormMateri({...formMateri, bobot: Number(e.target.value)})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', boxSizing: 'border-box' }} />
-                  <button disabled={isSavingKurikulum} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Tambahkan Lokal</button>
+                  <button disabled={isSavingKurikulum} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Tambahkan Lokal</button>
                 </form>
               </div>
             )}
@@ -1974,14 +1974,14 @@ export default function DashboardAdminRayon() {
             {/* Modal: Tambah Kategori Bobot (Matriks) */}
             {activeModal === 'tambahKategoriBobot' && (
               <div>
-                <h4 style={{ margin: '0 0 15px 0', color: '#1e824c', fontSize: '1rem', borderBottom: '1px dashed #ccc', paddingBottom: '8px' }}>⚙️ Tambah Kategori Penilaian</h4>
+                <h4 style={{ margin: '0 0 15px 0', color: '#0d1b2a', fontSize: '1rem', borderBottom: '1px dashed #ccc', paddingBottom: '8px' }}>⚙️ Tambah Kategori Penilaian</h4>
                 <form onSubmit={handleTambahKategoriBobot} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                   <input type="text" required placeholder="Nama Kategori (Cth: Pre-Test)" value={formKategori.nama} onChange={e => setFormKategori({...formKategori, nama: e.target.value})} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
                   <div>
                     <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Bobot Penilaian (%)</label>
                     <input type="number" required placeholder="Bobot %" value={formKategori.persen || ''} onChange={e => setFormKategori({...formKategori, persen: Number(e.target.value)})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', marginTop: '5px', boxSizing: 'border-box' }} />
                   </div>
-                  <button type="submit" disabled={isSavingEvaluasi || !selectedKaderNilai || totalBobotTersimpan >= 100} style={{ background: (totalBobotTersimpan >= 100 || !selectedKaderNilai) ? '#ccc' : '#28a745', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '4px', cursor: (totalBobotTersimpan >= 100 || !selectedKaderNilai) ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>➕ Tambah Kategori</button>
+                  <button type="submit" disabled={isSavingEvaluasi || !selectedKaderNilai || totalBobotTersimpan >= 100} style={{ background: (totalBobotTersimpan >= 100 || !selectedKaderNilai) ? '#ccc' : '#0000af', color: '#fff', border: 'none', padding: '10px 15px', borderRadius: '4px', cursor: (totalBobotTersimpan >= 100 || !selectedKaderNilai) ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>➕ Tambah Kategori</button>
                 </form>
                 {totalBobotTersimpan >= 100 && <p style={{fontSize: '0.75rem', color: '#e74c3c', marginTop: '10px'}}>Total bobot sudah 100%, Anda tidak bisa menambah kategori baru sebelum menghapus yang lama.</p>}
               </div>
@@ -1990,11 +1990,11 @@ export default function DashboardAdminRayon() {
             {/* Modal: Tambah Tugas */}
             {activeModal === 'tambahTugas' && (
               <div>
-                <h4 style={{marginTop: 0, marginBottom: '15px', color: '#1e824c', borderBottom: '1px dashed #ccc', paddingBottom: '8px'}}>➕ Tambah Tugas Kader</h4>
+                <h4 style={{marginTop: 0, marginBottom: '15px', color: '#0000af', borderBottom: '1px dashed #ccc', paddingBottom: '8px'}}>➕ Tambah Tugas Kader</h4>
                 <form onSubmit={handleTambahTugas} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <input type="text" placeholder="Nama Tugas (Misal: Resume NDP)" required value={formTugas.nama_tugas} onChange={(e) => setFormTugas({...formTugas, nama_tugas: e.target.value})} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
                   <div><label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Batas Waktu (Deadline)</label><input type="date" required value={formTugas.deadline} onChange={(e) => setFormTugas({...formTugas, deadline: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '5px', fontSize: '0.85rem', boxSizing: 'border-box' }} /></div>
-                  <button type="submit" style={{ backgroundColor: '#2ecc71', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Buat Tugas Baru</button>
+                  <button type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Buat Tugas Baru</button>
                 </form>
               </div>
             )}
@@ -2002,12 +2002,12 @@ export default function DashboardAdminRayon() {
             {/* Modal: Tambah Perpus */}
             {activeModal === 'tambahPerpus' && (
               <div>
-                <h4 style={{marginTop: 0, marginBottom: '15px', color: '#1e824c', borderBottom: '1px dashed #ccc', paddingBottom: '8px'}}>📤 Upload Materi Perpus</h4>
+                <h4 style={{marginTop: 0, marginBottom: '15px', color: '#0000af', borderBottom: '1px dashed #ccc', paddingBottom: '8px'}}>📤 Upload Materi Perpus</h4>
                 <form onSubmit={handleTambahPerpus} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <input type="text" placeholder="Nama Folder (Cth: Modul MAPABA)" required value={formPerpus.folder} onChange={(e) => setFormPerpus({...formPerpus, folder: e.target.value})} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
                   <input type="text" placeholder="Judul Buku/Materi" required value={formPerpus.nama_file} onChange={(e) => setFormPerpus({...formPerpus, nama_file: e.target.value})} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
                   <input type="file" required accept=".pdf,.doc,.docx" onChange={(e) => setFilePerpus(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', border: '1px dashed #ccc', borderRadius: '4px', backgroundColor: '#fff', fontSize: '0.8rem' }} />
-                  <button disabled={isUploadingPerpus} type="submit" style={{ backgroundColor: isUploadingPerpus ? '#95a5a6' : '#004a87', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isUploadingPerpus ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}>{isUploadingPerpus ? 'Mengupload...' : 'Upload ke Perpus'}</button>
+                  <button disabled={isUploadingPerpus} type="submit" style={{ backgroundColor: isUploadingPerpus ? '#95a5a6' : '#0000af', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isUploadingPerpus ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}>{isUploadingPerpus ? 'Mengupload...' : 'Upload ke Perpus'}</button>
                 </form>
               </div>
             )}
@@ -2025,7 +2025,7 @@ export default function DashboardAdminRayon() {
                     <div style={{ fontSize: '0.7rem', color: '#e67e22', marginBottom: '5px' }}>*Tekan Enter (baris baru) untuk memisahkan pertanyaan.</div>
                     <textarea rows={5} required value={formTes.soal} onChange={(e) => setFormTes({...formTes, soal: e.target.value})} placeholder="1. Apa tujuan PMII?&#10;2. Jelaskan makna logo!" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', boxSizing: 'border-box', fontSize: '0.85rem' }} />
                   </div>
-                  <button type="submit" style={{ backgroundColor: '#1e824c', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Buat Tes</button>
+                  <button type="submit" style={{ backgroundColor: '#0000af', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Buat Tes</button>
                 </form>
               </div>
             )}

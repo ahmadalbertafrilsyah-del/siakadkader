@@ -500,7 +500,7 @@ export default function DashboardKader() {
           .print-layout-container * { color: #000 !important; font-family: "Arial", "Arial Narrow", sans-serif !important; line-height: 1.15 !important; }
           .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
           .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
-          .print-content-area { position: relative !important; z-index: 10 !important; padding: 85mm 20mm 30mm 20mm !important; background-color: transparent !important; }
+          .print-content-area { position: relative !important; z-index: 10 !important; padding: 55mm 25mm 30mm 25mm !important; background-color: transparent !important; }
           table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
           tr { page-break-inside: avoid !important; background-color: transparent !important; }
           th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; }
@@ -577,7 +577,7 @@ export default function DashboardKader() {
           {activeMenu === 'home' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }}>
-                <h2 style={{marginTop: 0, fontSize: '1.5rem', color: '#1e824c'}}>Halo, Sahabat/i {profil.nama.split(' ')[0]}! 👋</h2>
+                <h2 style={{marginTop: 0, fontSize: '1.5rem', color: '#0000af'}}>Halo, Sahabat/i {profil.nama.split(' ')[0]}! 👋</h2>
                 <p style={{margin: '8px 0 0 0', fontSize: '0.9rem', color: '#555', opacity: 0.9}}>Selamat datang di Sistem Informasi Akademik dan Kaderisasi {namaRayonAsli}. Berikut adalah ringkasan progres kaderisasi Anda saat ini.</p>
               </div>
 
@@ -687,7 +687,7 @@ export default function DashboardKader() {
                   <button 
                     disabled={isSavingProfil}
                     onClick={() => isEditingProfil ? handleSimpanProfil() : setIsEditingProfil(true)} 
-                    style={{ marginTop: '15px', width: '100%', padding: '10px', backgroundColor: isEditingProfil ? '#2ecc71' : '#1e824c', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSavingProfil ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}>
+                    style={{ marginTop: '15px', width: '100%', padding: '10px', backgroundColor: isEditingProfil ? '#f1c40f' : '#0000af', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSavingProfil ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}>
                     {isSavingProfil ? 'Menyimpan...' : isEditingProfil ? '💾 Simpan Profil' : '📝 Ubah Profil Saya'}
                   </button>
                 </div>
@@ -745,10 +745,10 @@ export default function DashboardKader() {
                 {/* TOMBOL EXPORT DAN CETAK */}
                 {tabRaport === 'raport' && (
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={handleExportNilaiExcel} style={{ backgroundColor: '#27ae60', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem' }}>
+                    <button onClick={handleExportNilaiExcel} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem' }}>
                       📥 Export Excel
                     </button>
-                    <button onClick={handleDownloadPDF} style={{ backgroundColor: '#007bff', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem' }}>
+                    <button onClick={handleDownloadPDF} style={{ backgroundColor: '#f1c40f', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem' }}>
                       🖨️ Cetak KHS
                     </button>
                   </div>
@@ -1078,7 +1078,7 @@ export default function DashboardKader() {
                         <textarea rows={3} required value={keperluan} onChange={(e) => setKeperluan(e.target.value)} placeholder="Ketik keperluan Anda sesuai instruksi di atas..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }} />
                       </div>
                       
-                      <button disabled={isSubmittingSurat} type="submit" style={{ backgroundColor: isSubmittingSurat ? '#95a5a6' : '#1e824c', color: 'white', padding: '12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSubmittingSurat ? 'not-allowed' : 'pointer', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' }}>
+                      <button disabled={isSubmittingSurat} type="submit" style={{ backgroundColor: isSubmittingSurat ? '#95a5a6' : '#0000af', color: 'white', padding: '12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSubmittingSurat ? 'not-allowed' : 'pointer', fontSize: '0.9rem', width: '100%', boxSizing: 'border-box' }}>
                         {isSubmittingSurat ? 'Mengirim...' : '✉️ Ajukan Surat Sekarang'}
                       </button>
                     </form>
@@ -1165,7 +1165,7 @@ export default function DashboardKader() {
                   placeholder="Ketik saran atau aspirasi Anda di sini..." 
                   style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', outline: 'none', fontSize: '0.9rem', resize: 'vertical', marginBottom: '12px', backgroundColor: '#fdfdfd', boxSizing: 'border-box' }} 
                 />
-                <button disabled={isSubmittingSaran} type="submit" style={{ backgroundColor: isSubmittingSaran ? '#95a5a6' : '#1e824c', color: 'white', padding: '12px 25px', border: 'none', borderRadius: '30px', fontWeight: 'bold', cursor: isSubmittingSaran ? 'not-allowed' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
+                <button disabled={isSubmittingSaran} type="submit" style={{ backgroundColor: isSubmittingSaran ? '#95a5a6' : '#0000af', color: 'white', padding: '12px 25px', border: 'none', borderRadius: '30px', fontWeight: 'bold', cursor: isSubmittingSaran ? 'not-allowed' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center', boxSizing: 'border-box' }}>
                   {isSubmittingSaran ? 'Mengirim Aspirasi...' : '🚀 Kirim Aspirasi'}
                 </button>
               </form>

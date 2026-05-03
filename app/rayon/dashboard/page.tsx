@@ -873,7 +873,7 @@ export default function DashboardAdminRayon() {
           .print-content-area {
             position: relative !important;
             z-index: 10 !important; 
-            padding: 50mm 25mm 30mm 25mm !important; 
+            padding: 55mm 25mm 30mm 25mm !important; 
             background-color: transparent !important; 
           }
 

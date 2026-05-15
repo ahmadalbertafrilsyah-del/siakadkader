@@ -25,7 +25,7 @@ export default function DashboardPendamping() {
     jenjangTugas: 'MAPABA' 
   });
   
-  // STATE BARU: Menyimpan Nama Rayon Asli & Pengaturan Cetak (Dari Rayon)
+  // STATE BARU: Menyimpan Nama Rayon Asli & Pengaturan Cetak
   const [namaRayonInduk, setNamaRayonInduk] = useState('');
   const [pengaturanCetak, setPengaturanCetak] = useState({ kopSuratUrl: '', footerUrl: '' });
 
@@ -42,7 +42,7 @@ export default function DashboardPendamping() {
   const [tabInput, setTabInput] = useState('materi'); 
   const [selectedKader, setSelectedKader] = useState('');
   
-  // Jenjang dikunci mati sesuai penugasan dari Admin Rayon
+  // Jenjang dikunci mati sesuai penugasan
   const selectedJenjang = profilPendamping.jenjangTugas || 'MAPABA';
   const materiAktif = listKurikulum[selectedJenjang] || [];
 
@@ -65,7 +65,7 @@ export default function DashboardPendamping() {
   const [riwayatBroadcast, setRiwayatBroadcast] = useState<any[]>([]); // Sent (Notif yang pendamping kirim)
   const [logAktivitas, setLogAktivitas] = useState<any[]>([]);
   
-  const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
+  const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Binaan' });
   const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Binaan', batas_waktu: '' });
 
   // ==========================================
@@ -105,7 +105,7 @@ export default function DashboardPendamping() {
   };
 
   // ==========================================
-  // 1. EFEK: CEK LOGIN & ROLE PENDAMPING (SATPAM)
+  // 1. EFEK: CEK LOGIN, ROLE & TARIK DATA OTOMATIS
   // ==========================================
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
@@ -134,8 +134,43 @@ export default function DashboardPendamping() {
             });
             
             ambilDataKaderBinaan(p.username);
-            
-            if(p.id_rayon){
+
+            // ==============================================================
+            // LOGIKA KHUSUS: PENDAMPING SKP (DI BAWAH KOMISARIAT LANGSUNG)
+            // ==============================================================
+            if (p.id_rayon === 'Komisariat') {
+              setNamaRayonInduk('Pusat Komisariat');
+              
+              // 1. Pengaturan Cetak & Matriks Bobot dari Komisariat
+              onSnapshot(doc(db, "pengaturan_sistem", "komisariat_settings"), (docSnap) => {
+                if (docSnap.exists()) {
+                  const d = docSnap.data();
+                  setPengaturanCetak({ kopSuratUrl: d.kopSuratUrl || '', footerUrl: d.footerUrl || '' });
+                  if (d.bobot_penilaian && d.bobot_penilaian['SKP']) {
+                    setKategoriBobot(d.bobot_penilaian['SKP']);
+                  } else { setKategoriBobot([]); }
+                }
+              });
+
+              // 2. Kurikulum SKP dari Komisariat Pusat
+              onSnapshot(collection(db, "master_kurikulum_pusat"), (snap) => {
+                const skpMateri: any[] = [];
+                snap.forEach(d => { if (d.data().jenjang === 'SKP') skpMateri.push({ id: d.id, ...d.data() }); });
+                setListKurikulum({ SKP: skpMateri });
+              });
+
+              // 3. Tes Pemahaman dari Komisariat Pusat
+              onSnapshot(collection(db, "master_tes_pusat"), (snap) => {
+                const tesList: any[] = [];
+                snap.forEach(d => { if (d.data().jenjang === 'SKP') tesList.push({ id: d.id, ...d.data() }); });
+                setListTes(tesList);
+              });
+
+            } 
+            // ==============================================================
+            // LOGIKA NORMAL: PENDAMPING RAYON (MAPABA, PKD, SIG)
+            // ==============================================================
+            else if (p.id_rayon) {
               onSnapshot(doc(db, "users", p.id_rayon), (rayonSnap) => {
                 if (rayonSnap.exists()) {
                   const rData = rayonSnap.data();
@@ -168,53 +203,53 @@ export default function DashboardPendamping() {
                 snap.forEach((doc) => tesList.push({ id: doc.id, ...doc.data() }));
                 setListTes(tesList);
               });
-
-              // ---> PENDENGAR FITUR BARU: JADWAL, INBOX NOTIF & SENT BROADCAST <---
-              onSnapshot(collection(db, "jadwal_kegiatan"), (snap) => {
-                const listJadwal: any[] = [];
-                snap.forEach(doc => {
-                  const d = doc.data();
-                  // Tampilkan jadwal Komisariat, jadwal Rayon sendiri, atau jadwal bikinan pendamping ini sendiri
-                  if (d.pembuat === "Komisariat" || d.id_rayon === p.id_rayon) {
-                    listJadwal.push({ id: doc.id, ...d });
-                  }
-                });
-                listJadwal.sort((a, b) => b.timestamp - a.timestamp);
-                setJadwalKegiatan(listJadwal);
-              });
-
-              // INBOX: Notifikasi yang diterima dari atas (Komisariat/Rayon)
-              onSnapshot(collection(db, "notifikasi_global"), (snap) => {
-                const listNotif: any[] = [];
-                snap.forEach(doc => {
-                  const d = doc.data();
-                  // Tampilkan jika target Semua, Pendamping, ATAU jika dia sendiri pengirimnya (biar history lengkap)
-                  if (d.target === "Semua" || d.target === "Pendamping" || d.pengirim_id === p.username) {
-                     if (d.pengirim === "Pusat Komisariat" || d.id_rayon === p.id_rayon) {
-                       listNotif.push({ id: doc.id, ...d });
-                     }
-                  }
-                });
-                listNotif.sort((a, b) => b.timestamp - a.timestamp);
-                setNotifikasiGlobal(listNotif);
-              });
-
-              // SENT BROADCAST: Riwayat pengumuman yang pendamping ini kirim ke Binaan
-              onSnapshot(query(collection(db, "notifikasi_global"), where("pengirim_id", "==", p.username)), (snap) => {
-                const listSent: any[] = [];
-                snap.forEach(doc => listSent.push({ id: doc.id, ...doc.data() }));
-                listSent.sort((a, b) => b.timestamp - a.timestamp);
-                setRiwayatBroadcast(listSent);
-              });
-
-              // Log aktivitas khusus milik dia sendiri
-              onSnapshot(query(collection(db, "log_aktivitas"), where("username", "==", p.username)), (snap) => {
-                const listLog: any[] = [];
-                snap.forEach(doc => listLog.push({ id: doc.id, ...doc.data() }));
-                listLog.sort((a, b) => b.timestamp - a.timestamp);
-                setLogAktivitas(listLog.slice(0, 50));
-              });
             }
+
+            // ==============================================================
+            // PENDENGAR JADWAL & NOTIFIKASI GLOBAL (UNTUK SEMUA PENDAMPING)
+            // ==============================================================
+            onSnapshot(collection(db, "jadwal_kegiatan"), (snap) => {
+              const listJadwal: any[] = [];
+              snap.forEach(doc => {
+                const d = doc.data();
+                // Tampilkan jadwal Komisariat, Rayon, dan Jadwal Pendamping ini sendiri
+                if (d.pembuat === "Komisariat" || d.id_rayon === p.id_rayon) {
+                  if (d.pembuat.includes("Pendamping") && d.pendamping_id !== p.username) return; 
+                  listJadwal.push({ id: doc.id, ...d });
+                }
+              });
+              listJadwal.sort((a, b) => b.timestamp - a.timestamp);
+              setJadwalKegiatan(listJadwal);
+            });
+
+            onSnapshot(collection(db, "notifikasi_global"), (snap) => {
+              const listNotif: any[] = [];
+              snap.forEach(doc => {
+                const d = doc.data();
+                if (d.target === "Semua" || d.target === "Pendamping" || d.pengirim_id === p.username) {
+                   if (d.pengirim === "Pusat Komisariat" || d.id_rayon === p.id_rayon) {
+                     listNotif.push({ id: doc.id, ...d });
+                   }
+                }
+              });
+              listNotif.sort((a, b) => b.timestamp - a.timestamp);
+              setNotifikasiGlobal(listNotif);
+            });
+
+            onSnapshot(query(collection(db, "notifikasi_global"), where("pengirim_id", "==", p.username)), (snap) => {
+              const listSent: any[] = [];
+              snap.forEach(doc => listSent.push({ id: doc.id, ...doc.data() }));
+              listSent.sort((a, b) => b.timestamp - a.timestamp);
+              setRiwayatBroadcast(listSent);
+            });
+
+            onSnapshot(query(collection(db, "log_aktivitas"), where("username", "==", p.username)), (snap) => {
+              const listLog: any[] = [];
+              snap.forEach(doc => listLog.push({ id: doc.id, ...doc.data() }));
+              listLog.sort((a, b) => b.timestamp - a.timestamp);
+              setLogAktivitas(listLog.slice(0, 50));
+            });
+
           }
         });
       } else {
@@ -225,7 +260,7 @@ export default function DashboardPendamping() {
   }, [router]);
 
   // ==========================================
-  // 2. EFEK: PANTAU NILAI KADER (REAL-TIME MATRIKS)
+  // 2. EFEK: PANTAU NILAI KADER BINAAN
   // ==========================================
   useEffect(() => {
     if (!selectedKader) return;
@@ -332,7 +367,7 @@ export default function DashboardPendamping() {
     catatLogAktivitas("Mengekspor (Download Excel) daftar kader binaan.");
   };
 
-  // ---> FITUR BARU: KALENDER JADWAL <---
+  // ---> FITUR BARU: KALENDER JADWAL (HANYA BINAAN) <---
   const handleTambahJadwal = async (e: React.FormEvent) => {
     e.preventDefault(); setIsSubmitting(true);
     try {
@@ -341,11 +376,12 @@ export default function DashboardPendamping() {
         id_rayon: profilPendamping.id_rayon,
         pembuat: `Pendamping (${profilPendamping.nama})`,
         pendamping_id: profilPendamping.username,
+        target: 'Binaan', // Dikunci hanya untuk binaannya
         timestamp: Date.now()
       });
-      catatLogAktivitas(`Menambahkan jadwal mentoring/binaan: ${formJadwal.judul}`);
-      alert("Jadwal berhasil ditambahkan!");
-      setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
+      catatLogAktivitas(`Menjadwalkan kegiatan khusus binaan: ${formJadwal.judul}`);
+      alert("Jadwal Mentoring berhasil dibuat!");
+      setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Binaan' });
     } catch (error) { alert("Gagal menyimpan jadwal."); } finally { setIsSubmitting(false); }
   };
 
@@ -360,20 +396,20 @@ export default function DashboardPendamping() {
     } catch (error) { alert("Gagal menghapus."); }
   };
 
-  // ---> FITUR BARU: KIRIM & HAPUS BROADCAST NOTIFIKASI <---
+  // ---> FITUR BARU: KIRIM & HAPUS BROADCAST NOTIFIKASI (HANYA BINAAN) <---
   const handleKirimBroadcast = async (e: React.FormEvent) => {
     e.preventDefault(); setIsSubmitting(true);
     try {
       await addDoc(collection(db, "notifikasi_global"), {
         ...formBroadcast,
-        target: "Binaan", 
+        target: "Binaan", // Dikunci hanya untuk binaannya
         id_rayon: profilPendamping.id_rayon,
         pengirim: `Pendamping (${profilPendamping.nama})`,
         pengirim_id: profilPendamping.username,
         tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
         timestamp: Date.now()
       });
-      catatLogAktivitas(`Mengirim Broadcast ke Kader Binaan: ${formBroadcast.judul}`);
+      catatLogAktivitas(`Mengirim Broadcast khusus Kader Binaan: ${formBroadcast.judul}`);
       alert("Pesan Broadcast berhasil dikirim ke Binaan Anda!");
       setFormBroadcast({ ...formBroadcast, judul: '', pesan: '', batas_waktu: '' });
     } catch (error) { alert("Gagal mengirim broadcast."); } finally { setIsSubmitting(false); }
@@ -383,7 +419,7 @@ export default function DashboardPendamping() {
     if (!window.confirm(`Hapus/tarik pesan broadcast "${judul}"?`)) return;
     try {
       await deleteDoc(doc(db, "notifikasi_global", id));
-      catatLogAktivitas(`Menarik/Menghapus pesan Broadcast: ${judul}`);
+      catatLogAktivitas(`Menarik pesan Broadcast binaan: ${judul}`);
     } catch (error) { alert("Gagal menghapus broadcast."); }
   };
 
@@ -480,13 +516,13 @@ export default function DashboardPendamping() {
   const getHeaderTitle = () => {
     switch (activeMenu) {
       case 'beranda': return 'Dashboard';
-      case 'kalender': return 'Jadwal & Agenda';
-      case 'broadcast': return 'Pengumuman Binaan';
+      case 'kalender': return 'Jadwal Mentoring';
+      case 'broadcast': return 'Broadcast';
       case 'profil': return 'Profil Saya';
       case 'daftar-kader': return 'Binaan Saya';
       case 'input-nilai': return 'Raport Kaderisasi';
       case 'berkas-tugas': return 'Tugas Kader';
-      case 'tes-pemahaman': return 'Tes Pemahaman';
+      case 'tes-pemahaman': return 'Hasil Tes';
       case 'log-aktivitas': return 'Log Aktivitas';
       default: return 'Dashboard Pendamping';
     }
@@ -521,7 +557,7 @@ export default function DashboardPendamping() {
           .print-layout-container * { color: #000 !important; font-family: "Arial", "Arial Narrow", sans-serif !important; line-height: 1.15 !important; }
           .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
           .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
-          .print-content-area { position: relative !important; z-index: 10 !important; padding: 50mm 25mm 30mm 25mm !important; background-color: transparent !important; }
+          .print-content-area { position: relative !important; z-index: 10 !important; padding: 55mm 25mm 30mm 25mm !important; background-color: transparent !important; }
           table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
           tr { page-break-inside: avoid !important; background-color: transparent !important; }
           th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; }
@@ -549,7 +585,7 @@ export default function DashboardPendamping() {
         </div>
         <ul style={{ listStyle: 'none', padding: '10px 0', flex: 1, margin: 0, overflowY: 'auto' }}>
           {[
-            { id: 'beranda', icon: '🏠', label: 'Beranda' }, 
+            { id: 'beranda', icon: '🏠', label: 'Dashboard Utama' }, 
             { id: 'kalender', icon: '📅', label: 'Jadwal Mentoring' },
             { id: 'broadcast', icon: '📡', label: 'Pengumuman Binaan' },
             { id: 'profil', icon: '👤', label: 'Profil Saya' }, 
@@ -579,21 +615,24 @@ export default function DashboardPendamping() {
             <h2 style={{ fontSize: '1rem', color: '#333', margin: 0, textTransform: 'uppercase', fontWeight: 'bold' }}>
               {getHeaderTitle()}
             </h2>
-            <div style={{ fontSize: '0.75rem', color: '#1e824c', fontWeight: 'bold' }}>👤: {namaRayonInduk}</div>
+            <div style={{ fontSize: '0.75rem', color: '#1e824c', fontWeight: 'bold', backgroundColor: '#e8f5e9', padding: '4px 10px', borderRadius: '15px' }}>
+              👤 : {namaRayonInduk}
+            </div>
           </div>
         </header>
 
         <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
 
-          {/* MENU 0: BERANDA */}
+          {/* MENU 0: BERANDA UTAMA (DIPERBARUI DENGAN INFO/JADWAL) */}
           {activeMenu === 'beranda' && (
-            <div>
-              <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
                 <h2 style={{color: '#1e824c', marginTop: 0, fontSize: '1.5rem'}}>Halo, Sahabat/i {profilPendamping.nama.split(' ')[0]}! 👋</h2>
                 <p style={{color: '#555', lineHeight: '1.6', margin: 0, fontSize: '0.9rem'}}>Selamat datang di Panel Pendamping. Pantau perkembangan kader binaan Anda dan berikan evaluasi terbaik untuk kemajuan {namaRayonInduk}.</p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '30px' }}>
+              {/* CARD RINGKASAN */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
                 <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderLeft: '4px solid #3498db' }}>
                   <div style={{ color: '#7f8c8d', fontSize: '0.85rem', fontWeight: 'bold' }}>Total Kader Binaan</div>
                   <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2c3e50', marginTop: '5px' }}>{kaderBinaan.length}</div>
@@ -607,35 +646,82 @@ export default function DashboardPendamping() {
                   <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2c3e50', marginTop: '5px' }}>{listMasterTugas.length}</div>
                 </div>
                 <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderLeft: '4px solid #2ecc71' }}>
-                  <div style={{ color: '#7f8c8d', fontSize: '0.85rem', fontWeight: 'bold' }}>Materi di Perpus Rayon</div>
+                  <div style={{ color: '#7f8c8d', fontSize: '0.85rem', fontWeight: 'bold' }}>Materi di Perpus Instansi</div>
                   <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2c3e50', marginTop: '5px' }}>{listPerpus.length}</div>
                 </div>
               </div>
-              
+
+              {/* JADWAL & NOTIFIKASI */}
               <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 300px', backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                  <h4 style={{ margin: '0 0 15px 0', color: '#1e824c' }}>📌 Papan Instruksi Tugas Rayon</h4>
-                  <ul style={{ margin: 0, paddingLeft: '20px', color: '#555', fontSize: '0.85rem', lineHeight: '1.8' }}>
-                    {listMasterTugas.length === 0 ? <li>Belum ada instruksi tugas dari Admin Rayon.</li> : 
-                      listMasterTugas.map(tugas => (
-                        <li key={tugas.id}>Kader wajib mengumpulkan <b>{tugas.nama_tugas}</b> paling lambat {tugas.deadline}. Harap ingatkan binaan Anda!</li>
-                      ))
-                    }
-                  </ul>
-                </div>
+                  
+                  {/* NOTIFIKASI INBOX */}
+                  <div style={{ flex: '1 1 350px', background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>🔔 Pusat Informasi Instansi</h3>
+                    <div style={{ display: 'grid', gap: '10px', maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
+                      {notifikasiGlobal.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999', fontSize: '0.85rem' }}>Belum ada informasi/pengumuman terbaru.</div>
+                      ) : (
+                        notifikasiGlobal.map(notif => (
+                          <div key={notif.id} style={{ padding: '15px', backgroundColor: '#fcfcfc', border: '1px solid #eee', borderLeft: '4px solid #1e824c', borderRadius: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                              <strong style={{ color: '#333', fontSize: '0.9rem' }}>{notif.judul}</strong>
+                              <span style={{ fontSize: '0.7rem', color: '#888' }}>{notif.tanggal}</span>
+                            </div>
+                            <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#555', whiteSpace: 'pre-wrap' }}>{notif.pesan}</p>
+                            <div style={{ fontSize: '0.7rem', color: '#3498db', fontWeight: 'bold' }}>Dari: {notif.pengirim}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* JADWAL KEGIATAN */}
+                  <div style={{ flex: '1 1 350px', background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>📅 Jadwal Kegiatan Terdekat</h3>
+                    <div style={{ display: 'grid', gap: '10px', maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
+                      {jadwalKegiatan.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999', fontSize: '0.85rem' }}>Belum ada agenda kegiatan dalam waktu dekat.</div>
+                      ) : (
+                        jadwalKegiatan.map(jadwal => {
+                          const isKomisariat = jadwal.pembuat === 'Komisariat';
+                          const isPendamping = jadwal.pembuat.includes('Pendamping');
+                          const isMine = jadwal.pendamping_id === profilPendamping.username;
+                          
+                          const borderColor = isKomisariat ? '#f1c40f' : isMine ? '#2ecc71' : isPendamping ? '#3498db' : '#e74c3c';
+                          const labelPembuat = isKomisariat ? 'Pusat Komisariat' : isMine ? 'Jadwal Anda' : isPendamping ? 'Jadwal Mentoring' : 'Pengurus Rayon';
+
+                          return (
+                            <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', borderLeft: `4px solid ${borderColor}`, padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
+                                  <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '0.95rem' }}>{jadwal.judul}</h4>
+                                  <span style={{ backgroundColor: '#f8f9fa', color: '#555', padding: '2px 6px', borderRadius: '10px', fontSize: '0.65rem', border: '1px solid #ddd', fontWeight: 'bold' }}>{labelPembuat}</span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#e67e22', fontWeight: 'bold', marginBottom: '5px' }}>🗓️ {jadwal.tanggal.replace('T', ' - ')} | 📍 {jadwal.lokasi}</div>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#555', fontStyle: 'italic' }}>{jadwal.deskripsi}</p>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
               </div>
 
             </div>
           )}
 
-          {/* MENU 2: KALENDER & JADWAL (FITUR BARU) */}
+          {/* MENU 2: KALENDER & JADWAL MENTORING */}
           {activeMenu === 'kalender' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-                <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📅 Jadwal Kegiatan & Mentoring</h3>
+                <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📅 Buat Jadwal Mentoring</h3>
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                  
                   <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
-                    <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px', fontSize: '0.9rem' }}>➕ Jadwalkan Mentoring</h4>
+                    <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px', fontSize: '0.9rem' }}>➕ Jadwalkan Pertemuan</h4>
+                    <p style={{fontSize: '0.75rem', color: '#e74c3c', fontStyle: 'italic', marginBottom: '15px'}}>*Jadwal ini hanya akan dikirimkan dan dilihat oleh Kader Binaan Anda.</p>
+                    
                     <form onSubmit={handleTambahJadwal} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <input type="text" placeholder="Judul Kegiatan (Cth: Kumpul Binaan)" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
                       <input type="datetime-local" required value={formJadwal.tanggal} onChange={e => setFormJadwal({...formJadwal, tanggal: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
@@ -644,6 +730,7 @@ export default function DashboardPendamping() {
                       <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Simpan Agenda</button>
                     </form>
                   </div>
+                  
                   <div style={{ flex: '2 1 450px', overflowX: 'auto', boxSizing: 'border-box' }}>
                     <div style={{ display: 'grid', gap: '10px' }}>
                       {jadwalKegiatan.length === 0 ? (
@@ -678,12 +765,12 @@ export default function DashboardPendamping() {
             </div>
           )}
 
-          {/* MENU 3: BROADCAST NOTIFIKASI (FITUR BARU) */}
+          {/* MENU 3: BROADCAST NOTIFIKASI KE BINAAN */}
           {activeMenu === 'broadcast' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
                 <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📡 Pusat Pengumuman Binaan</h3>
-                <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px' }}>Kirimkan pesan mendesak atau instruksi tugas yang akan muncul di notifikasi khusus untuk kader binaan Anda.</p>
+                <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px' }}>Kirimkan instruksi tugas atau pesan mendesak. Pengumuman ini <b>HANYA</b> akan dibaca oleh kader binaan Anda.</p>
                 
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
                   {/* KIRI: FORM BROADCAST */}
@@ -691,14 +778,14 @@ export default function DashboardPendamping() {
                     <form onSubmit={handleKirimBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       <div>
                         <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Judul Pesan</label>
-                        <input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} placeholder="Cth: Panggilan Kumpul Binaan" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
+                        <input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} placeholder="Cth: Tugas Tambahan Makalah" style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
                       </div>
                       <div>
                         <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Isi Pesan Lengkap</label>
-                        <textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} placeholder="Detail pengumuman..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', resize: 'vertical' }} />
+                        <textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} placeholder="Detail instruksi/pengumuman..." style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px', resize: 'vertical' }} />
                       </div>
                       <div>
-                        <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Batas Waktu Siar</label>
+                        <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Batas Waktu</label>
                         <input type="date" required value={formBroadcast.batas_waktu} onChange={e => setFormBroadcast({...formBroadcast, batas_waktu: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', marginTop: '5px' }} />
                       </div>
                       <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', justifyContent: 'center', gap: '8px' }}>
@@ -719,7 +806,7 @@ export default function DashboardPendamping() {
                       </thead>
                       <tbody>
                         {riwayatBroadcast.length === 0 ? (
-                          <tr><td colSpan={3} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada riwayat broadcast yang Anda kirim.</td></tr>
+                          <tr><td colSpan={3} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada riwayat pengumuman yang Anda buat.</td></tr>
                         ) : (
                           riwayatBroadcast.map((notif) => (
                             <tr key={notif.id} style={{ borderBottom: '1px solid #eee' }}>
@@ -742,31 +829,10 @@ export default function DashboardPendamping() {
                   </div>
                 </div>
               </div>
-
-              {/* KOTAK MASUK NOTIFIKASI DARI ATAS */}
-              <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-                 <h4 style={{ margin: '0 0 15px 0', color: '#0d1b2a', fontSize: '1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>🔔 Kotak Masuk Notifikasi Anda</h4>
-                 <div style={{ display: 'grid', gap: '10px' }}>
-                    {notifikasiGlobal.length === 0 ? (
-                      <p style={{ color: '#999', fontSize: '0.85rem', fontStyle: 'italic' }}>Belum ada pengumuman masuk untuk Anda dari Komisariat atau Rayon.</p>
-                    ) : (
-                      notifikasiGlobal.map(notif => (
-                        <div key={notif.id} style={{ padding: '15px', backgroundColor: '#fcfcfc', border: '1px solid #eee', borderLeft: '4px solid #f1c40f', borderRadius: '4px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                            <strong style={{ color: '#333' }}>{notif.judul}</strong>
-                            <span style={{ fontSize: '0.7rem', color: '#888' }}>{notif.tanggal}</span>
-                          </div>
-                          <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#555', whiteSpace: 'pre-wrap' }}>{notif.pesan}</p>
-                          <div style={{ fontSize: '0.7rem', color: '#1e824c', fontWeight: 'bold' }}>Dari: {notif.pengirim}</div>
-                        </div>
-                      ))
-                    )}
-                 </div>
-              </div>
             </div>
           )}
           
-          {/* MENU 4: PROFIL */}
+          {/* MENU 4: PROFIL SAYA */}
           {activeMenu === 'profil' && (
             <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', overflow: 'hidden' }}>
               <div style={{ backgroundColor: '#4a637d', padding: '15px 20px', color: 'white', fontWeight: 'bold' }}>PROFIL SAYA</div>
@@ -813,13 +879,13 @@ export default function DashboardPendamping() {
                       </tbody>
                     </table>
                   </div>
-                  {isEditingProfil && <p style={{ fontSize: '0.75rem', color: '#e74c3c', marginTop: '10px' }}>*Nama, Username, dan Jenjang Tugas hanya bisa diubah oleh Pengurus Rayon.</p>}
+                  {isEditingProfil && <p style={{ fontSize: '0.75rem', color: '#e74c3c', marginTop: '10px' }}>*Nama, Username, dan Jenjang Tugas hanya bisa diubah oleh Pengurus Instansi Atas.</p>}
                 </div>
               </div>
             </div>
           )}
 
-          {/* MENU 5: DAFTAR KADER */}
+          {/* MENU 5: DAFTAR KADER BINAAN SAYA */}
           {activeMenu === 'daftar-kader' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
@@ -857,7 +923,7 @@ export default function DashboardPendamping() {
               {/* HEADER DROPDOWN BERJEJER */}
               <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '10px 0', gap: '15px', borderBottom: '1px solid #ddd', flexWrap: 'wrap', marginBottom: '15px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#555' }}>Pilih Kader:</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#555' }}>Pilih Kader Binaan:</span>
                   <select value={selectedKader} onChange={(e) => setSelectedKader(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px', fontWeight: 'bold', minWidth: '180px', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
                     {kaderBinaan.length === 0 && <option value="">Tidak ada binaan</option>}
                     {kaderBinaan.map(k => {
@@ -884,7 +950,7 @@ export default function DashboardPendamping() {
                    Raport Kaderisasi
                  </button>
                  <button onClick={() => setTabInput('keaktifan')} style={{ padding: '5px 12px', border: 'none', background: tabInput === 'keaktifan' ? '#fff' : 'transparent', color: tabInput === 'keaktifan' ? '#007bff' : '#555', fontWeight: tabInput === 'keaktifan' ? 'bold' : 'normal', borderTop: tabInput === 'keaktifan' ? '3px solid #007bff' : '3px solid transparent', borderRight: '1px solid #ddd', cursor: 'pointer', marginBottom: '-1px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                   Persentase & Nilai
+                   Persentase & Nilai Detail
                  </button>
               </div>
 
@@ -907,7 +973,7 @@ export default function DashboardPendamping() {
                       </thead>
                       <tbody>
                         {materiAktif.length === 0 ? (
-                          <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Kurikulum jenjang ini belum diatur oleh Admin Rayon.</td></tr>
+                          <tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Kurikulum jenjang ini belum diatur.</td></tr>
                         ) : barisRaportRender}
                         
                         <tr style={{ borderTop: '2px solid #ccc' }}>
@@ -922,7 +988,7 @@ export default function DashboardPendamping() {
                         </tr>
                       </tbody>
                     </table>
-                    <p style={{fontSize: '0.75rem', color: '#888', marginTop: '15px', fontStyle: 'italic'}}>*Catatan: Nilai Huruf pada tabel ini terisi otomatis berdasarkan perhitungan Matriks di tab "Input Nilai Detail".</p>
+                    <p style={{fontSize: '0.75rem', color: '#888', marginTop: '15px', fontStyle: 'italic'}}>*Catatan: Nilai Huruf pada tabel ini terisi otomatis berdasarkan perhitungan Matriks di tab "Persentase & Nilai Detail".</p>
 
                   </div>
                 )}
@@ -931,11 +997,11 @@ export default function DashboardPendamping() {
                 {tabInput === 'keaktifan' && (
                   <div style={{ backgroundColor: '#fafafa', padding: '20px', border: '1px solid #ddd', borderRadius: '4px' }}>
                     
-                    {/* INDIKATOR KATEGORI BOBOT (READ-ONLY DARI RAYON) */}
+                    {/* INDIKATOR KATEGORI BOBOT (READ-ONLY) */}
                     <div className="no-print" style={{ marginBottom: '20px', background: '#eef2f3', padding: '15px', borderRadius: '6px', border: '1px dashed #b2c2cf' }}>
-                      <h4 style={{ margin: '0 0 10px 0', color: '#0d1b2a', fontSize: '0.85rem' }}>📌 Kategori & Bobot Penilaian (Ditetapkan Admin Rayon)</h4>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#0d1b2a', fontSize: '0.85rem' }}>📌 Kategori & Bobot Penilaian (Ditetapkan Instansi Atas)</h4>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        {kategoriBobot.length === 0 ? <span style={{ fontSize: '0.8rem', color: '#e74c3c' }}>Admin Rayon belum menetapkan bobot penilaian untuk jenjang ini.</span> : 
+                        {kategoriBobot.length === 0 ? <span style={{ fontSize: '0.8rem', color: '#e74c3c' }}>Belum ada bobot penilaian yang ditetapkan. Hubungi Instansi terkait.</span> : 
                           kategoriBobot.map(kat => (
                             <div key={kat.id} style={{ backgroundColor: '#fff', padding: '4px 10px', borderRadius: '20px', border: '1px solid #ccc', fontSize: '0.75rem', fontWeight: 'bold', color: '#333' }}>
                               {kat.nama}: <span style={{ color: '#27ae60' }}>{kat.persen}%</span>
@@ -1160,9 +1226,9 @@ export default function DashboardPendamping() {
 
                 </div>
               ) : (
-                // DAFTAR TES RAYON
+                // DAFTAR TES DARI INSTANSI
                 <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', overflowX: 'auto' }}>
-                  <h4 style={{ color: '#4a637d', margin: '0 0 15px 0', borderBottom: '1px dashed #ccc', paddingBottom: '8px' }}>Daftar Tes dari Rayon</h4>
+                  <h4 style={{ color: '#4a637d', margin: '0 0 15px 0', borderBottom: '1px dashed #ccc', paddingBottom: '8px' }}>Daftar Tes yang Tersebar</h4>
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '500px' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}>
@@ -1174,7 +1240,7 @@ export default function DashboardPendamping() {
                     </thead>
                     <tbody>
                       {listTes.length === 0 ? (
-                        <tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Rayon belum membuat tes pemahaman.</td></tr>
+                        <tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Instansi terkait belum membuat/menarik tes.</td></tr>
                       ) : (
                         listTes.map((tes) => (
                           <tr key={tes.id} style={{ borderBottom: '1px solid #eee' }}>
@@ -1201,12 +1267,12 @@ export default function DashboardPendamping() {
             </div>
           )}
 
-          {/* MENU 9: LOG AKTIVITAS (FITUR BARU) */}
+          {/* MENU 9: LOG AKTIVITAS PRIBADI (FITUR BARU) */}
           {activeMenu === 'log-aktivitas' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
                 <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>🕵️ Log Aktivitas Sistem Saya</h3>
-                <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Rekaman aktivitas yang Anda lakukan sebagai Pendamping (Maksimal 50 aktivitas terakhir).</p>
+                <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Rekaman aktivitas yang Anda lakukan di dalam akun SIAKAD ini.</p>
               </div>
 
               <div style={{ overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxSizing: 'border-box' }}>
@@ -1258,7 +1324,7 @@ export default function DashboardPendamping() {
                 <tbody>
                   <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{kaderDicetak.nim || '...........................'}</td></tr>
                   <tr><td>Nama Mahasiswa</td><td>:</td><td>{kaderDicetak.nama || '...........................'}</td></tr>
-                  <tr><td>Nama Rayon</td><td>:</td><td>{namaRayonInduk || '...........................'}</td></tr>
+                  <tr><td>Nama Instansi Pelaksana</td><td>:</td><td>{namaRayonInduk || '...........................'}</td></tr>
                   <tr><td>Angkatan</td><td>:</td><td>{kaderDicetak.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '...........................'}</td></tr>
                   <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{selectedJenjang}</td></tr>
                 </tbody>
@@ -1277,7 +1343,7 @@ export default function DashboardPendamping() {
                 </thead>
                 <tbody>
                   {materiAktif.length === 0 ? (
-                    <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur oleh Pengurus Rayon.</td></tr>
+                    <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur oleh Pengurus.</td></tr>
                   ) : barisRaportRender}
                   <tr>
                     <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td>

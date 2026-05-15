@@ -43,12 +43,16 @@ export default function DashboardKader() {
   const [riwayatBerkas, setRiwayatBerkas] = useState<any[]>([]);
   const [listMasterTugas, setListMasterTugas] = useState<any[]>([]); 
   
-  // --- STATE RAPORT DINAMIS ---
+  // --- STATE RAPORT DINAMIS (DIPERBAIKI) ---
   const [tabRaport, setTabRaport] = useState('raport'); 
   const [filterRaport, setFilterRaport] = useState('MAPABA'); 
   const [listKurikulum, setListKurikulum] = useState<Record<string, any[]>>({}); 
   const [nilaiKader, setNilaiKader] = useState<Record<string, string>>({});
-  const [evaluasiKader, setEvaluasiKader] = useState<{ bobot: any[], nilai_mentah: any, catatan: string }>({ bobot: [], nilai_mentah: {}, catatan: '' });
+  
+  // STATE BARU UNTUK BOBOT DARI RAYON & KOMISARIAT
+  const [kategoriBobotRayon, setKategoriBobotRayon] = useState<Record<string, any[]>>({});
+  const [kategoriBobotKomisariat, setKategoriBobotKomisariat] = useState<Record<string, any[]>>({});
+  const [evaluasiKader, setEvaluasiKader] = useState<{ nilai_mentah: any, catatan: string }>({ nilai_mentah: {}, catatan: '' });
 
   // --- STATE PERPUS & SARAN ---
   const [listPerpus, setListPerpus] = useState<any[]>([]);
@@ -62,7 +66,7 @@ export default function DashboardKader() {
   const [jawabanTes, setJawabanTes] = useState<Record<number, string>>({});
   const [isSubmittingTes, setIsSubmittingTes] = useState(false);
 
-  // ---> STATE BARU: FITUR ENTERPRISE (KALENDER, BROADCAST, LOG) <---
+  // --- STATE ENTERPRISE (KALENDER, BROADCAST, LOG) ---
   const [jadwalKegiatan, setJadwalKegiatan] = useState<any[]>([]);
   const [notifikasiGlobal, setNotifikasiGlobal] = useState<any[]>([]);
   const [logAktivitas, setLogAktivitas] = useState<any[]>([]);
@@ -153,6 +157,14 @@ export default function DashboardKader() {
             }
           }
         });
+        
+        // PENDENGAR SETTING KOMISARIAT (UNTUK BOBOT SKP)
+        onSnapshot(doc(db, "pengaturan_sistem", "komisariat_settings"), (docSnap) => {
+          if (docSnap.exists() && docSnap.data().bobot_penilaian) {
+            setKategoriBobotKomisariat(docSnap.data().bobot_penilaian);
+          }
+        });
+
       } else {
         router.push('/');
       }
@@ -168,6 +180,12 @@ export default function DashboardKader() {
 
     onSnapshot(doc(db, "kurikulum_rayon", idRayon), (docSnap) => {
       if (docSnap.exists()) setListKurikulum(docSnap.data() as Record<string, any[]>);
+    });
+
+    onSnapshot(doc(db, "pengaturan_rayon", idRayon), (docSnap) => {
+      if (docSnap.exists() && docSnap.data().bobot_penilaian) {
+        setKategoriBobotRayon(docSnap.data().bobot_penilaian);
+      }
     });
 
     onSnapshot(doc(db, "nilai_khs", nimKader), (docSnap) => {
@@ -218,14 +236,12 @@ export default function DashboardKader() {
       setRiwayatTes(riwayat);
     });
 
-    // ---> PENDENGAR FITUR BARU: JADWAL, NOTIF, LOG <---
     onSnapshot(collection(db, "jadwal_kegiatan"), (snap) => {
       const listJadwal: any[] = [];
       snap.forEach(doc => {
         const d = doc.data();
-        // Kader melihat jadwal Komisariat, Rayon, dan Pendampingnya sendiri
         if (d.pembuat === "Komisariat" || d.id_rayon === idRayon) {
-          if (d.pembuat.includes("Pendamping") && d.pendamping_id !== pendampingId) return; // Skip jadwal pendamping lain
+          if (d.pembuat.includes("Pendamping") && d.pendamping_id !== pendampingId) return; 
           listJadwal.push({ id: doc.id, ...d });
         }
       });
@@ -261,19 +277,15 @@ export default function DashboardKader() {
       if (docSnap.exists() && docSnap.data()[filterRaport]) {
         setEvaluasiKader(docSnap.data()[filterRaport]);
       } else {
-        setEvaluasiKader({ bobot: [], nilai_mentah: {}, catatan: '' });
+        setEvaluasiKader({ nilai_mentah: {}, catatan: '' });
       }
     });
     return () => unsubscribeKeaktifan();
   }, [profil.nim, filterRaport]);
 
   // ==========================================
-  // LOGIKA PERHITUNGAN IPK & KHS SINKRON DENGAN RAYON
+  // LOGIKA PERHITUNGAN NILAI & IPK
   // ==========================================
-  const materiAktif = listKurikulum[filterRaport] || [];
-  let totalSks = 0;
-  let totalBobotNilai = 0;
-
   const konversiHurufKeAngka = (huruf: string) => {
     if(huruf === 'A') return 4; if(huruf === 'B') return 3; if(huruf === 'C') return 2; if(huruf === 'D') return 1; return 0;
   };
@@ -281,6 +293,34 @@ export default function DashboardKader() {
   const getNilaiHuruf = (angka: number) => {
     if (angka >= 76) return "A"; if (angka >= 51) return "B"; if (angka >= 26) return "C"; if (angka >= 10) return "D"; if (angka > 0) return "E"; return "-";
   };
+
+  const hitungIpkPerJenjang = (jenjang: string) => {
+    const materi = listKurikulum[jenjang] || [];
+    if (materi.length === 0) return null;
+    let tSks = 0;
+    let tBobot = 0;
+    let adaNilai = false;
+    materi.forEach(m => {
+        const huruf = nilaiKader[m.kode] || "-";
+        tSks += (m.bobot || 0);
+        if (huruf !== "-") {
+            adaNilai = true;
+            tBobot += (m.bobot || 0) * konversiHurufKeAngka(huruf);
+        }
+    });
+    if (!adaNilai) return null;
+    return tSks > 0 ? (tBobot / tSks).toFixed(2) : "0.00";
+  };
+
+  const ipkMapaba = hitungIpkPerJenjang('MAPABA');
+  const ipkPkd = hitungIpkPerJenjang('PKD');
+  const ipkSig = hitungIpkPerJenjang('SIG');
+  const ipkSkp = hitungIpkPerJenjang('SKP');
+
+  // Variabel untuk render di Tab Raport Khusus
+  const materiAktif = listKurikulum[filterRaport] || [];
+  let totalSks = 0;
+  let totalBobotNilai = 0;
 
   const barisMateriRender = materiAktif.map((materi, index) => {
     const nilaiHuruf = nilaiKader[materi.kode] || "-";
@@ -304,9 +344,10 @@ export default function DashboardKader() {
     );
   });
 
-  const ipKader = totalSks > 0 ? (totalBobotNilai / totalSks).toFixed(2) : "0.00";
+  const ipKaderTampilan = totalSks > 0 ? (totalBobotNilai / totalSks).toFixed(2) : "0.00";
 
-  const kategoriBobot = evaluasiKader.bobot || [];
+  // Penentuan Bobot untuk Tab Persentase Detail
+  const kategoriBobot = filterRaport === 'SKP' ? (kategoriBobotKomisariat['SKP'] || []) : (kategoriBobotRayon[filterRaport] || []);
   const nilaiMentah = evaluasiKader.nilai_mentah || {};
 
   // ==========================================
@@ -432,9 +473,8 @@ export default function DashboardKader() {
       };
     });
     
-    // Tambahkan baris total
     dataToExport.push({ "No": "" as any, "Kode Materi": "", "Nama Materi": "TOTAL SKS & NILAI", "Bobot SKS": totalSks, "Nilai Huruf": "", "SKS x Nilai": totalBobotNilai });
-    dataToExport.push({ "No": "" as any, "Kode Materi": "", "Nama Materi": "INDEKS PRESTASI KADER (IPK)", "Bobot SKS": "" as any, "Nilai Huruf": ipKader as any, "SKS x Nilai": "" as any });
+    dataToExport.push({ "No": "" as any, "Kode Materi": "", "Nama Materi": "INDEKS PRESTASI KADER (IPK)", "Bobot SKS": "" as any, "Nilai Huruf": ipKaderTampilan as any, "SKS x Nilai": "" as any });
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
@@ -456,8 +496,6 @@ export default function DashboardKader() {
   const getHeaderTitle = () => {
     switch (activeMenu) {
       case 'home': return 'Dashboard Utama';
-      case 'kalender': return 'Jadwal & Agenda';
-      case 'notifikasi': return 'Pusat Informasi';
       case 'profil': return 'Profil Saya';
       case 'raport': return 'Raport Kaderisasi';
       case 'tes-materi': return 'Tes Pemahaman';
@@ -466,7 +504,7 @@ export default function DashboardKader() {
       case 'perpus': return 'Perpustakaan Digital';
       case 'saran': return 'Kotak Aspirasi';
       case 'log-aktivitas': return 'Log Aktivitas Saya';
-      default: return 'Dashboard';
+      default: return 'Dashboard Kader';
     }
   };
 
@@ -503,7 +541,11 @@ export default function DashboardKader() {
           .print-content-area { position: relative !important; z-index: 10 !important; padding: 55mm 25mm 30mm 25mm !important; background-color: transparent !important; }
           table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
           tr { page-break-inside: avoid !important; background-color: transparent !important; }
-          th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; }
+          
+          /* FIX BUG GARIS ABU-ABU SAAT PRINT */
+          .tabel-utama thead tr { border-top: 1px solid #000 !important; border-bottom: 1px solid #000 !important; } 
+          
+          th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; color: #000 !important; }
           th { font-weight: bold !important; text-align: center !important; }
           .tabel-biodata { margin-bottom: 15px !important; border: none !important; width: 100% !important; }
           .tabel-biodata td, .tabel-biodata tr { border: none !important; padding: 3px 0 !important; text-align: left !important; }
@@ -531,9 +573,7 @@ export default function DashboardKader() {
         </div>
         <ul style={{ listStyle: 'none', padding: '10px 0', overflowY: 'auto', flex: 1, margin: 0 }}>
           {[
-            { id: 'home', icon: '🏠', label: 'Dashboard' },
-            { id: 'kalender', icon: '📅', label: 'Jadwal Kegiatan' },
-            { id: 'notifikasi', icon: '🔔', label: 'Pusat Informasi', badge: notifikasiGlobal.length || null },
+            { id: 'home', icon: '🏠', label: 'Dashboard Utama', badge: notifikasiGlobal.length || null },
             { id: 'profil', icon: '👤', label: 'Profil Saya' },
             { id: 'raport', icon: '📊', label: 'Raport Kaderisasi' },
             { id: 'tes-materi', icon: '📝', label: 'Tes Pemahaman' },
@@ -581,14 +621,11 @@ export default function DashboardKader() {
                 <p style={{margin: '8px 0 0 0', fontSize: '0.9rem', color: '#555', opacity: 0.9}}>Selamat datang di Sistem Informasi Akademik dan Kaderisasi {namaRayonAsli}. Berikut adalah ringkasan progres kaderisasi Anda saat ini.</p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+              {/* KARTU RINGKASAN */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '10px' }}>
                 <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #f1c40f', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                   <div style={{ fontSize: '0.8rem', color: '#777', fontWeight: 'bold' }}>Jenjang Kaderisasi</div>
                   <div style={{ fontSize: '1.5rem', color: '#333', fontWeight: 'bold', marginTop: '5px' }}>{profil.jenjang}</div>
-                </div>
-                <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #3498db', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#777', fontWeight: 'bold' }}>Indeks Prestasi (IPK)</div>
-                  <div style={{ fontSize: '1.5rem', color: '#333', fontWeight: 'bold', marginTop: '5px' }}>{ipKader} <span style={{fontSize: '0.8rem', color: '#888'}}>dari {totalSks} SKS</span></div>
                 </div>
                 <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #2ecc71', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                   <div style={{ fontSize: '0.8rem', color: '#777', fontWeight: 'bold' }}>Pendamping Anda</div>
@@ -602,72 +639,79 @@ export default function DashboardKader() {
                 </div>
               </div>
 
-              <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                <h4 style={{ margin: '0 0 15px 0', color: '#1e824c' }}>📌 Papan Informasi Cepat</h4>
-                <ul style={{ margin: 0, paddingLeft: '20px', color: '#555', fontSize: '0.85rem', lineHeight: '1.8' }}>
-                  <li>Selalu cek menu <b>Pusat Informasi</b> 🔔 untuk melihat pengumuman terbaru dari Pengurus.</li>
-                  <li>Pastikan melengkapi <b>Profil Saya</b> jika ada data yang belum sesuai.</li>
-                  <li>Gunakan menu <b>Layanan Surat</b> jika membutuhkan surat pengantar atau keterangan aktif.</li>
-                </ul>
+              {/* IPK PER JENJANG */}
+              <h4 style={{ margin: '0 0 5px 0', color: '#0000af', fontSize: '1.1rem' }}>📊 Indeks Prestasi Kader (IPK)</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', marginBottom: '10px' }}>
+                  <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '8px', border: '1px solid #ddd', textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>IPK MAPABA</div>
+                      <div style={{ fontSize: '1.5rem', color: ipkMapaba ? '#0000af' : '#999', fontWeight: 'bold', marginTop: '5px' }}>{ipkMapaba || '-'}</div>
+                  </div>
+                  <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '8px', border: '1px solid #ddd', textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>IPK PKD</div>
+                      <div style={{ fontSize: '1.5rem', color: ipkPkd ? '#0000af' : '#999', fontWeight: 'bold', marginTop: '5px' }}>{ipkPkd || '-'}</div>
+                  </div>
+                  <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '8px', border: '1px solid #ddd', textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>IPK SIG</div>
+                      <div style={{ fontSize: '1.5rem', color: ipkSig ? '#0000af' : '#999', fontWeight: 'bold', marginTop: '5px' }}>{ipkSig || '-'}</div>
+                  </div>
+                  <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '8px', border: '1px solid #ddd', textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>IPK SKP</div>
+                      <div style={{ fontSize: '1.5rem', color: ipkSkp ? '#0000af' : '#999', fontWeight: 'bold', marginTop: '5px' }}>{ipkSkp || '-'}</div>
+                  </div>
               </div>
-            </div>
-          )}
 
-          {/* MENU 2: KALENDER & JADWAL (FITUR BARU) */}
-          {activeMenu === 'kalender' && (
-            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📅 Kalender & Jadwal Kegiatan</h3>
-              <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px' }}>Berikut adalah daftar agenda kegiatan dari Komisariat, Rayon, dan Jadwal Mentoring dari Pendamping Anda.</p>
-              
-              <div style={{ display: 'grid', gap: '10px' }}>
-                {jadwalKegiatan.length === 0 ? (
-                  <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999' }}>Belum ada agenda kegiatan dalam waktu dekat.</div>
-                ) : (
-                  jadwalKegiatan.map(jadwal => {
-                    const isKomisariat = jadwal.pembuat === 'Komisariat';
-                    const isPendamping = jadwal.pembuat.includes('Pendamping');
-                    const borderColor = isKomisariat ? '#f1c40f' : isPendamping ? '#3498db' : '#e74c3c';
-                    const labelPembuat = isKomisariat ? 'Pusat Komisariat' : isPendamping ? 'Jadwal Mentoring' : 'Pengurus Rayon';
-
-                    return (
-                      <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', borderLeft: `4px solid ${borderColor}`, padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
-                            <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
-                            <span style={{ backgroundColor: '#f8f9fa', color: '#555', padding: '2px 6px', borderRadius: '10px', fontSize: '0.65rem', border: '1px solid #ddd', fontWeight: 'bold' }}>{labelPembuat}</span>
+              {/* JADWAL & NOTIFIKASI */}
+              <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                  {/* NOTIFIKASI */}
+                  <div style={{ flex: '1 1 350px', background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>🔔 Pusat Informasi</h3>
+                    <div style={{ display: 'grid', gap: '10px', maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
+                      {notifikasiGlobal.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999', fontSize: '0.85rem' }}>Kotak masuk informasi kosong.</div>
+                      ) : (
+                        notifikasiGlobal.map(notif => (
+                          <div key={notif.id} style={{ padding: '15px', backgroundColor: '#fdfdfd', border: '1px solid #eee', borderLeft: '4px solid #1e824c', borderRadius: '4px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                              <strong style={{ color: '#333', fontSize: '0.9rem' }}>{notif.judul}</strong>
+                              <span style={{ fontSize: '0.7rem', color: '#888' }}>{notif.tanggal}</span>
+                            </div>
+                            <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#555', whiteSpace: 'pre-wrap' }}>{notif.pesan}</p>
+                            <div style={{ fontSize: '0.7rem', color: '#3498db', fontWeight: 'bold' }}>Dari: {notif.pengirim}</div>
                           </div>
-                          <div style={{ fontSize: '0.8rem', color: '#e67e22', fontWeight: 'bold', marginBottom: '5px' }}>🗓️ {jadwal.tanggal.replace('T', ' - ')} | 📍 {jadwal.lokasi}</div>
-                          <p style={{ margin: 0, fontSize: '0.85rem', color: '#555', fontStyle: 'italic' }}>{jadwal.deskripsi}</p>
-                        </div>
-                      </div>
-                    )
-                  })
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* MENU 3: PUSAT INFORMASI / NOTIFIKASI (FITUR BARU) */}
-          {activeMenu === 'notifikasi' && (
-            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-              <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>🔔 Pusat Informasi (Broadcast)</h3>
-              <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px' }}>Pesan penting dan pengumuman dari Pengurus maupun Pendamping akan muncul di sini.</p>
-              
-              <div style={{ display: 'grid', gap: '10px' }}>
-                {notifikasiGlobal.length === 0 ? (
-                  <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999' }}>Kotak masuk informasi kosong.</div>
-                ) : (
-                  notifikasiGlobal.map(notif => (
-                    <div key={notif.id} style={{ padding: '15px', backgroundColor: '#fdfdfd', border: '1px solid #eee', borderLeft: '4px solid #1e824c', borderRadius: '4px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                        <strong style={{ color: '#333', fontSize: '0.9rem' }}>{notif.judul}</strong>
-                        <span style={{ fontSize: '0.7rem', color: '#888' }}>{notif.tanggal}</span>
-                      </div>
-                      <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#555' }}>{notif.pesan}</p>
-                      <div style={{ fontSize: '0.7rem', color: '#3498db', fontWeight: 'bold' }}>Dari: {notif.pengirim}</div>
+                        ))
+                      )}
                     </div>
-                  ))
-                )}
+                  </div>
+
+                  {/* JADWAL */}
+                  <div style={{ flex: '1 1 350px', background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+                    <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>📅 Jadwal Kegiatan</h3>
+                    <div style={{ display: 'grid', gap: '10px', maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
+                      {jadwalKegiatan.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999', fontSize: '0.85rem' }}>Belum ada agenda kegiatan dalam waktu dekat.</div>
+                      ) : (
+                        jadwalKegiatan.map(jadwal => {
+                          const isKomisariat = jadwal.pembuat === 'Komisariat';
+                          const isPendamping = jadwal.pembuat.includes('Pendamping');
+                          const borderColor = isKomisariat ? '#f1c40f' : isPendamping ? '#3498db' : '#e74c3c';
+                          const labelPembuat = isKomisariat ? 'Pusat Komisariat' : isPendamping ? 'Jadwal Mentoring' : 'Pengurus Rayon';
+
+                          return (
+                            <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', borderLeft: `4px solid ${borderColor}`, padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
+                                  <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '0.95rem' }}>{jadwal.judul}</h4>
+                                  <span style={{ backgroundColor: '#f8f9fa', color: '#555', padding: '2px 6px', borderRadius: '10px', fontSize: '0.65rem', border: '1px solid #ddd', fontWeight: 'bold' }}>{labelPembuat}</span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#e67e22', fontWeight: 'bold', marginBottom: '5px' }}>🗓️ {jadwal.tanggal.replace('T', ' - ')} | 📍 {jadwal.lokasi}</div>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#555', fontStyle: 'italic' }}>{jadwal.deskripsi}</p>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  </div>
               </div>
             </div>
           )}
@@ -732,8 +776,8 @@ export default function DashboardKader() {
               
               <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '15px 20px', gap: '15px', backgroundColor: '#f8f9fa', borderBottom: '1px solid #ddd', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                   <span style={{ fontWeight: 'bold', color: '#333', fontSize: '0.85rem' }}>Jenjang:</span>
-                   <select value={filterRaport} onChange={(e) => setFilterRaport(e.target.value)} style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', outline: 'none', backgroundColor: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}>
+                   <span style={{ fontWeight: 'bold', color: '#333', fontSize: '0.85rem' }}>Pilih Raport Jenjang:</span>
+                   <select value={filterRaport} onChange={(e) => setFilterRaport(e.target.value)} style={{ padding: '6px 12px', border: '1px solid #ccc', borderRadius: '4px', outline: 'none', backgroundColor: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', color: '#0000af' }}>
                       <option value="MAPABA">MAPABA</option>
                       <option value="PKD">PKD</option>
                       <option value="SIG">SIG</option>
@@ -781,7 +825,7 @@ export default function DashboardKader() {
                       </thead>
                       <tbody>
                         {materiAktif.length === 0 ? (
-                          <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum jenjang ini belum diatur oleh Admin Rayon.</td></tr>
+                          <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum jenjang ini belum diatur.</td></tr>
                         ) : barisMateriRender}
                         
                         <tr style={{ borderTop: '2px solid #ccc' }}>
@@ -792,7 +836,7 @@ export default function DashboardKader() {
                         </tr>
                         <tr style={{ borderTop: '1px solid #ccc', borderBottom: '1px solid #ccc' }}>
                           <td colSpan={5} style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '0.95rem' }}>IPK (Indeks Prestasi Kader)</td>
-                          <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem', color: '#333' }}>{ipKader}</td>
+                          <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem', color: '#333' }}>{ipKaderTampilan}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -808,7 +852,7 @@ export default function DashboardKader() {
                         <tr>
                           <th rowSpan={2} style={{ width: '3%' }}>No</th>
                           <th rowSpan={2} style={{ width: '8%', textAlign: 'left' }}>Kode</th>
-                          <th rowSpan={2} style={{ width: '35%', textAlign: 'left' }}>Nama Matakuliah</th>
+                          <th rowSpan={2} style={{ width: '35%', textAlign: 'left' }}>Nama Materi</th>
                           {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Nilai Detail (0-100)</th>}
                           <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
                           <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
@@ -867,7 +911,7 @@ export default function DashboardKader() {
                         </tr>
                         <tr>
                           <td colSpan={4 + kategoriBobot.length} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kaderisasi)</td>
-                          <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1.1rem' }}>{ipKader}</td>
+                          <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1.1rem' }}>{ipKaderTampilan}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1153,7 +1197,8 @@ export default function DashboardKader() {
 
           {/* MENU 10: KOTAK SARAN */}
           {activeMenu === 'saran' && (
-            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd' }}>
+            <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', padding: '20px' }}>
+              <h3 style={{ color: '#1e824c', margin: '0 0 15px 0', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>Kotak Saran & Aspirasi</h3>
               <p style={{ color: '#555', fontSize: '0.85rem', marginBottom: '20px', lineHeight: '1.5' }}>Punya masukan, kritik membangun, atau ide kegiatan untuk kepengurusan Rayon? Sampaikan melalui form di bawah ini. Aspirasi Anda akan langsung masuk ke Dashboard Admin Rayon.</p>
               
               <form onSubmit={handleKirimSaran} style={{ maxWidth: '500px', width: '100%' }}>
@@ -1230,7 +1275,7 @@ export default function DashboardKader() {
                   <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{profil.nim || '...........................'}</td></tr>
                   <tr><td>Nomor Induk Anggota</td><td>:</td><td>{profil.nia || '...........................'}</td></tr>
                   <tr><td>Nama Mahasiswa</td><td>:</td><td>{profil.nama || '...........................'}</td></tr>
-                  <tr><td>Nama Rayon</td><td>:</td><td>{namaRayonAsli || '...........................'}</td></tr>
+                  <tr><td>Nama Rayon / Instansi</td><td>:</td><td>{namaRayonAsli || '...........................'}</td></tr>
                   <tr><td>Angkatan</td><td>:</td><td>{profil.angkatan || '...........................'}</td></tr>
                   <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{filterRaport}</td></tr>
                 </tbody>
@@ -1259,7 +1304,7 @@ export default function DashboardKader() {
                   </tr>
                   <tr>
                     <td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kaderisasi)</td>
-                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{ipKader}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{ipKaderTampilan}</td>
                   </tr>
                 </tbody>
               </table>

@@ -19,6 +19,10 @@ export default function DashboardKomisariat() {
   const [dataRayon, setDataRayon] = useState<any[]>([]);
   const [databaseKader, setDatabaseKader] = useState<any[]>([]);
   
+  // ---> STATE BARU: DATA PENDAMPING & TAB AKUN PUSAT <---
+  const [dataPendamping, setDataPendamping] = useState<any[]>([]);
+  const [tabAkunPusat, setTabAkunPusat] = useState('rayon');
+  
   // --- STATE MASTER KURIKULUM & TES PUSAT ---
   const [masterKurikulum, setMasterKurikulum] = useState<any[]>([]);
   const [masterTesPusat, setMasterTesPusat] = useState<any[]>([]);
@@ -38,11 +42,18 @@ export default function DashboardKomisariat() {
   const [logAktivitas, setLogAktivitas] = useState<any[]>([]);
   const [riwayatBroadcast, setRiwayatBroadcast] = useState<any[]>([]); 
 
-  const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
+  const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Semua' });
   const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Semua', batas_waktu: '' });
 
-  // --- STATE FORM INPUT RAYON & PUSAT ---
+  // --- STATE FORM INPUT RAYON, SKP, & PUSAT ---
   const [formRayon, setFormRayon] = useState({ id_rayon: '', nama_rayon: '', password: '' });
+  const [formPendampingSKP, setFormPendampingSKP] = useState({ nama: '', username: '', password: '' });
+  
+  // STATE KHUSUS KADER SKP (Dua Pilihan)
+  const [modeInputKaderSKP, setModeInputKaderSKP] = useState<'pilih' | 'baru'>('pilih');
+  const [formPilihKaderSKP, setFormPilihKaderSKP] = useState({ nim: '', pendampingId: '' });
+  const [formKaderSKP, setFormKaderSKP] = useState({ nim: '', nama: '', password: '', id_rayon: '', pendampingId: '', angkatan: new Date().getFullYear().toString() });
+  
   const [formKurikulum, setFormKurikulum] = useState({ jenjang: 'MAPABA', kode: '', nama: '', muatan: '', bobot: 3 });
   const [formTesPusat, setFormTesPusat] = useState({ judul: '', jenjang: 'MAPABA', soal: '' });
   
@@ -50,7 +61,37 @@ export default function DashboardKomisariat() {
   const [searchKader, setSearchKader] = useState('');
   const [filterRayonKader, setFilterRayonKader] = useState('');
 
+  // ==========================================
+  // STATE PENILAIAN SKP & RAPORT (BARU)
+  // ==========================================
+  const [selectedKaderNilai, setSelectedKaderNilai] = useState('');
+  const [nilaiKaderRealtime, setNilaiKaderRealtime] = useState<Record<string, string>>({}); 
+  const [evaluasiKader, setEvaluasiKader] = useState<{ catatan: string }>({ catatan: '' });
+  const [tabRaportAdmin, setTabRaportAdmin] = useState('raport'); 
+  const [kategoriBobotGlobal, setKategoriBobotGlobal] = useState<Record<string, any[]>>({});
+  const [nilaiMentah, setNilaiMentah] = useState<Record<string, Record<string, number>>>({});
+  const [formKategori, setFormKategori] = useState({ nama: '', persen: 0 });
+  const [isSavingEvaluasi, setIsSavingEvaluasi] = useState(false);
+  
+  const [pengaturanCetak, setPengaturanCetak] = useState({ kopSuratUrl: '', footerUrl: '' });
+  const [fileKop, setFileKop] = useState<File | null>(null);
+  const [isSavingPengaturan, setIsSavingPengaturan] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ==========================================
+  // FUNGSI UPLOAD CLOUDINARY (UNTUK KOP SURAT)
+  // ==========================================
+  const uploadToCloudinary = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "siakad_upload"); 
+    const resourceType = file.type.startsWith('image/') ? 'image' : 'raw';
+    const res = await fetch(`https://api.cloudinary.com/v1_1/dcmdaghbq/${resourceType}/upload`, { method: "POST", body: formData });
+    const data = await res.json();
+    if (!data.secure_url) throw new Error("Gagal upload");
+    return data.secure_url.replace("http://", "https://");
+  };
 
   // ==========================================
   // FUNGSI PENCATAT LOG AKTIVITAS (AUDIT TRAIL)
@@ -64,13 +105,11 @@ export default function DashboardKomisariat() {
         timestamp: Date.now(),
         waktu_format: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
       });
-    } catch (e) {
-      console.error("Gagal mencatat log", e);
-    }
+    } catch (e) { console.error("Gagal mencatat log", e); }
   };
 
   // ==========================================
-  // EFEK: AMBIL DATA REAL-TIME DARI FIREBASE & CEK ROLE
+  // EFEK: AMBIL DATA REAL-TIME DARI FIREBASE
   // ==========================================
   useEffect(() => {
     // CEK LOGIN & ROLE
@@ -93,30 +132,32 @@ export default function DashboardKomisariat() {
       }
     });
 
-    // LISTENER USER GLOBAL (KADER, RAYON, PENDAMPING)
+    // PENGATURAN KOMISARIAT (KOP SURAT & MATRIKS SKP)
+    const unsubSettings = onSnapshot(doc(db, "pengaturan_sistem", "komisariat_settings"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setPengaturanCetak({ kopSuratUrl: data.kopSuratUrl || '', footerUrl: data.footerUrl || '' });
+        if (data.bobot_penilaian) setKategoriBobotGlobal(data.bobot_penilaian);
+      }
+    });
+
+    // LISTENER USER GLOBAL
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
-      let kaderCount = 0;
-      let pendampingCount = 0;
-      let rayonCount = 0;
-      const listKader: any[] = [];
-      const listRayon: any[] = [];
+      let kaderCount = 0; let pendampingCount = 0; let rayonCount = 0;
+      const listKader: any[] = []; const listRayon: any[] = []; const listPendamping: any[] = [];
 
       snap.forEach((doc) => {
         const data = doc.data();
-        if (data.role === 'kader') {
-          kaderCount++;
-          listKader.push({ id: doc.id, ...data });
-        } else if (data.role === 'pendamping') {
-          pendampingCount++;
-        } else if (data.role === 'rayon') {
-          rayonCount++;
-          listRayon.push({ id: doc.id, ...data });
-        }
+        if (data.role === 'kader') { kaderCount++; listKader.push({ id: doc.id, ...data }); } 
+        else if (data.role === 'pendamping') { pendampingCount++; listPendamping.push({ id: doc.id, ...data }); } 
+        else if (data.role === 'rayon') { rayonCount++; listRayon.push({ id: doc.id, ...data }); }
       });
 
-      setDatabaseKader(listKader);
-      setDataRayon(listRayon);
+      setDatabaseKader(listKader); setDataRayon(listRayon); setDataPendamping(listPendamping);
       setStatGlobal(prev => ({ ...prev, totalKaderAktif: kaderCount, totalPendamping: pendampingCount, totalRayon: rayonCount }));
+      
+      const kaderSKP = listKader.filter(k => k.jenjang === 'SKP');
+      if (kaderSKP.length > 0 && !selectedKaderNilai) setSelectedKaderNilai(kaderSKP[0].nim);
     });
 
     const unsubSurat = onSnapshot(collection(db, "pengajuan_surat"), (snap) => { setStatGlobal(prev => ({ ...prev, totalSuratKeluar: snap.size })); });
@@ -137,99 +178,75 @@ export default function DashboardKomisariat() {
       const listJadwal: any[] = []; snap.forEach(doc => listJadwal.push({ id: doc.id, ...doc.data() })); setJadwalKegiatan(listJadwal);
     });
 
-    // LISTENER UNTUK RIWAYAT BROADCAST
     const unsubBroadcast = onSnapshot(query(collection(db, "notifikasi_global"), where("pengirim", "==", "Pusat Komisariat")), (snap) => {
-      const listNotif: any[] = [];
-      snap.forEach(doc => listNotif.push({ id: doc.id, ...doc.data() }));
-      listNotif.sort((a, b) => b.timestamp - a.timestamp); 
-      setRiwayatBroadcast(listNotif);
+      const listNotif: any[] = []; snap.forEach(doc => listNotif.push({ id: doc.id, ...doc.data() }));
+      listNotif.sort((a, b) => b.timestamp - a.timestamp); setRiwayatBroadcast(listNotif);
     });
 
     const unsubLog = onSnapshot(query(collection(db, "log_aktivitas"), orderBy("timestamp", "desc"), limit(50)), (snap) => {
       const listLog: any[] = []; snap.forEach(doc => listLog.push({ id: doc.id, ...doc.data() })); setLogAktivitas(listLog);
     });
 
-    return () => { unsubscribeAuth(); unsubUsers(); unsubSurat(); unsubKurikulumPusat(); unsubTesPusat(); unsubPengumuman(); unsubJadwal(); unsubBroadcast(); unsubLog(); };
+    return () => { unsubscribeAuth(); unsubUsers(); unsubSurat(); unsubKurikulumPusat(); unsubTesPusat(); unsubPengumuman(); unsubJadwal(); unsubBroadcast(); unsubLog(); unsubSettings(); };
   }, [router]);
 
+  // EFEK PANTAU NILAI SKP
+  useEffect(() => {
+    if (!selectedKaderNilai) return;
+    const unsubscribeNilai = onSnapshot(doc(db, "nilai_khs", selectedKaderNilai), (docSnap) => {
+      if (docSnap.exists()) setNilaiKaderRealtime(docSnap.data()); else setNilaiKaderRealtime({});
+    });
+
+    const unsubscribeKeaktifan = onSnapshot(doc(db, "evaluasi_kader", selectedKaderNilai), (docSnap) => {
+      if (docSnap.exists() && docSnap.data()['SKP']) {
+        const data = docSnap.data()['SKP'];
+        setNilaiMentah(data.nilai_mentah || {}); setEvaluasiKader({ catatan: data.catatan || '' });
+      } else { setNilaiMentah({}); setEvaluasiKader({ catatan: '' }); }
+    });
+
+    return () => { unsubscribeNilai(); unsubscribeKeaktifan(); };
+  }, [selectedKaderNilai]);
+
 
   // ==========================================
-  // FUNGSI FITUR BARU: KALENDER, BROADCAST, EXPORT EXCEL
+  // FUNGSI FITUR KALENDER, BROADCAST, EXCEL
   // ==========================================
-
   const handleExportKaderGlobal = () => {
     if (databaseKader.length === 0) return alert("Database Kader Kosong!");
-    
     const dataToExport = databaseKader.map((k, i) => ({
-      "No": i + 1,
-      "NIM": k.nim || '-',
-      "Nama Lengkap": k.nama || '-',
-      "NIA": k.nia || '-',
-      "Rayon Asal": k.id_rayon || '-',
-      "Jenjang Terakhir": k.jenjang || 'MAPABA',
-      "Email": k.email || '-',
-      "Status": k.status || 'Aktif'
+      "No": i + 1, "NIM": k.nim || '-', "Nama Lengkap": k.nama || '-', "NIA": k.nia || '-', "Rayon Asal": k.id_rayon || '-', "Jenjang Terakhir": k.jenjang || 'MAPABA', "Email": k.email || '-', "Status": k.status || 'Aktif'
     }));
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Database Kader");
-    XLSX.writeFile(workbook, `Database_Kader_Komisariat_${Date.now()}.xlsx`);
-
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Database Kader"); XLSX.writeFile(workbook, `Database_Kader_Komisariat_${Date.now()}.xlsx`);
     catatLogAktivitas("Mengekspor (Download Excel) seluruh database kader se-UIN.");
   };
 
   const handleTambahJadwal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+    e.preventDefault(); setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "jadwal_kegiatan"), {
-        ...formJadwal,
-        pembuat: "Komisariat",
-        timestamp: Date.now()
-      });
-      catatLogAktivitas(`Menambahkan jadwal kegiatan baru: ${formJadwal.judul}`);
-      alert("Jadwal kegiatan berhasil ditambahkan!");
-      setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
+      await addDoc(collection(db, "jadwal_kegiatan"), { ...formJadwal, pembuat: "Komisariat", timestamp: Date.now() });
+      catatLogAktivitas(`Menambahkan jadwal (Target: ${formJadwal.target}): ${formJadwal.judul}`);
+      alert("Jadwal kegiatan berhasil ditambahkan!"); setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Semua' });
     } catch (error) { alert("Gagal menyimpan jadwal."); } finally { setIsSubmitting(false); }
   };
 
   const handleHapusJadwal = async (id: string, judul: string) => {
     if (!window.confirm(`Hapus jadwal "${judul}"?`)) return;
-    try {
-      await deleteDoc(doc(db, "jadwal_kegiatan", id));
-      catatLogAktivitas(`Menghapus jadwal kegiatan: ${judul}`);
-    } catch (error) { alert("Gagal menghapus."); }
+    try { await deleteDoc(doc(db, "jadwal_kegiatan", id)); catatLogAktivitas(`Menghapus jadwal kegiatan: ${judul}`); } catch (error) { alert("Gagal menghapus."); }
   };
 
   const handleKirimBroadcast = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+    e.preventDefault(); setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "notifikasi_global"), {
-        ...formBroadcast,
-        pengirim: "Pusat Komisariat",
-        tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
-        timestamp: Date.now()
-      });
-      catatLogAktivitas(`Mengirim Broadcast (${formBroadcast.target}): ${formBroadcast.judul}`);
-      alert("Pesan Broadcast berhasil disiarkan!");
-      setFormBroadcast({ judul: '', pesan: '', target: 'Semua', batas_waktu: '' });
+      await addDoc(collection(db, "notifikasi_global"), { ...formBroadcast, pengirim: "Pusat Komisariat", tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()), timestamp: Date.now() });
+      catatLogAktivitas(`Mengirim Broadcast (${formBroadcast.target}): ${formBroadcast.judul}`); alert("Pesan Broadcast berhasil disiarkan!"); setFormBroadcast({ judul: '', pesan: '', target: 'Semua', batas_waktu: '' });
     } catch (error) { alert("Gagal mengirim broadcast."); } finally { setIsSubmitting(false); }
   };
 
   const handleHapusBroadcast = async (id: string, judul: string) => {
     if (!window.confirm(`Hapus/tarik pesan broadcast "${judul}"?`)) return;
-    try {
-      await deleteDoc(doc(db, "notifikasi_global", id));
-      catatLogAktivitas(`Menarik/Menghapus pesan Broadcast: ${judul}`);
-    } catch (error) { alert("Gagal menghapus broadcast."); }
+    try { await deleteDoc(doc(db, "notifikasi_global", id)); catatLogAktivitas(`Menarik pesan Broadcast: ${judul}`); } catch (error) {}
   };
 
-
-  // ==========================================
-  // FUNGSI LAMA (PENGUMUMAN, RAYON, KURIKULUM, TES)
-  // ==========================================
   const handleTambahPengumuman = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPengumuman.trim()) return;
@@ -238,55 +255,84 @@ export default function DashboardKomisariat() {
   };
 
   const handleHapusPengumuman = (index: number) => {
-    const newList = [...pengumumanList]; newList.splice(index, 1); setPengumumanList(newList);
+    const newList = [...pengumumanList];
+    newList.splice(index, 1);
+    setPengumumanList(newList);
   };
 
   const handleSimpanPengumuman = async () => {
     setIsSavingPengumuman(true);
-    try {
-      await setDoc(doc(db, "pengaturan_sistem", "pengumuman"), { listTeks: pengumumanList, terakhirDiubah: Date.now() }, { merge: true });
-      catatLogAktivitas("Mengubah urutan/isi Teks Pengumuman Login.");
-      alert("Pengumuman berhasil disebarkan ke halaman Login!");
-    } catch (error) { alert("Gagal menyimpan pengumuman."); } finally { setIsSavingPengumuman(false); }
+    try { await setDoc(doc(db, "pengaturan_sistem", "pengumuman"), { listTeks: pengumumanList, terakhirDiubah: Date.now() }, { merge: true }); catatLogAktivitas("Mengubah urutan Teks Pengumuman Login."); alert("Pengumuman berhasil disebarkan!"); } catch (error) {} finally { setIsSavingPengumuman(false); }
   };
 
-  const handleBuatAkunRayon = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    const apps = getApps();
-    const secondaryApp = apps.find(app => app.name === 'SecondaryApp') || initializeApp(auth.app.options, 'SecondaryApp');
-    const secondaryAuth = getAuth(secondaryApp);
+  // ==========================================
+  // FUNGSI MANAJEMEN AKUN (RAYON, PENDAMPING SKP, KADER SKP)
+  // ==========================================
+  const getSecondaryAuth = () => { const apps = getApps(); const secondaryApp = apps.find(app => app.name === 'SecondaryApp') || initializeApp(auth.app.options, 'SecondaryApp'); return getAuth(secondaryApp); };
 
+  const handleBuatAkunRayon = async (e: React.FormEvent) => {
+    e.preventDefault(); setIsSubmitting(true); const secondaryAuth = getSecondaryAuth();
     try {
-      const safeUsername = formRayon.id_rayon.trim().toLowerCase();
-      const emailBaru = `${safeUsername}@pmii-uinmalang.or.id`;
+      const safeUsername = formRayon.id_rayon.trim().toLowerCase(); const emailBaru = `${safeUsername}@pmii-uinmalang.or.id`;
       await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formRayon.password);
       await setDoc(doc(db, "users", safeUsername), { nama: formRayon.nama_rayon, username: safeUsername, id_rayon: safeUsername, email: emailBaru, role: "rayon", status: "Aktif", createdAt: Date.now() });
       await setDoc(doc(db, "settings_rayon", safeUsername), { id: safeUsername, nama: formRayon.nama_rayon, pengumuman: `Selamat datang di Sistem Informasi dan Akademik Kaderisasi ${formRayon.nama_rayon}.`, warnaUtama: "#004a87", warnaAksen: "#f1c40f" });
-      await signOutSecondary(secondaryAuth);
-      
-      catatLogAktivitas(`Mendaftarkan Instansi Rayon Baru: ${formRayon.nama_rayon}`);
-      alert(`Sukses! Akun Admin untuk ${formRayon.nama_rayon} berhasil dibuat tanpa logout dari Komisariat.\n\nUsername Login: ${safeUsername}\nPassword: ${formRayon.password}`);
-      setFormRayon({ id_rayon: '', nama_rayon: '', password: '' });
+      await signOutSecondary(secondaryAuth); catatLogAktivitas(`Mendaftarkan Instansi Rayon Baru: ${formRayon.nama_rayon}`); alert(`Sukses! Akun Admin Rayon berhasil dibuat.`); setFormRayon({ id_rayon: '', nama_rayon: '', password: '' });
     } catch (error: any) { alert("Gagal membuat akun Rayon: " + error.message); } finally { setIsSubmitting(false); }
   };
 
-  const handleUbahStatusRayon = async (idRayon: string, statusSekarang: string) => {
-    const statusBaru = statusSekarang === "Aktif" ? "Pasif" : "Aktif";
-    if (!window.confirm(`Ubah status akun rayon ini menjadi ${statusBaru}?`)) return;
+  const handleBuatAkunPendampingSKP = async (e: React.FormEvent) => {
+    e.preventDefault(); setIsSubmitting(true); const secondaryAuth = getSecondaryAuth();
     try {
-      await updateDoc(doc(db, "users", idRayon), { status: statusBaru });
-      catatLogAktivitas(`Mengubah status Rayon ${idRayon} menjadi ${statusBaru}.`);
-    } catch (error) {
-      alert("Gagal mengubah status rayon.");
-    }
+      const safeUsername = formPendampingSKP.username.trim().toLowerCase(); const emailBaru = `${safeUsername}@pmii-uinmalang.or.id`;
+      await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formPendampingSKP.password);
+      await setDoc(doc(db, "users", safeUsername), { nama: formPendampingSKP.nama, username: safeUsername, email: emailBaru, role: "pendamping", id_rayon: "Komisariat", jenjangTugas: "SKP", status: "Aktif", createdAt: Date.now() });
+      await signOutSecondary(secondaryAuth); catatLogAktivitas(`Mendaftarkan Pendamping SKP: ${formPendampingSKP.nama}`); alert(`Sukses! Akun Pendamping SKP berhasil dibuat.`); setFormPendampingSKP({ nama: '', username: '', password: '' });
+    } catch (error: any) { alert("Gagal membuat Pendamping SKP: " + error.message); } finally { setIsSubmitting(false); }
   };
 
+  // Opsi 1: Plotting Kader yang sudah ada di Database
+  const handlePlotKaderSKP = async (e: React.FormEvent) => {
+    e.preventDefault(); setIsSubmitting(true);
+    if (!formPilihKaderSKP.nim || !formPilihKaderSKP.pendampingId) { alert("Harap lengkapi pilihan kader dan pendamping!"); setIsSubmitting(false); return; }
+    try {
+      await updateDoc(doc(db, "users", formPilihKaderSKP.nim), { jenjang: "SKP", pendampingId: formPilihKaderSKP.pendampingId });
+      catatLogAktivitas(`Meng-upgrade NIM ${formPilihKaderSKP.nim} menjadi peserta SKP.`);
+      alert("Berhasil memplotkan/upgrade kader menjadi peserta SKP!"); setFormPilihKaderSKP({nim: '', pendampingId: ''});
+    } catch(err) { alert("Gagal memplotkan kader."); } finally { setIsSubmitting(false); }
+  };
+
+  // Opsi 2: Buat Kader Manual (Khusus dari luar rayon)
+  const handleBuatAkunKaderSKP_Manual = async (e: React.FormEvent) => {
+    e.preventDefault(); setIsSubmitting(true); const secondaryAuth = getSecondaryAuth();
+    try {
+      const safeNim = formKaderSKP.nim.trim(); const emailBaru = `${safeNim}@pmii-uinmalang.or.id`.toLowerCase();
+      await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formKaderSKP.password);
+      
+      const tanggalBuatModif = new Date();
+      tanggalBuatModif.setFullYear(parseInt(formKaderSKP.angkatan));
+
+      await setDoc(doc(db, "users", safeNim), {
+        nim: safeNim, nama: formKaderSKP.nama, email: emailBaru, role: "kader",
+        id_rayon: formKaderSKP.id_rayon || "Luar Komisariat", jenjang: "SKP", pendampingId: formKaderSKP.pendampingId,
+        status: "Aktif", createdAt: tanggalBuatModif.getTime()
+      });
+      await signOutSecondary(secondaryAuth); catatLogAktivitas(`Mendaftarkan Akun Kader SKP Manual: ${formKaderSKP.nama}`); alert(`Sukses! Akun Kader SKP berhasil dibuat manual.`); setFormKaderSKP({ nim: '', nama: '', password: '', id_rayon: '', pendampingId: '', angkatan: new Date().getFullYear().toString() });
+    } catch (error: any) { alert("Gagal membuat Kader SKP: " + error.message); } finally { setIsSubmitting(false); }
+  };
+
+  const handleUbahStatusAkun = async (idAkun: string, statusSekarang: string) => {
+    const statusBaru = statusSekarang === "Aktif" ? "Pasif" : "Aktif";
+    if (!window.confirm(`Ubah status akun ini menjadi ${statusBaru}?`)) return;
+    try { await updateDoc(doc(db, "users", idAkun), { status: statusBaru }); } catch (error) {}
+  };
+
+  // FUNGSI HANDLE HAPUS RAYON YANG HILANG SEBELUMNYA
   const handleHapusRayon = async (idRayon: string, namaRayon: string) => {
     if (!window.confirm(`PERINGATAN!\nAnda yakin ingin menghapus permanen akun Rayon "${namaRayon}"? Tindakan ini tidak bisa dibatalkan.`)) return;
     try {
       await deleteDoc(doc(db, "users", idRayon));
-      await deleteDoc(doc(db, "settings_rayon", idRayon)); 
+      await deleteDoc(doc(db, "settings_rayon", idRayon));
       catatLogAktivitas(`Menghapus permanen akun Rayon: ${namaRayon}`);
       alert(`Akun Rayon ${namaRayon} berhasil dihapus.`);
     } catch (error) {
@@ -294,50 +340,137 @@ export default function DashboardKomisariat() {
     }
   };
 
-  const handleTambahKurikulumPusat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await addDoc(collection(db, "master_kurikulum_pusat"), { jenjang: formKurikulum.jenjang, kode: formKurikulum.kode, nama: formKurikulum.nama, muatan: formKurikulum.muatan, bobot: Number(formKurikulum.bobot), timestamp: Date.now() });
-      catatLogAktivitas(`Menambahkan Master Kurikulum Pusat: [${formKurikulum.kode}] ${formKurikulum.nama}`);
-      alert("Materi berhasil ditambahkan ke kurikulum standar pusat!");
-      setFormKurikulum({ ...formKurikulum, kode: '', nama: '', muatan: '' });
-    } catch (error) { alert("Gagal menyimpan materi pusat."); }
+  const handleHapusAkunLain = async (idAkun: string, namaAkun: string) => {
+    if (!window.confirm(`PERINGATAN!\nAnda yakin ingin menghapus permanen akun "${namaAkun}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+    try { await deleteDoc(doc(db, "users", idAkun)); catatLogAktivitas(`Menghapus permanen akun: ${namaAkun}`); } catch (error) {}
   };
 
-  const handleHapusKurikulumPusat = async (id: string, nama: string) => {
-    if(window.confirm("Hapus materi ini dari standar pusat?")) {
-      await deleteDoc(doc(db, "master_kurikulum_pusat", id));
+  // ==========================================
+  // FUNGSI PENILAIAN SKP (PERHITUNGAN MATRIKS)
+  // ==========================================
+  const materiAktifSKP = masterKurikulum.filter(m => m.jenjang === 'SKP').sort((a, b) => a.kode.localeCompare(b.kode, undefined, { numeric: true, sensitivity: 'base' }));
+  const kategoriBobotAktif = kategoriBobotGlobal['SKP'] || [];
+  const totalBobotTersimpan = kategoriBobotAktif.reduce((sum: number, k: any) => sum + k.persen, 0);
+
+  let totalSks = 0; let totalBobotNilai = 0;
+  const konversiHurufKeAngka = (huruf: string) => { if(huruf === 'A') return 4; if(huruf === 'B') return 3; if(huruf === 'C') return 2; if(huruf === 'D') return 1; return 0; };
+  const getNilaiHuruf = (angka: number) => { if (angka >= 76) return "A"; if (angka >= 51) return "B"; if (angka >= 26) return "C"; if (angka >= 10) return "D"; if (angka > 0) return "E"; return "-"; };
+
+  const barisRaportRender = materiAktifSKP.map((materi, index) => {
+    const nilaiHuruf = nilaiKaderRealtime[materi.kode] || "-";
+    const angkaNilai = konversiHurufKeAngka(nilaiHuruf);
+    const sksKaliNilai = materi.bobot * angkaNilai;
+    totalSks += materi.bobot; if (nilaiHuruf !== "-") totalBobotNilai += sksKaliNilai;
+
+    return (
+      <tr key={materi.kode}>
+        <td style={{ padding: '6px 10px', textAlign: 'center' }}>{index + 1}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'left' }}>{materi.kode}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'left' }}>{materi.nama}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'center' }}>{materi.bobot}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: nilaiHuruf !== '-' ? '#27ae60' : '#555' }}>{nilaiHuruf}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'center' }}>{nilaiHuruf === '-' ? 0 : sksKaliNilai}</td>
+      </tr>
+    );
+  });
+
+  const ipKader = totalSks > 0 ? (totalBobotNilai / totalSks).toFixed(2) : "0.00";
+  const kaderDicetak = databaseKader.find(k => k.nim === selectedKaderNilai) || {};
+
+  const handleSimpanPengaturanCetak = async (e: React.FormEvent) => {
+    e.preventDefault(); setIsSavingPengaturan(true);
+    try {
+      let newKop = pengaturanCetak.kopSuratUrl;
+      if (fileKop) newKop = await uploadToCloudinary(fileKop);
+      await setDoc(doc(db, "pengaturan_sistem", "komisariat_settings"), { kopSuratUrl: newKop }, { merge: true });
+      catatLogAktivitas("Menyimpan pengaturan KOP Cetak Surat SKP.");
+      alert("Pengaturan Kop berhasil disimpan!"); setFileKop(null);
+    } catch (error) { alert("Gagal menyimpan."); } finally { setIsSavingPengaturan(false); }
+  };
+
+  const handleTambahKategoriBobot = async (e: React.FormEvent) => {
+    e.preventDefault(); if(!formKategori.nama) return;
+    if(totalBobotTersimpan + formKategori.persen > 100) return alert("Total bobot tidak boleh melebihi 100%!");
+    setIsSavingEvaluasi(true);
+    try {
+      const docRef = doc(db, "pengaturan_sistem", "komisariat_settings");
+      const newBobot = [...kategoriBobotAktif, { id: Date.now().toString(), nama: formKategori.nama, persen: formKategori.persen }];
+      await setDoc(docRef, { bobot_penilaian: { ...kategoriBobotGlobal, 'SKP': newBobot } }, { merge: true });
+      catatLogAktivitas(`Menambahkan Kategori Bobot SKP: ${formKategori.nama}`);
+      setFormKategori({ nama: '', persen: 0 });
+    } catch (error) { alert("Gagal menyimpan kategori bobot."); } finally { setIsSavingEvaluasi(false); }
+  };
+
+  const handleHapusKategoriBobot = async (id: string) => {
+    if(!window.confirm("Hapus kategori bobot ini?")) return;
+    try {
+      const docRef = doc(db, "pengaturan_sistem", "komisariat_settings");
+      const newBobot = kategoriBobotAktif.filter((item: any) => item.id !== id);
+      await setDoc(docRef, { bobot_penilaian: { ...kategoriBobotGlobal, 'SKP': newBobot } }, { merge: true });
+    } catch (error) {}
+  };
+
+  const handleInputNilaiMentah = (kodeMateri: string, namaKategori: string, value: string) => {
+    let valNum = Number(value); if (valNum > 100) valNum = 100; if (valNum < 0) valNum = 0;
+    setNilaiMentah({ ...nilaiMentah, [kodeMateri]: { ...(nilaiMentah[kodeMateri] || {}), [namaKategori]: valNum } });
+  };
+
+  const handleAutoSaveNilaiDetail = async (kodeMateri: string) => {
+    if (!selectedKaderNilai) return;
+    try {
+      const docRef = doc(db, "evaluasi_kader", selectedKaderNilai);
+      const currentEvaluasi = (await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKaderNilai)))).docs[0]?.data() || {};
+      const jenjangData = currentEvaluasi['SKP'] || { nilai_mentah: {}, catatan: evaluasiKader.catatan };
+      await setDoc(docRef, { ...currentEvaluasi, ['SKP']: { ...jenjangData, nilai_mentah: nilaiMentah } }, { merge: true });
+
+      let angkaAkhir = 0;
+      kategoriBobotAktif.forEach((kat: any) => {
+          const score = nilaiMentah[kodeMateri]?.[kat.nama] || 0;
+          angkaAkhir += score * (kat.persen / 100);
+      });
+      const hurufAkhir = getNilaiHuruf(angkaAkhir);
+      await setDoc(doc(db, "nilai_khs", selectedKaderNilai), { [kodeMateri]: hurufAkhir, terakhirDiubah: Date.now(), diubahOleh: "Admin Komisariat" }, { merge: true });
+    } catch (error) {}
+  };
+
+  const handleSimpanCatatan = async (text: string) => {
+    setEvaluasiKader({ ...evaluasiKader, catatan: text });
+    try {
+      const currentEvaluasi = (await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKaderNilai)))).docs[0]?.data() || {};
+      const jenjangData = currentEvaluasi['SKP'] || { nilai_mentah: {}, catatan: '' };
+      await setDoc(doc(db, "evaluasi_kader", selectedKaderNilai), { ...currentEvaluasi, ['SKP']: { ...jenjangData, catatan: text } }, { merge: true });
+    } catch (error) {}
+  };
+
+
+  // ==========================================
+  // MASTER KURIKULUM & TES PUSAT
+  // ==========================================
+  const handleTambahKurikulumPusat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try { await addDoc(collection(db, "master_kurikulum_pusat"), { jenjang: formKurikulum.jenjang, kode: formKurikulum.kode, nama: formKurikulum.nama, muatan: formKurikulum.muatan, bobot: Number(formKurikulum.bobot), timestamp: Date.now() }); setFormKurikulum({ ...formKurikulum, kode: '', nama: '', muatan: '' }); } catch (error) { }
+  };
+
+  // DIPERBAIKI: Mengambil parameter nama untuk mencatat log
+  const handleHapusKurikulumPusat = async (id: string, nama: string) => { 
+    if(window.confirm("Hapus materi ini dari standar pusat?")) { 
+      await deleteDoc(doc(db, "master_kurikulum_pusat", id)); 
       catatLogAktivitas(`Menghapus Kurikulum Pusat: ${nama}`);
-    }
+    } 
   };
 
   const handleSimpanEditKurikulumPusat = async (materiId: string) => {
-    if (!editKurikulumForm.kode || !editKurikulumForm.nama) return alert("Kode dan Nama materi tidak boleh kosong!");
-    try {
-      await updateDoc(doc(db, "master_kurikulum_pusat", materiId), {
-        kode: editKurikulumForm.kode,
-        nama: editKurikulumForm.nama,
-        muatan: editKurikulumForm.muatan,
-        bobot: Number(editKurikulumForm.bobot)
-      });
-      catatLogAktivitas(`Mengedit Kurikulum Pusat: [${editKurikulumForm.kode}] ${editKurikulumForm.nama}`);
-      setEditingKurikulumId(null);
-      alert("Materi berhasil diperbarui!");
-    } catch(err) { alert("Gagal mengedit materi."); }
+    if (!editKurikulumForm.kode || !editKurikulumForm.nama) return;
+    try { await updateDoc(doc(db, "master_kurikulum_pusat", materiId), { kode: editKurikulumForm.kode, nama: editKurikulumForm.nama, muatan: editKurikulumForm.muatan, bobot: Number(editKurikulumForm.bobot) }); setEditingKurikulumId(null); } catch(err) {}
   };
 
   const handleTambahTesPusat = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formTesPusat.judul || !formTesPusat.soal) return;
+    e.preventDefault(); if (!formTesPusat.judul || !formTesPusat.soal) return;
     const daftarSoalArray = formTesPusat.soal.split('\n').filter(s => s.trim() !== '');
-    try {
-      await addDoc(collection(db, "master_tes_pusat"), { judul: formTesPusat.judul, jenjang: formTesPusat.jenjang, daftar_soal: daftarSoalArray, timestamp: Date.now() });
-      catatLogAktivitas(`Membuat Master Tes Pusat: ${formTesPusat.judul}`);
-      alert("Tes berhasil ditambahkan ke standar pusat!");
-      setFormTesPusat({ judul: '', jenjang: 'MAPABA', soal: '' });
-    } catch (error) { alert("Gagal menyimpan tes pusat."); }
+    try { await addDoc(collection(db, "master_tes_pusat"), { judul: formTesPusat.judul, jenjang: formTesPusat.jenjang, daftar_soal: daftarSoalArray, timestamp: Date.now() }); setFormTesPusat({ judul: '', jenjang: 'MAPABA', soal: '' }); } catch (error) { }
   };
 
+  // FUNGSI HANDLE HAPUS TES YANG HILANG SEBELUMNYA
   const handleHapusTesPusat = async (id: string, judul: string) => {
     if (window.confirm("Hapus tes ini dari standar pusat?")) {
       await deleteDoc(doc(db, "master_tes_pusat", id));
@@ -347,6 +480,7 @@ export default function DashboardKomisariat() {
 
   const handleLogout = async () => { await signOut(auth); router.push('/'); };
 
+  // FUNGSI PENCARIAN KADER GLOBAL (DIPERBAIKI)
   const filteredKader = databaseKader.filter(kader => {
     const matchSearch = kader.nama?.toLowerCase().includes(searchKader.toLowerCase()) || kader.nim?.includes(searchKader);
     const matchRayon = filterRayonKader === '' || kader.id_rayon === filterRayonKader;
@@ -358,12 +492,13 @@ export default function DashboardKomisariat() {
       case 'beranda': return 'Dashboard Statistik';
       case 'kalender': return 'Kalender & Jadwal';
       case 'broadcast': return 'Pusat Broadcast';
-      case 'manajemen-rayon': return 'Manajemen Akun';
+      case 'manajemen-rayon': return 'Akun & Instansi';
       case 'master-kurikulum': return 'Master Kurikulum';
       case 'master-tes': return 'Master Tes';
       case 'database-kader': return 'Database Kader';
       case 'pengumuman': return 'Pengumuman Login';
       case 'log-aktivitas': return 'Log Aktivitas';
+      case 'pantau-nilai-skp': return 'Raport Kaderisasi SKP';
       default: return 'Pusat Komisariat';
     }
   };
@@ -397,10 +532,14 @@ export default function DashboardKomisariat() {
           .print-layout-container * { color: #000 !important; font-family: "Arial", "Arial Narrow", sans-serif !important; line-height: 1.15 !important; }
           .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
           .bg-kertas-a4 img { width: 210mm !important; height: 297mm !important; object-fit: fill !important; display: block !important; }
-          .print-content-area { position: relative !important; z-index: 10 !important; padding: 50mm 25mm 30mm 25mm !important; background-color: transparent !important; }
+          .print-content-area { position: relative !important; z-index: 10 !important; padding: 55mm 25mm 30mm 25mm !important; background-color: transparent !important; }
           table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
           tr { page-break-inside: avoid !important; background-color: transparent !important; }
-          th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; }
+          
+          /* FIX BUG GARIS ABU-ABU SAAT PRINT */
+          .tabel-utama thead tr { border-top: 1px solid #000 !important; border-bottom: 1px solid #000 !important; } 
+          
+          th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; color: #000 !important; }
           th { font-weight: bold !important; text-align: center !important; }
           .tabel-biodata { margin-bottom: 15px !important; border: none !important; width: 100% !important; }
           .tabel-biodata td, .tabel-biodata tr { border: none !important; padding: 3px 0 !important; text-align: left !important; }
@@ -428,7 +567,8 @@ export default function DashboardKomisariat() {
             { id: 'beranda', icon: '📊', label: 'Dashboard Statistik' },
             { id: 'kalender', icon: '📅', label: 'Kalender & Jadwal' },
             { id: 'broadcast', icon: '📡', label: 'Broadcast' },
-            { id: 'manajemen-rayon', icon: '🏢', label: 'Akun Rayon' },
+            { id: 'manajemen-rayon', icon: '🏢', label: 'Akun & Instansi' },
+            { id: 'pantau-nilai-skp', icon: '👩', label: 'Raport SKP' },
             { id: 'master-kurikulum', icon: '📑', label: 'Master Kurikulum' },
             { id: 'master-tes', icon: '📝', label: 'Master Tes' },
             { id: 'database-kader', icon: '🌐', label: 'Database Kader' },
@@ -529,6 +669,12 @@ export default function DashboardKomisariat() {
                       <input type="text" placeholder="Judul Kegiatan (Cth: RTM Komisariat)" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
                       <input type="datetime-local" required value={formJadwal.tanggal} onChange={e => setFormJadwal({...formJadwal, tanggal: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
                       <input type="text" placeholder="Lokasi / Media" required value={formJadwal.lokasi} onChange={e => setFormJadwal({...formJadwal, lokasi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                      <select required value={formJadwal.target} onChange={e => setFormJadwal({...formJadwal, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', cursor: 'pointer' }}>
+                        <option value="Semua">📢 Terlihat Semua Pengguna</option>
+                        <option value="Rayon">🏢 Hanya Admin Rayon</option>
+                        <option value="Pendamping">👤 Hanya Para Pendamping</option>
+                        <option value="Kader">🎓 Hanya Seluruh Kader</option>
+                      </select>
                       <textarea rows={3} placeholder="Deskripsi Singkat" value={formJadwal.deskripsi} onChange={e => setFormJadwal({...formJadwal, deskripsi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', resize: 'vertical', boxSizing: 'border-box' }} />
                       <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Simpan Agenda</button>
                     </form>
@@ -541,7 +687,10 @@ export default function DashboardKomisariat() {
                         jadwalKegiatan.map(jadwal => (
                           <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', borderLeft: '4px solid #3498db', padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
-                              <h4 style={{ margin: '0 0 5px 0', color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
+                                <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
+                                <span style={{ backgroundColor: '#f1c40f', color: '#0d1b2a', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold' }}>Target: {jadwal.target || 'Semua'}</span>
+                              </div>
                               <div style={{ fontSize: '0.8rem', color: '#e67e22', fontWeight: 'bold', marginBottom: '5px' }}>🗓️ {jadwal.tanggal.replace('T', ' - ')} | 📍 {jadwal.lokasi}</div>
                               <p style={{ margin: 0, fontSize: '0.85rem', color: '#555', fontStyle: 'italic' }}>{jadwal.deskripsi}</p>
                             </div>
@@ -636,14 +785,20 @@ export default function DashboardKomisariat() {
             </div>
           )}
 
-          {/* MENU 4: MANAJEMEN RAYON */}
+          {/* MENU 4: MANAJEMEN AKUN & INSTANSI */}
           {activeMenu === 'manajemen-rayon' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
-                  <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>Daftar Instansi Rayon</h3>
-                </div>
-                
+            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', maxWidth: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>Manajemen Akun & Instansi</h3>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                <button onClick={() => setTabAkunPusat('rayon')} style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabAkunPusat === 'rayon' ? '#0000af' : '#f4f6f9', color: tabAkunPusat === 'rayon' ? 'white' : '#555', fontSize: '0.85rem' }}>🏢 Instansi Rayon</button>
+                <button onClick={() => setTabAkunPusat('pendamping-skp')} style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabAkunPusat === 'pendamping-skp' ? '#0000af' : '#f4f6f9', color: tabAkunPusat === 'pendamping-skp' ? 'white' : '#555', fontSize: '0.85rem' }}>👩 Pendamping SKP</button>
+                <button onClick={() => setTabAkunPusat('kader-skp')} style={{ padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tabAkunPusat === 'kader-skp' ? '#0000af' : '#f4f6f9', color: tabAkunPusat === 'kader-skp' ? 'white' : '#555', fontSize: '0.85rem' }}>🎓 Kader SKP</button>
+              </div>
+
+              {tabAkunPusat === 'rayon' && (
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
                   <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
                     <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px', fontSize: '0.9rem' }}>✏️ Buat Akun Admin Rayon</h4>
@@ -667,7 +822,7 @@ export default function DashboardKomisariat() {
                     </form>
                   </div>
 
-                  <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start', boxSizing: 'border-box' }}>
+                  <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start', boxSizing: 'border-box', minWidth: 0, maxWidth: '100%' }}>
                     <table className="tabel-utama" style={{ minWidth: '400px' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f8f9fa', color: '#ffffff' }}>
@@ -684,9 +839,9 @@ export default function DashboardKomisariat() {
                           dataRayon.map((rayon) => (
                             <tr key={rayon.id} style={{ borderBottom: '1px solid #eee' }}>
                               <td style={{ padding: '10px', fontWeight: 'bold', color: '#0d1b2a' }}>{rayon.nama}</td>
-                              <td style={{ padding: '10px', color: '#666' }}>{rayon.username}</td>
+                              <td style={{ padding: '10px', color: '#666', textAlign: 'center' }}>{rayon.username}</td>
                               <td style={{ padding: '10px', textAlign: 'center' }}>
-                                <button onClick={() => handleUbahStatusRayon(rayon.id, rayon.status || 'Aktif')} style={{ padding: '4px 8px', border: 'none', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: (!rayon.status || rayon.status === 'Aktif') ? '#e8f5e9' : '#ffebee', color: (!rayon.status || rayon.status === 'Aktif') ? '#2e7d32' : '#c62828' }}>
+                                <button onClick={() => handleUbahStatusAkun(rayon.id, rayon.status || 'Aktif')} style={{ padding: '4px 8px', border: 'none', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: (!rayon.status || rayon.status === 'Aktif') ? '#e8f5e9' : '#ffebee', color: (!rayon.status || rayon.status === 'Aktif') ? '#2e7d32' : '#c62828' }}>
                                   {(!rayon.status || rayon.status === 'Aktif') ? '🟢 Aktif' : '🔴 Pasif'}
                                 </button>
                               </td>
@@ -700,13 +855,317 @@ export default function DashboardKomisariat() {
                     </table>
                   </div>
                 </div>
+              )}
+
+              {tabAkunPusat === 'pendamping-skp' && (
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                    <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px', fontSize: '0.9rem' }}>✏️ Buat Pendamping SKP</h4>
+                    <form onSubmit={handleBuatAkunPendampingSKP} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Nama Lengkap</label>
+                        <input type="text" placeholder="Misal: Siti Aminah" value={formPendampingSKP.nama} onChange={e => setFormPendampingSKP({...formPendampingSKP, nama: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Username Login</label>
+                        <input type="text" placeholder="Misal: siti_skp" value={formPendampingSKP.username} onChange={e => setFormPendampingSKP({...formPendampingSKP, username: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Password Login</label>
+                        <input type="text" placeholder="Masukkan Password" value={formPendampingSKP.password} onChange={e => setFormPendampingSKP({...formPendampingSKP, password: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
+                      </div>
+                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#ffffff' : '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', fontSize: '0.85rem' }}>
+                        {isSubmitting ? 'Memproses...' : '+ Daftarkan Pendamping'}
+                      </button>
+                    </form>
+                  </div>
+                  <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start', boxSizing: 'border-box', minWidth: 0, maxWidth: '100%' }}>
+                    <table className="tabel-utama" style={{ minWidth: '400px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f8f9fa', color: '#ffffff' }}>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Nama Pendamping</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Username</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dataPendamping.filter(p => p.jenjangTugas === 'SKP').length === 0 ? (
+                          <tr><td colSpan={4} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Belum ada pendamping SKP.</td></tr>
+                        ) : (
+                          dataPendamping.filter(p => p.jenjangTugas === 'SKP').map(p => (
+                            <tr key={p.id} style={{ borderBottom: '1px solid #eee' }}>
+                              <td style={{ padding: '10px', fontWeight: 'bold', color: '#0d1b2a' }}>{p.nama}</td>
+                              <td style={{ padding: '10px', color: '#666', textAlign: 'center' }}>{p.username}</td>
+                              <td style={{ padding: '10px', textAlign: 'center' }}>
+                                <button onClick={() => handleUbahStatusAkun(p.id, p.status || 'Aktif')} style={{ padding: '4px 8px', border: 'none', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: (!p.status || p.status === 'Aktif') ? '#e8f5e9' : '#ffebee', color: (!p.status || p.status === 'Aktif') ? '#2e7d32' : '#c62828' }}>
+                                  {(!p.status || p.status === 'Aktif') ? '🟢 Aktif' : '🔴 Pasif'}
+                                </button>
+                              </td>
+                              <td style={{ padding: '10px', textAlign: 'center' }}>
+                                <button onClick={() => handleHapusAkunLain(p.id, p.nama)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Pendamping">🗑️</button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {tabAkunPusat === 'kader-skp' && (
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
+                    <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
+                      <button onClick={() => setModeInputKaderSKP('pilih')} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: modeInputKaderSKP === 'pilih' ? '#0000af' : '#eee', color: modeInputKaderSKP === 'pilih' ? '#fff' : '#555' }}>Pilih Database</button>
+                      <button onClick={() => setModeInputKaderSKP('baru')} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: modeInputKaderSKP === 'baru' ? '#0000af' : '#eee', color: modeInputKaderSKP === 'baru' ? '#fff' : '#555' }}>Buat Manual</button>
+                    </div>
+
+                    {modeInputKaderSKP === 'pilih' ? (
+                      <form onSubmit={handlePlotKaderSKP} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#555', fontStyle: 'italic', marginBottom: '5px' }}>Upgrade Kader yg sudah ada di Rayon menjadi peserta SKP.</div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Pilih Kader</label>
+                          <select value={formPilihKaderSKP.nim} onChange={e => setFormPilihKaderSKP({...formPilihKaderSKP, nim: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }}>
+                            <option value="" disabled>-- Cari Kader --</option>
+                            {databaseKader.filter(k => k.jenjang !== 'SKP').map(k => <option key={k.id} value={k.nim}>{k.nama} ({k.id_rayon})</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Plot ke Pendamping SKP</label>
+                          <select value={formPilihKaderSKP.pendampingId} onChange={e => setFormPilihKaderSKP({...formPilihKaderSKP, pendampingId: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }}>
+                            <option value="" disabled>-- Pilih Pendamping SKP --</option>
+                            {dataPendamping.filter(p => p.jenjangTugas === 'SKP').map(p => <option key={p.id} value={p.username}>{p.nama}</option>)}
+                          </select>
+                        </div>
+                        <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#ffffff' : '#2ecc71', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', fontSize: '0.85rem' }}>
+                          {isSubmitting ? 'Memproses...' : '✓ Upgrade ke SKP'}
+                        </button>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleBuatAkunKaderSKP_Manual} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#555', fontStyle: 'italic', marginBottom: '5px' }}>Khusus kader delegasi luar yang belum punya akun.</div>
+                        <input type="text" placeholder="NIM Kader" value={formKaderSKP.nim} onChange={e => setFormKaderSKP({...formKaderSKP, nim: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
+                        <input type="text" placeholder="Nama Lengkap" value={formKaderSKP.nama} onChange={e => setFormKaderSKP({...formKaderSKP, nama: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
+                        <input type="text" placeholder="Asal Rayon / Cabang" value={formKaderSKP.id_rayon} onChange={e => setFormKaderSKP({...formKaderSKP, id_rayon: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
+                        <input type="number" placeholder="Angkatan (Cth: 2026)" value={formKaderSKP.angkatan} onChange={e => setFormKaderSKP({...formKaderSKP, angkatan: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
+                        <select value={formKaderSKP.pendampingId} onChange={e => setFormKaderSKP({...formKaderSKP, pendampingId: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }}>
+                          <option value="" disabled>-- Pilih Pendamping SKP --</option>
+                          {dataPendamping.filter(p => p.jenjangTugas === 'SKP').map(p => <option key={p.id} value={p.username}>{p.nama}</option>)}
+                        </select>
+                        <input type="text" placeholder="Password Login" value={formKaderSKP.password} onChange={e => setFormKaderSKP({...formKaderSKP, password: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
+                        <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#ffffff' : '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', fontSize: '0.85rem' }}>
+                          {isSubmitting ? 'Memproses...' : '+ Daftarkan Manual'}
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                  <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start', boxSizing: 'border-box', minWidth: 0, maxWidth: '100%' }}>
+                    <table className="tabel-utama" style={{ minWidth: '500px' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f8f9fa', color: '#ffffff' }}>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>NIM / Thn</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Nama Kader</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Asal Instansi</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Pendamping</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {databaseKader.filter(k => k.jenjang === 'SKP').length === 0 ? (
+                          <tr><td colSpan={6} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Belum ada kader SKP.</td></tr>
+                        ) : (
+                          databaseKader.filter(k => k.jenjang === 'SKP').map(k => {
+                            const thnMasuk = k.createdAt ? new Date(k.createdAt).getFullYear() : '-';
+                            return (
+                              <tr key={k.id} style={{ borderBottom: '1px solid #eee' }}>
+                                <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', textAlign: 'center' }}>{k.nim} <br/> <span style={{fontSize: '0.7rem', color: '#1e824c'}}>{thnMasuk}</span></td>
+                                <td style={{ padding: '10px', fontWeight: 'bold', color: '#0d1b2a' }}>{k.nama}</td>
+                                <td style={{ padding: '10px', color: '#666', textAlign: 'center', fontSize: '0.8rem' }}>{k.id_rayon}</td>
+                                <td style={{ padding: '10px', color: '#666', textAlign: 'center', fontSize: '0.8rem' }}>{k.pendampingId || '-'}</td>
+                                <td style={{ padding: '10px', textAlign: 'center' }}>
+                                  <button onClick={() => handleUbahStatusAkun(k.id, k.status || 'Aktif')} style={{ padding: '4px 8px', border: 'none', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: (!k.status || k.status === 'Aktif') ? '#e8f5e9' : '#ffebee', color: (!k.status || k.status === 'Aktif') ? '#2e7d32' : '#c62828' }}>
+                                    {(!k.status || k.status === 'Aktif') ? '🟢 Aktif' : '🔴 Pasif'}
+                                  </button>
+                                </td>
+                                <td style={{ padding: '10px', textAlign: 'center' }}>
+                                  <button onClick={() => handleHapusAkunLain(k.id, k.nama)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Kader">🗑️</button>
+                                </td>
+                              </tr>
+                            )
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* MENU BARU 4.5: PANTAU NILAI / RAPORT SKP KHUSUS KOMISARIAT  */}
+          {/* ========================================================= */}
+          {activeMenu === 'pantau-nilai-skp' && (
+            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', maxWidth: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
+              <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '15px' }}>
+                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>Raport & Penilaian Peserta SKP</h3>
+                <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Kelola nilai, bobot matriks, dan cetak Kartu Hasil Studi kader SKP.</p>
               </div>
+
+              <div className="no-print" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '10px 0', gap: '15px', borderBottom: '1px solid #ddd', flexWrap: 'wrap', marginBottom: '15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#555' }}>Pilih Kader SKP:</span>
+                  <select value={selectedKaderNilai} onChange={(e) => setSelectedKaderNilai(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px', fontWeight: 'bold', minWidth: '180px', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
+                    {databaseKader.filter(k => k.jenjang === 'SKP').length === 0 && <option value="">Tidak ada peserta SKP</option>}
+                    {databaseKader.filter(k => k.jenjang === 'SKP').map(k => <option key={k.nim} value={k.nim}>{k.nama}</option>)}
+                  </select>
+                  
+                  {tabRaportAdmin === 'raport' && selectedKaderNilai && (
+                    <button onClick={() => window.print()} style={{ backgroundColor: '#f1c40f', color: '#0d1b2a', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', marginLeft: '5px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem' }}>🖨️ Cetak KHS SKP</button>
+                  )}
+                </div>
+              </div>
+              
+              <div className="no-print" style={{ display: 'flex', borderBottom: '1px solid #ddd', marginBottom: '0px', flexWrap: 'wrap' }}>
+                <button onClick={() => setTabRaportAdmin('raport')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'raport' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'raport' ? '#fff' : 'transparent', color: tabRaportAdmin === 'raport' ? '#555' : '#0000af', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>Raport Kaderisasi</button>
+                <button onClick={() => setTabRaportAdmin('persentase')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'persentase' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'persentase' ? '#fff' : 'transparent', color: tabRaportAdmin === 'persentase' ? '#555' : '#0000af', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>Persentase & Nilai</button>
+                <button onClick={() => setTabRaportAdmin('pengaturan')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'pengaturan' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'pengaturan' ? '#fff' : 'transparent', color: tabRaportAdmin === 'pengaturan' ? '#555' : '#e67e22', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', marginLeft: 'auto', fontSize: '0.85rem' }}>⚙️ Pengaturan Cetak</button>
+              </div>
+
+              {tabRaportAdmin === 'raport' && (
+                <div style={{ width: '100%', overflowX: 'auto', padding: '15px 0 0px 0' }}>
+                  <table className="tabel-utama" style={{ minWidth: '600px' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '5%' }}>No</th><th style={{ width: '12%', textAlign: 'center' }}>Kode</th><th style={{ width: '53%', textAlign: 'center' }}>Nama Materi SKP</th>
+                        <th style={{ width: '8%' }}>SKS</th><th style={{ width: '8%' }}>Nilai Huruf</th><th style={{ width: '8%' }}>SKS x Nilai</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {materiAktifSKP.length === 0 ? (<tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Kurikulum SKP belum diatur.</td></tr>) : barisRaportRender}
+                      <tr style={{ borderTop: '2px solid #ccc' }}>
+                        <td colSpan={3} style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah SKS & Nilai</td>
+                        <td style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td>
+                        <td className="no-print"></td>
+                        <td style={{ padding: '10px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td>
+                      </tr>
+                      <tr style={{ borderTop: '1px solid #ccc', borderBottom: '1px solid #ccc' }}>
+                        <td colSpan={5} style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '0.95rem' }}>IPK (Indeks Prestasi Kader)</td>
+                        <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem', color: '#333' }}>{ipKader}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p style={{fontSize: '0.75rem', color: '#888', marginTop: '15px', fontStyle: 'italic'}}>*Catatan: Nilai Huruf terisi otomatis berdasarkan perhitungan Matriks di tab "Persentase & Nilai".</p>
+                </div>
+              )}
+
+              {tabRaportAdmin === 'persentase' && (
+                <div style={{ width: '100%', overflowX: 'auto', padding: '10px 0' }}>
+                  <div className="no-print" style={{ marginBottom: '15px', background: '#fdfdfd', padding: '15px', borderRadius: '6px', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '15px' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#1e824c', fontSize: '0.9rem' }}>⚙️ Kategori & Bobot Penilaian SKP</h4>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        {kategoriBobotAktif.map((kat: any) => (
+                          <div key={kat.id} style={{ backgroundColor: '#eaf4fc', padding: '5px 10px', borderRadius: '20px', border: '1px solid #3498db', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontWeight: 'bold', color: '#2c3e50' }}>{kat.nama}: {kat.persen}%</span>
+                            <button type="button" onClick={() => handleHapusKategoriBobot(kat.id)} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: '10px', fontSize: '0.8rem', fontWeight: 'bold', color: totalBobotTersimpan === 100 ? '#27ae60' : '#e67e22' }}>
+                        Total Bobot Saat Ini: {totalBobotTersimpan}% / 100%
+                        {totalBobotTersimpan < 100 && <span style={{ fontStyle: 'italic', marginLeft: '5px', color: '#e74c3c' }}>(Harap lengkapi hingga 100% agar nilai akurat)</span>}
+                      </div>
+                    </div>
+                    <form onSubmit={handleTambahKategoriBobot} style={{ display: 'flex', gap: '8px' }}>
+                      <input type="text" required placeholder="Nama (Cth: Tugas)" value={formKategori.nama} onChange={e => setFormKategori({...formKategori, nama: e.target.value})} style={{ padding: '6px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', width: '120px' }} />
+                      <input type="number" required placeholder="Bobot %" value={formKategori.persen || ''} onChange={e => setFormKategori({...formKategori, persen: Number(e.target.value)})} style={{ padding: '6px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', width: '80px' }} />
+                      <button type="submit" disabled={isSavingEvaluasi || totalBobotTersimpan >= 100} style={{ background: (totalBobotTersimpan >= 100) ? '#ccc' : '#28a745', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: (totalBobotTersimpan >= 100) ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '0.8rem' }}>➕</button>
+                    </form>
+                  </div>
+
+                  <table className="tabel-utama" style={{ textAlign: 'center', minWidth: '900px', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr>
+                        <th rowSpan={2} style={{ width: '3%', textAlign: 'center' }}>No</th>
+                        <th rowSpan={2} style={{ width: '10%', textAlign: 'center' }}>Kode</th>
+                        <th rowSpan={2} style={{ width: '25%', textAlign: 'center' }}>Nama Materi</th>
+                        {kategoriBobotAktif.length > 0 && <th colSpan={kategoriBobotAktif.length} style={{ borderBottom: '1px solid #ddd', textAlign: 'center', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
+                        <th rowSpan={2} style={{ width: '5%', textAlign: 'center' }}>SKS</th>
+                        <th colSpan={2} style={{ borderBottom: '1px solid #ddd', textAlign: 'center', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
+                        <th rowSpan={2} style={{ width: '8%', textAlign: 'center' }}>SKS x Nilai Huruf</th>
+                      </tr>
+                      <tr>
+                        {kategoriBobotAktif.map((kat: any) => (
+                          <th key={kat.id} style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#1e824c', backgroundColor: '#f0fbf4' }}>{kat.nama} <br/><span style={{color: '#e74c3c'}}>{kat.persen}%</span></th>
+                        ))}
+                        <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', textAlign: 'center', backgroundColor: '#eaf4fc' }}>Angka</th>
+                        <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', textAlign: 'center', backgroundColor: '#eaf4fc' }}>Huruf</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {materiAktifSKP.length === 0 ? (
+                        <tr><td colSpan={7 + kategoriBobotAktif.length} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada materi SKP.</td></tr>
+                      ) : (
+                        materiAktifSKP.map((materi, index) => {
+                          let angkaAkhir = 0;
+                          kategoriBobotAktif.forEach((kat: any) => {
+                              const score = nilaiMentah[materi.kode]?.[kat.nama] || 0;
+                              angkaAkhir += (score * (kat.persen / 100));
+                          });
+                          const hurufAkhir = getNilaiHuruf(angkaAkhir);
+                          const angkaNilaiSks = konversiHurufKeAngka(hurufAkhir);
+                          const sksKaliNilai = (materi.bobot || 0) * angkaNilaiSks;
+
+                          return (
+                            <tr key={`rinci-${materi.kode}`}>
+                              <td>{index + 1}</td><td style={{ textAlign: 'left' }}>{materi.kode}</td><td style={{ textAlign: 'left', fontWeight: 'bold' }}>{materi.nama}</td>
+                              {kategoriBobotAktif.map((kat: any) => (
+                                <td key={kat.id} style={{ backgroundColor: '#fcfcfc' }}>
+                                  <input type="number" className="no-print" min="0" max="100" placeholder="0" value={nilaiMentah[materi.kode]?.[kat.nama] === 0 ? '' : (nilaiMentah[materi.kode]?.[kat.nama] || '')} onChange={(e) => handleInputNilaiMentah(materi.kode, kat.nama, e.target.value)} onBlur={() => handleAutoSaveNilaiDetail(materi.kode)} style={{ width: '50px', padding: '6px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold', outline: 'none' }} />
+                                  <span className="print-only-inline" style={{ display: 'none', fontWeight: 'bold' }}>{nilaiMentah[materi.kode]?.[kat.nama] || 0}</span>
+                                </td>
+                              ))}
+                              <td>{materi.bobot}</td>
+                              <td style={{ fontWeight: 'bold', color: '#004a87', backgroundColor: '#f4f9fd' }}>{angkaAkhir > 0 ? angkaAkhir.toFixed(1) : '-'}</td>
+                              <td style={{ fontWeight: 'bold', color: hurufAkhir !== '-' ? '#27ae60' : '#999', backgroundColor: '#f4f9fd', fontSize: '1rem' }}>{hurufAkhir}</td>
+                              <td style={{ fontWeight: 'bold' }}>{hurufAkhir === '-' ? 0 : sksKaliNilai}</td>
+                            </tr>
+                          )
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                  <div className="no-print" style={{ marginTop: '20px' }}>
+                    <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', fontSize: '0.85rem' }}>Catatan Evaluasi SKP:</label>
+                    <textarea value={evaluasiKader.catatan} onChange={e => handleSimpanCatatan(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', height: '60px', resize: 'vertical', fontSize: '0.85rem', boxSizing: 'border-box' }} placeholder="Tulis catatan perkembangan kader disini..." />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB PENGATURAN KOP CETAK SKP */}
+              {tabRaportAdmin === 'pengaturan' && (
+                <div style={{ backgroundColor: '#fafafa', border: '1px solid #ddd', borderRadius: '4px', padding: '20px' }}>
+                  <form onSubmit={handleSimpanPengaturanCetak} style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '500px' }}>
+                    <div style={{ backgroundColor: '#fff3cd', padding: '10px', borderRadius: '4px', borderLeft: '4px solid #f1c40f', fontSize: '0.8rem', color: '#856404', lineHeight: '1.4' }}><b>PENTING:</b> Gunakan Gambar <b>Ukuran Kertas A4 (PNG/JPG)</b> yang berisi desain KOP SURAT di bagian atas dan TANDA TANGAN di bagian bawah. Gambar ini akan menjadi background pada saat cetak PDF SKP.</div>
+                    <div>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', color: '#333', fontSize: '0.85rem' }}>Upload Template Background A4 (Komisariat)</label>
+                      {pengaturanCetak.kopSuratUrl && <img src={pengaturanCetak.kopSuratUrl} alt="Kop Saat Ini" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', border: '1px solid #ccc', backgroundColor: '#fff', padding: '5px' }} />}
+                      <input type="file" accept="image/png, image/jpeg" onChange={(e) => setFileKop(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', border: '1px dashed #ccc', width: '100%', backgroundColor: '#fff', boxSizing: 'border-box', fontSize: '0.8rem' }} />
+                    </div>
+                    <button type="submit" disabled={isSavingPengaturan} style={{ backgroundColor: '#1e824c', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSavingPengaturan ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}>{isSavingPengaturan ? 'Mengupload...' : '💾 Simpan Template A4'}</button>
+                  </form>
+                </div>
+              )}
             </div>
           )}
 
           {/* MENU 5: MASTER KURIKULUM PUSAT (EDITABLE & SORTED) */}
           {activeMenu === 'master-kurikulum' && (
-            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', maxWidth: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
               <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
                 <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>Master Kurikulum Kaderisasi</h3>
                 <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Susun standar kurikulum yang komprehensif sebagai acuan seluruh Rayon se-UIN Malang.</p>
@@ -848,7 +1307,7 @@ export default function DashboardKomisariat() {
 
           {/* MENU 6: MASTER TES PEMAHAMAN PUSAT */}
           {activeMenu === 'master-tes' && (
-            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+            <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', maxWidth: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
               <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
                 <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>Master Tes Pemahaman Kaderisasi</h3>
                 <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Susun standar pertanyaan tes (Pre-Test/Post-Test) yang dapat digunakan oleh seluruh Rayon.</p>
@@ -900,7 +1359,7 @@ export default function DashboardKomisariat() {
                       ) : (
                         masterTesPusat.sort((a,b) => a.jenjang.localeCompare(b.jenjang)).map((tes) => (
                           <tr key={tes.id} style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: '10px', fontWeight: 'bold', color: tes.jenjang === 'MAPABA' ? '#1e824c' : tes.jenjang === 'PKD' ? '#8e44ad' : '#e67e22' }}>{tes.jenjang}</td>
+                            <td style={{ padding: '10px', fontWeight: 'bold', color: tes.jenjang === 'MAPABA' ? '#1e824c' : tes.jenjang === 'PKD' ? '#8e44ad' : '#e67e22', textAlign: 'center' }}>{tes.jenjang}</td>
                             <td style={{ padding: '10px' }}>
                               <div style={{ color: '#333', fontWeight: 'bold', marginBottom: '2px', fontSize: '0.85rem' }}>{tes.judul}</div>
                               <details style={{ cursor: 'pointer', outline: 'none' }}>
@@ -1075,7 +1534,34 @@ export default function DashboardKomisariat() {
 
       {/* STRUKTUR HIDDEN HTML KHUSUS UNTUK PRINT PDF AGAR RAPI BERULANG */}
       <div id="hidden-print-container" className="print-layout-container">
-        {/* Kontainer Kosong (Komisariat belum ada fungsi print PDF) */}
+        {pengaturanCetak.kopSuratUrl && (<div className="bg-kertas-a4"><img src={pengaturanCetak.kopSuratUrl} alt="Background A4" /></div>)}
+        <div className="print-content-area">
+          
+          {/* CETAK KHS RAPORT ADMIN */}
+          {activeMenu === 'pantau-nilai-skp' && tabRaportAdmin === 'raport' && (
+            <div>
+              <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '0 0 15px 0', fontSize: '12pt' }}>RAPORT KADERISASI SKP</h3>
+              <table className="tabel-biodata">
+                <tbody>
+                  <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{kaderDicetak.nim || '...........................'}</td></tr>
+                  <tr><td>Nama Mahasiswa</td><td>:</td><td>{kaderDicetak.nama || '...........................'}</td></tr>
+                  <tr><td>Angkatan</td><td>:</td><td>{kaderDicetak.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '...........................'}</td></tr>
+                  <tr><td>Jenjang Kaderisasi</td><td>:</td><td>SKP (Sekolah Kader Putri)</td></tr>
+                </tbody>
+              </table>
+              <table className="tabel-utama">
+                <thead>
+                  <tr><th style={{ width: '5%' }}>No</th><th style={{ width: '12%', textAlign: 'center' }}>Kode</th><th style={{ width: '53%', textAlign: 'center' }}>Nama Materi</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai</th><th style={{ width: '10%' }}>SKS x Nilai</th></tr>
+                </thead>
+                <tbody>
+                  {materiAktifSKP.length === 0 ? (<tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur.</td></tr>) : barisRaportRender}
+                  <tr><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td><td></td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td></tr>
+                  <tr><td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kader)</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{ipKader}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
 
     </div>

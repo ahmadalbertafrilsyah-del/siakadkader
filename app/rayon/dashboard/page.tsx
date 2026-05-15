@@ -101,7 +101,8 @@ export default function DashboardAdminRayon() {
   const [riwayatBroadcast, setRiwayatBroadcast] = useState<any[]>([]);
   const [notifikasiInbox, setNotifikasiInbox] = useState<any[]>([]); // Kotak Masuk dr Komisariat
 
-  const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
+  // ---> UPDATE TARGET DI JADWAL <---
+  const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Semua' });
   const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Semua', batas_waktu: '' });
 
   const materiAktif = listKurikulum[selectedJenjangNilai] || [];
@@ -481,9 +482,9 @@ export default function DashboardAdminRayon() {
         pembuat: "Rayon",
         timestamp: Date.now()
       });
-      catatLogAktivitas(`Menambahkan jadwal kegiatan rayon: ${formJadwal.judul}`);
+      catatLogAktivitas(`Menambahkan jadwal kegiatan rayon (Target: ${formJadwal.target}): ${formJadwal.judul}`);
       alert("Jadwal kegiatan berhasil ditambahkan!");
-      setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '' });
+      setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Semua' });
     } catch (error) { alert("Gagal menyimpan jadwal."); } finally { setIsSubmitting(false); }
   };
 
@@ -764,9 +765,9 @@ export default function DashboardAdminRayon() {
   
   const getHeaderTitle = () => {
     switch (activeMenu) {
-      case 'beranda': return 'Dashboard';
-      case 'kalender': return 'Kalender & Jadwal';
-      case 'broadcast': return 'Pusat Broadcast';
+      case 'beranda': return 'Dashboard Utama';
+      case 'kalender': return 'Kalender & Jadwal Rayon';
+      case 'broadcast': return 'Pusat Broadcast Notifikasi';
       case 'manajemen-akun': return 'Manajemen Akun';
       case 'kurikulum': return 'Kurikulum Kaderisasi';
       case 'pantau-nilai': return 'Raport Kaderisasi';
@@ -775,7 +776,7 @@ export default function DashboardAdminRayon() {
       case 'perpus': return 'Perpustakaan Digital';
       case 'manajemen-tes': return 'Manajemen Tes';
       case 'saran': return 'Kotak Aspirasi';
-      case 'log-aktivitas': return 'Log Aktivitas';
+      case 'log-aktivitas': return 'Log Aktivitas Rayon';
       default: return 'Dashboard Admin';
     }
   };
@@ -911,11 +912,11 @@ export default function DashboardAdminRayon() {
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
         </div>
         <div style={{ padding: '20px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <h4 style={{ fontSize: '1rem', margin: 0, color: 'white', lineHeight: '1.4' }}>{namaRayonAsli || 'Memuat...'}</h4>
+          <h4 style={{ fontSize: '1rem', margin: 0, color: '#f1c40f', lineHeight: '1.4' }}>{namaRayonAsli || 'Memuat...'}</h4>
         </div>
         <ul style={{ listStyle: 'none', padding: '10px 0', margin: 0, flex: 1, overflowY: 'auto' }}>
           {[
-            { id: 'beranda', icon: '🏠', label: 'Dashboard Statistik' },
+            { id: 'beranda', icon: '🏠', label: 'Dashboard' },
             { id: 'kalender', icon: '📅', label: 'Kalender & Jadwal' },
             { id: 'broadcast', icon: '📡', label: 'Broadcast Notifikasi' },
             { id: 'verifikasi-surat', icon: '✉️', label: 'Layanan Persuratan', badge: suratMasuk.filter(s => s.status === 'Menunggu Verifikasi').length || null },
@@ -931,7 +932,7 @@ export default function DashboardAdminRayon() {
             <li key={item.id}>
               <button 
                 onClick={() => { setActiveMenu(item.id); setIsSidebarOpen(false); }} 
-                style={{ width: '100%', textAlign: 'left', background: activeMenu === item.id ? 'rgba(255, 255, 255, 0.1)' : 'transparent', border: 'none', color: activeMenu === item.id ? '#f1c40f' : '#d1d1d1', padding: '15px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.9rem', cursor: 'pointer', borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent', transition: '0.2s', fontWeight: activeMenu === item.id ? 'bold' : 'normal' }}
+                style={{ width: '100%', textAlign: 'left', background: activeMenu === item.id ? 'rgba(255, 255, 255, 0.1)' : 'transparent', border: 'none', color: activeMenu === item.id ? '#fff' : '#d1d1d1', padding: '15px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.9rem', cursor: 'pointer', borderLeft: activeMenu === item.id ? '4px solid #f1c40f' : '4px solid transparent', transition: '0.2s' }}
               >
                 <div style={{ display: 'flex', gap: '15px' }}><span>{item.icon}</span> {item.label}</div>
                 {item.badge && <span style={{ backgroundColor: '#e74c3c', color: 'white', padding: '2px 6px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 'bold' }}>{item.badge}</span>}
@@ -1030,6 +1031,12 @@ export default function DashboardAdminRayon() {
                       <input type="text" placeholder="Judul Kegiatan (Cth: RTK Rayon)" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
                       <input type="datetime-local" required value={formJadwal.tanggal} onChange={e => setFormJadwal({...formJadwal, tanggal: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
                       <input type="text" placeholder="Lokasi / Media" required value={formJadwal.lokasi} onChange={e => setFormJadwal({...formJadwal, lokasi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                      <select required value={formJadwal.target} onChange={e => setFormJadwal({...formJadwal, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', cursor: 'pointer' }}>
+                        <option value="Semua">📢 Terlihat Semua Pengguna</option>
+                        <option value="Rayon">🏢 Hanya Admin Rayon</option>
+                        <option value="Pendamping">👤 Hanya Para Pendamping</option>
+                        <option value="Kader">🎓 Hanya Seluruh Kader</option>
+                      </select>
                       <textarea rows={3} placeholder="Deskripsi Singkat" value={formJadwal.deskripsi} onChange={e => setFormJadwal({...formJadwal, deskripsi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', resize: 'vertical', boxSizing: 'border-box' }} />
                       <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Simpan Agenda</button>
                     </form>
@@ -1044,7 +1051,11 @@ export default function DashboardAdminRayon() {
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
                                 <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
-                                {jadwal.pembuat === 'Komisariat' && <span style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '2px 6px', borderRadius: '10px', fontSize: '0.6rem', fontWeight: 'bold', border: '1px solid #ffeeba' }}>Komisariat</span>}
+                                {jadwal.pembuat === 'Komisariat' ? (
+                                  <span style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '2px 6px', borderRadius: '10px', fontSize: '0.6rem', fontWeight: 'bold', border: '1px solid #ffeeba' }}>Komisariat</span>
+                                ) : (
+                                  <span style={{ backgroundColor: '#f1c40f', color: '#0d1b2a', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold' }}>Target: {jadwal.target || 'Semua'}</span>
+                                )}
                               </div>
                               <div style={{ fontSize: '0.8rem', color: '#e67e22', fontWeight: 'bold', marginBottom: '5px' }}>🗓️ {jadwal.tanggal.replace('T', ' - ')} | 📍 {jadwal.lokasi}</div>
                               <p style={{ margin: 0, fontSize: '0.85rem', color: '#555', fontStyle: 'italic' }}>{jadwal.deskripsi}</p>
@@ -1060,7 +1071,7 @@ export default function DashboardAdminRayon() {
             </div>
           )}
 
-          {/* MENU 3: BROADCAST NOTIFIKASI (FITUR BARU) */}
+          {/* MENU 3: BROADCAST NOTIFIKASI */}
           {activeMenu === 'broadcast' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
@@ -1776,7 +1787,7 @@ export default function DashboardAdminRayon() {
             <div style={{ background: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px' }}>
                 <div style={{ padding: '15px', borderBottom: '1px solid #eee', backgroundColor: '#fdfdfd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '0.95rem' }}>Daftar Tugas Rayon</h4>
+                  <h4 style={{ margin: 0, color: '#1e824c', fontSize: '0.95rem' }}>Daftar Tugas Rayon</h4>
                   <button onClick={() => setActiveModal('tambahTugas')} style={{ backgroundColor: '#0000af', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>➕ Tambah Tugas</button>
                 </div>
                 <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
@@ -1845,7 +1856,7 @@ export default function DashboardAdminRayon() {
           {activeMenu === 'log-aktivitas' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
-                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>🕵️ Log Aktivitas Sistem</h3>
+                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>🕵️ Log Aktivitas Sistem (Audit Trail)</h3>
                 <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Rekaman aktivitas dan riwayat perubahan data yang dilakukan oleh Admin Rayon (Maksimal 50 aktivitas terakhir).</p>
               </div>
 
@@ -1853,9 +1864,9 @@ export default function DashboardAdminRayon() {
                 <table className="tabel-utama" style={{ minWidth: '600px' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8f9fa', color: '#555' }}>
-                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '130px' }}>Waktu Sistem</th>
-                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center', width: '270px' }}>Aktor</th>
-                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aktivitas / Aksi yang Dilakukan</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left', width: '180px' }}>Waktu Sistem</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left', width: '150px' }}>Aktor</th>
+                      <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'left' }}>Aktivitas / Aksi yang Dilakukan</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1865,7 +1876,7 @@ export default function DashboardAdminRayon() {
                       logAktivitas.map((log) => (
                         <tr key={log.id} style={{ borderBottom: '1px solid #eee' }}>
                           <td style={{ padding: '10px', color: '#666', fontSize: '0.8rem' }}>{log.waktu_format}</td>
-                          <td style={{ padding: '10px', color: '#0000af' }}>{log.aktor}</td>
+                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#1e824c' }}>{log.aktor}</td>
                           <td style={{ padding: '10px', color: '#333', fontStyle: 'italic', fontSize: '0.85rem' }}>{log.aksi}</td>
                         </tr>
                       ))

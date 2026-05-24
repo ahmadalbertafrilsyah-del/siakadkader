@@ -19,11 +19,12 @@ export default function DashboardKader() {
     nama: 'Loading...', nim: '', nia: '-', angkatan: '',
     email: '', tempatLahir: '', tanggalLahir: '',
     alamatAsal: '', alamatDomisili: '', id_rayon: '', jenjang: 'MAPABA',
-    status: 'Aktif', pendampingId: ''
+    status: 'Aktif', pendampingId: '', pendamping_skp_id: '' // Ditambahkan state untuk pendamping SKP
   });
   
   const [namaRayonAsli, setNamaRayonAsli] = useState('Memuat Rayon...');
   const [namaPendamping, setNamaPendamping] = useState('Menunggu Plotting...');
+  const [namaPendampingSkp, setNamaPendampingSkp] = useState('Menunggu Plotting SKP...'); // Ditambahkan state nama pendamping SKP
   const [pengaturanCetak, setPengaturanCetak] = useState({ kopSuratUrl: '', footerUrl: '' });
 
   const [isEditingProfil, setIsEditingProfil] = useState(false);
@@ -43,13 +44,13 @@ export default function DashboardKader() {
   const [riwayatBerkas, setRiwayatBerkas] = useState<any[]>([]);
   const [listMasterTugas, setListMasterTugas] = useState<any[]>([]); 
   
-  // --- STATE RAPORT DINAMIS (DIPERBAIKI) ---
+  // --- STATE RAPORT DINAMIS ---
   const [tabRaport, setTabRaport] = useState('raport'); 
   const [filterRaport, setFilterRaport] = useState('MAPABA'); 
   const [listKurikulum, setListKurikulum] = useState<Record<string, any[]>>({}); 
   const [nilaiKader, setNilaiKader] = useState<Record<string, string>>({});
   
-  // STATE BARU UNTUK BOBOT DARI RAYON & KOMISARIAT
+  // --- STATE BOBOT DARI RAYON & KOMISARIAT ---
   const [kategoriBobotRayon, setKategoriBobotRayon] = useState<Record<string, any[]>>({});
   const [kategoriBobotKomisariat, setKategoriBobotKomisariat] = useState<Record<string, any[]>>({});
   const [evaluasiKader, setEvaluasiKader] = useState<{ nilai_mentah: any, catatan: string }>({ nilai_mentah: {}, catatan: '' });
@@ -132,7 +133,8 @@ export default function DashboardKader() {
               id_rayon: dataDB.id_rayon || '', 
               jenjang: dataDB.jenjang || 'MAPABA',
               status: dataDB.status || 'Aktif',
-              pendampingId: dataDB.pendampingId || ''
+              pendampingId: dataDB.pendampingId || '',
+              pendamping_skp_id: dataDB.pendamping_skp_id || '' // Assign field pendamping SKP dari Firestore
             });
 
             if (dataDB.jenjang) setFilterRaport(dataDB.jenjang);
@@ -148,12 +150,22 @@ export default function DashboardKader() {
               jalankanPendengarDataRayon(dataDB.nim, user.email, dataDB.id_rayon, dataDB.pendampingId);
             }
 
+            // Dapatkan nama Pendamping Rayon
             if(dataDB.pendampingId) {
                onSnapshot(doc(db, "users", dataDB.pendampingId), (pendampingSnap) => {
                   if(pendampingSnap.exists()) setNamaPendamping(pendampingSnap.data().nama);
                });
             } else {
                setNamaPendamping("Belum Diplotkan");
+            }
+
+            // Dapatkan nama Pendamping SKP (Komisariat)
+            if(dataDB.pendamping_skp_id) {
+               onSnapshot(doc(db, "users", dataDB.pendamping_skp_id), (pendampingSnap) => {
+                  if(pendampingSnap.exists()) setNamaPendampingSkp(pendampingSnap.data().nama);
+               });
+            } else {
+               setNamaPendampingSkp("Belum Diplotkan (SKP)");
             }
           }
         });
@@ -173,13 +185,22 @@ export default function DashboardKader() {
   }, [router]);
 
   // ==========================================
-  // 2. FUNGSI PENDENGAR DATA SESUAI RAYON MASING-MASING
+  // 2. FUNGSI PENDENGAR DATA GABUNGAN (RAYON & KOMISARIAT)
   // ==========================================
   const jalankanPendengarDataRayon = (nimKader: string, emailKader: string | null, idRayon: string, pendampingId: string) => {
     if(!nimKader || !emailKader || !idRayon) return;
 
+    // --- PENGGABUNGAN KURIKULUM RAYON DAN KOMISARIAT (SKP) ---
     onSnapshot(doc(db, "kurikulum_rayon", idRayon), (docSnap) => {
-      if (docSnap.exists()) setListKurikulum(docSnap.data() as Record<string, any[]>);
+      const dataRayon = docSnap.exists() ? docSnap.data() : {};
+      
+      onSnapshot(doc(db, "kurikulum_komisariat", "pusat_data"), (komisariatSnap) => {
+        const dataKomisariat = komisariatSnap.exists() ? komisariatSnap.data() : {};
+        setListKurikulum({ 
+          ...dataRayon, 
+          SKP: dataKomisariat.SKP || [] // Menimpa/mengisi SKP dari pusat_data komisariat
+        } as Record<string, any[]>);
+      });
     });
 
     onSnapshot(doc(db, "pengaturan_rayon", idRayon), (docSnap) => {
@@ -192,6 +213,7 @@ export default function DashboardKader() {
       if (docSnap.exists()) setNilaiKader(docSnap.data());
     });
 
+    // Pendengar Surat
     const qSurat = query(collection(db, "pengajuan_surat"), where("email_kader", "==", emailKader));
     onSnapshot(qSurat, (snap) => {
       const dataSurat: any[] = [];
@@ -200,6 +222,7 @@ export default function DashboardKader() {
       setRiwayatSurat(dataSurat);
     });
 
+    // Pendengar Berkas
     const qBerkas = query(collection(db, "berkas_kader"), where("email_kader", "==", emailKader));
     onSnapshot(qBerkas, (snap) => {
       const dataBerkas: any[] = [];
@@ -208,10 +231,19 @@ export default function DashboardKader() {
       setRiwayatBerkas(dataBerkas);
     });
 
-    onSnapshot(query(collection(db, "master_tugas"), where("id_rayon", "==", idRayon)), (snap) => {
-      const dataTugas: any[] = [];
-      snap.forEach((doc) => dataTugas.push({ id: doc.id, ...doc.data() }));
-      setListMasterTugas(dataTugas);
+    // --- PENGGABUNGAN TUGAS RAYON DAN KOMISARIAT (SKP) ---
+    onSnapshot(query(collection(db, "master_tugas"), where("id_rayon", "==", idRayon)), (snapRayon) => {
+      const dataTugasRayon: any[] = [];
+      snapRayon.forEach((doc) => dataTugasRayon.push({ id: doc.id, ...doc.data() }));
+
+      onSnapshot(query(collection(db, "master_tugas"), where("jenjang", "==", "SKP")), (snapSkp) => {
+        const dataTugasSkp: any[] = [];
+        snapSkp.forEach((doc) => dataTugasSkp.push({ id: doc.id, ...doc.data() }));
+
+        const mergedTugas = [...dataTugasRayon, ...dataTugasSkp];
+        const uniqueTugas = Array.from(new Map(mergedTugas.map(item => [item.id, item])).values());
+        setListMasterTugas(uniqueTugas);
+      });
     });
 
     onSnapshot(query(collection(db, "master_jenis_surat"), where("id_rayon", "==", idRayon)), (snap) => {
@@ -224,10 +256,19 @@ export default function DashboardKader() {
       setListPerpus(dataPerpus);
     });
 
-    onSnapshot(query(collection(db, "master_tes"), where("id_rayon", "==", idRayon)), (snap) => {
-      const tesList: any[] = [];
-      snap.forEach((doc) => tesList.push({ id: doc.id, ...doc.data() }));
-      setListTes(tesList);
+    // --- PENGGABUNGAN TES RAYON DAN KOMISARIAT (SKP) ---
+    onSnapshot(query(collection(db, "master_tes"), where("id_rayon", "==", idRayon)), (snapRayon) => {
+      const tesRayon: any[] = [];
+      snapRayon.forEach((doc) => tesRayon.push({ id: doc.id, ...doc.data() }));
+
+      onSnapshot(query(collection(db, "master_tes"), where("jenjang", "==", "SKP")), (snapSkp) => {
+        const tesSkp: any[] = [];
+        snapSkp.forEach((doc) => tesSkp.push({ id: doc.id, ...doc.data() }));
+
+        const mergedTes = [...tesRayon, ...tesSkp];
+        const uniqueTes = Array.from(new Map(mergedTes.map(item => [item.id, item])).values());
+        setListTes(uniqueTes);
+      });
     });
 
     onSnapshot(query(collection(db, "jawaban_tes"), where("nim", "==", nimKader)), (snap) => {
@@ -513,7 +554,7 @@ export default function DashboardKader() {
       
       {/* CSS KHUSUS UNTUK TAMPILAN WEB & CETAK PDF A4 BACKGROUND */}
       <style>{`
-        * { box-sizing: border-box; } /* KUNCI RESPONSIFITAS GLOBAL */
+        * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
@@ -541,10 +582,7 @@ export default function DashboardKader() {
           .print-content-area { position: relative !important; z-index: 10 !important; padding: 55mm 25mm 30mm 25mm !important; background-color: transparent !important; }
           table { width: 100% !important; border-collapse: collapse !important; background-color: transparent !important; }
           tr { page-break-inside: avoid !important; background-color: transparent !important; }
-          
-          /* FIX BUG GARIS ABU-ABU SAAT PRINT */
           .tabel-utama thead tr { border-top: 1px solid #000 !important; border-bottom: 1px solid #000 !important; } 
-          
           th, td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; background-color: transparent !important; color: #000 !important; }
           th { font-weight: bold !important; text-align: center !important; }
           .tabel-biodata { margin-bottom: 15px !important; border: none !important; width: 100% !important; }
@@ -622,15 +660,21 @@ export default function DashboardKader() {
               </div>
 
               {/* KARTU RINGKASAN */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px', marginBottom: '10px' }}>
                 <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #f1c40f', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                   <div style={{ fontSize: '0.8rem', color: '#777', fontWeight: 'bold' }}>Jenjang Kaderisasi</div>
                   <div style={{ fontSize: '1.5rem', color: '#333', fontWeight: 'bold', marginTop: '5px' }}>{profil.jenjang}</div>
                 </div>
-                <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #2ecc71', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#777', fontWeight: 'bold' }}>Pendamping Anda</div>
-                  <div style={{ fontSize: '1.1rem', color: '#333', fontWeight: 'bold', marginTop: '5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{namaPendamping}</div>
+                
+                {/* KARTU PENDAMPING (DIUBAH UNTUK MULTI-PENDAMPING) */}
+                <div style={{ backgroundColor: '#fff', padding: '15px 20px', borderRadius: '8px', borderLeft: '4px solid #2ecc71', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                  <div style={{ fontSize: '0.8rem', color: '#777', fontWeight: 'bold' }}>Pendamping Rayon</div>
+                  <div style={{ fontSize: '1.1rem', color: '#333', fontWeight: 'bold', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{namaPendamping}</div>
+                  
+                  <div style={{ fontSize: '0.8rem', color: '#777', fontWeight: 'bold', marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '8px' }}>Pendamping SKP (Komisariat)</div>
+                  <div style={{ fontSize: '1.1rem', color: '#0000af', fontWeight: 'bold', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{namaPendampingSkp}</div>
                 </div>
+
                 <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #e74c3c', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                   <div style={{ fontSize: '0.8rem', color: '#777', fontWeight: 'bold' }}>Tugas Diselesaikan</div>
                   <div style={{ fontSize: '1.5rem', color: '#333', fontWeight: 'bold', marginTop: '5px' }}>

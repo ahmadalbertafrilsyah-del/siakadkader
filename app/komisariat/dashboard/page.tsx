@@ -296,7 +296,8 @@ export default function DashboardKomisariat() {
     e.preventDefault(); setIsSubmitting(true);
     if (!formPilihKaderSKP.nim || !formPilihKaderSKP.pendampingId) { alert("Harap lengkapi pilihan kader dan pendamping!"); setIsSubmitting(false); return; }
     try {
-      await updateDoc(doc(db, "users", formPilihKaderSKP.nim), { jenjang: "SKP", pendampingId: formPilihKaderSKP.pendampingId });
+      // PERUBAHAN KRUSIAL: Menggunakan pendamping_skp_id agar Pendamping Rayon tidak tertimpa
+      await updateDoc(doc(db, "users", formPilihKaderSKP.nim), { jenjang: "SKP", pendamping_skp_id: formPilihKaderSKP.pendampingId });
       catatLogAktivitas(`Meng-upgrade NIM ${formPilihKaderSKP.nim} menjadi peserta SKP.`);
       alert("Berhasil memplotkan/upgrade kader menjadi peserta SKP!"); setFormPilihKaderSKP({nim: '', pendampingId: ''});
     } catch(err) { alert("Gagal memplotkan kader."); } finally { setIsSubmitting(false); }
@@ -314,7 +315,8 @@ export default function DashboardKomisariat() {
 
       await setDoc(doc(db, "users", safeNim), {
         nim: safeNim, nama: formKaderSKP.nama, email: emailBaru, role: "kader",
-        id_rayon: formKaderSKP.id_rayon || "Luar Komisariat", jenjang: "SKP", pendampingId: formKaderSKP.pendampingId,
+        id_rayon: formKaderSKP.id_rayon || "Luar Komisariat", jenjang: "SKP", 
+        pendamping_skp_id: formKaderSKP.pendampingId, // PERUBAHAN KRUSIAL
         status: "Aktif", createdAt: tanggalBuatModif.getTime()
       });
       await signOutSecondary(secondaryAuth); catatLogAktivitas(`Mendaftarkan Akun Kader SKP Manual: ${formKaderSKP.nama}`); alert(`Sukses! Akun Kader SKP berhasil dibuat manual.`); setFormKaderSKP({ nim: '', nama: '', password: '', id_rayon: '', pendampingId: '', angkatan: new Date().getFullYear().toString() });
@@ -968,7 +970,7 @@ export default function DashboardKomisariat() {
                           <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>NIM / Thn</th>
                           <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Nama Kader</th>
                           <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Asal Instansi</th>
-                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Pendamping</th>
+                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Pendamping SKP</th>
                           <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Status</th>
                           <th style={{ padding: '10px', borderBottom: '2px solid #ddd', textAlign: 'center' }}>Aksi</th>
                         </tr>
@@ -984,7 +986,7 @@ export default function DashboardKomisariat() {
                                 <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', textAlign: 'center' }}>{k.nim} <br/> <span style={{fontSize: '0.7rem', color: '#1e824c'}}>{thnMasuk}</span></td>
                                 <td style={{ padding: '10px', fontWeight: 'bold', color: '#0d1b2a' }}>{k.nama}</td>
                                 <td style={{ padding: '10px', color: '#666', textAlign: 'center', fontSize: '0.8rem' }}>{k.id_rayon}</td>
-                                <td style={{ padding: '10px', color: '#666', textAlign: 'center', fontSize: '0.8rem' }}>{k.pendampingId || '-'}</td>
+                                <td style={{ padding: '10px', color: '#666', textAlign: 'center', fontSize: '0.8rem' }}>{k.pendamping_skp_id || '-'}</td>
                                 <td style={{ padding: '10px', textAlign: 'center' }}>
                                   <button onClick={() => handleUbahStatusAkun(k.id, k.status || 'Aktif')} style={{ padding: '4px 8px', border: 'none', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: (!k.status || k.status === 'Aktif') ? '#e8f5e9' : '#ffebee', color: (!k.status || k.status === 'Aktif') ? '#2e7d32' : '#c62828' }}>
                                     {(!k.status || k.status === 'Aktif') ? '🟢 Aktif' : '🔴 Pasif'}

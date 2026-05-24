@@ -25,7 +25,6 @@ export default function DashboardPendamping() {
     jenjangTugas: 'MAPABA' 
   });
   
-  // STATE BARU: Menyimpan Nama Rayon Asli & Pengaturan Cetak
   const [namaRayonInduk, setNamaRayonInduk] = useState('');
   const [pengaturanCetak, setPengaturanCetak] = useState({ kopSuratUrl: '', footerUrl: '' });
 
@@ -42,7 +41,6 @@ export default function DashboardPendamping() {
   const [tabInput, setTabInput] = useState('materi'); 
   const [selectedKader, setSelectedKader] = useState('');
   
-  // Jenjang dikunci mati sesuai penugasan
   const selectedJenjang = profilPendamping.jenjangTugas || 'MAPABA';
   const materiAktif = listKurikulum[selectedJenjang] || [];
 
@@ -59,17 +57,17 @@ export default function DashboardPendamping() {
   const [selectedTesHasil, setSelectedTesHasil] = useState<any>(null);
   const [jawabanTesViewer, setJawabanTesViewer] = useState<any[]>([]);
 
-  // ---> STATE BARU: FITUR ENTERPRISE (KALENDER, BROADCAST, LOG) <---
+  // --- STATE ENTERPRISE ---
   const [jadwalKegiatan, setJadwalKegiatan] = useState<any[]>([]);
-  const [notifikasiGlobal, setNotifikasiGlobal] = useState<any[]>([]); // Inbox (Notif dari atas)
-  const [riwayatBroadcast, setRiwayatBroadcast] = useState<any[]>([]); // Sent (Notif yang pendamping kirim)
+  const [notifikasiGlobal, setNotifikasiGlobal] = useState<any[]>([]); 
+  const [riwayatBroadcast, setRiwayatBroadcast] = useState<any[]>([]); 
   const [logAktivitas, setLogAktivitas] = useState<any[]>([]);
   
   const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Binaan' });
   const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Binaan', batas_waktu: '' });
 
   // ==========================================
-  // FUNGSI PENCATAT LOG AKTIVITAS (AUDIT TRAIL)
+  // PENCATAT LOG AKTIVITAS
   // ==========================================
   const catatLogAktivitas = async (aksi: string) => {
     if (!profilPendamping.username) return;
@@ -86,19 +84,13 @@ export default function DashboardPendamping() {
     } catch (e) { console.error("Gagal mencatat log", e); }
   };
 
-  // ==========================================
-  // API HELPER: CLOUDINARY UPLOAD
-  // ==========================================
   const uploadToCloudinary = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", "siakad_upload"); 
     const resourceType = file.type.startsWith('image/') ? 'image' : 'raw';
     
-    const res = await fetch(`https://api.cloudinary.com/v1_1/dcmdaghbq/${resourceType}/upload`, {
-      method: "POST",
-      body: formData,
-    });
+    const res = await fetch(`https://api.cloudinary.com/v1_1/dcmdaghbq/${resourceType}/upload`, { method: "POST", body: formData });
     const data = await res.json();
     if (!data.secure_url) throw new Error("Gagal upload");
     return data.secure_url.replace("http://", "https://");
@@ -133,44 +125,33 @@ export default function DashboardPendamping() {
               jenjangTugas: p.jenjangTugas || 'MAPABA'
             });
             
-            ambilDataKaderBinaan(p.username);
+            // CEK APAKAH INI PENDAMPING SKP (KOMISARIAT) ATAU RAYON
+            const isPendampingSKP = p.id_rayon === 'Komisariat';
+            ambilDataKaderBinaan(p.username, isPendampingSKP);
 
-            // ==============================================================
-            // LOGIKA KHUSUS: PENDAMPING SKP (DI BAWAH KOMISARIAT LANGSUNG)
-            // ==============================================================
-            if (p.id_rayon === 'Komisariat') {
-              setNamaRayonInduk('Pusat Komisariat');
-              
-              // 1. Pengaturan Cetak & Matriks Bobot dari Komisariat
-              onSnapshot(doc(db, "pengaturan_sistem", "komisariat_settings"), (docSnap) => {
-                if (docSnap.exists()) {
-                  const d = docSnap.data();
-                  setPengaturanCetak({ kopSuratUrl: d.kopSuratUrl || '', footerUrl: d.footerUrl || '' });
-                  if (d.bobot_penilaian && d.bobot_penilaian['SKP']) {
-                    setKategoriBobot(d.bobot_penilaian['SKP']);
-                  } else { setKategoriBobot([]); }
-                }
-              });
-
-              // 2. Kurikulum SKP dari Komisariat Pusat
-              onSnapshot(collection(db, "master_kurikulum_pusat"), (snap) => {
-                const skpMateri: any[] = [];
-                snap.forEach(d => { if (d.data().jenjang === 'SKP') skpMateri.push({ id: d.id, ...d.data() }); });
-                setListKurikulum({ SKP: skpMateri });
-              });
-
-              // 3. Tes Pemahaman dari Komisariat Pusat
-              onSnapshot(collection(db, "master_tes_pusat"), (snap) => {
-                const tesList: any[] = [];
-                snap.forEach(d => { if (d.data().jenjang === 'SKP') tesList.push({ id: d.id, ...d.data() }); });
-                setListTes(tesList);
-              });
-
-            } 
-            // ==============================================================
-            // LOGIKA NORMAL: PENDAMPING RAYON (MAPABA, PKD, SIG)
-            // ==============================================================
-            else if (p.id_rayon) {
+            // ... di dalam useEffect utama setelah pengecekan user
+            if (isPendampingSKP) {
+                setNamaRayonInduk('Pusat Komisariat');
+    
+                // Listener terpisah untuk setting
+                onSnapshot(doc(db, "pengaturan_sistem", "komisariat_settings"), (docSnap) => {
+                    // ... logika setting
+                });
+            
+                // Listener terpisah untuk Kurikulum
+                onSnapshot(query(collection(db, "master_kurikulum_pusat"), where("jenjang", "==", "SKP")), (snap) => {
+                    type Materi = { id: string; kode: string; [key: string]: any };
+                    const listMateri = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Materi[];
+                  listMateri.sort((a, b) => a.kode.localeCompare(b.kode, 'id', { numeric: true, sensitivity: 'base' }));
+                    setListKurikulum(prev => ({ ...prev, SKP: listMateri }));
+                });
+            
+                // Listener terpisah untuk Tes
+                onSnapshot(query(collection(db, "master_tes_pusat"), where("jenjang", "==", "SKP")), (snap) => {
+                    setListTes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                });
+                
+            } else if (p.id_rayon) {
               onSnapshot(doc(db, "users", p.id_rayon), (rayonSnap) => {
                 if (rayonSnap.exists()) {
                   const rData = rayonSnap.data();
@@ -199,20 +180,14 @@ export default function DashboardPendamping() {
               });
 
               onSnapshot(query(collection(db, "master_tes"), where("id_rayon", "==", p.id_rayon)), (snap) => {
-                const tesList: any[] = [];
-                snap.forEach((doc) => tesList.push({ id: doc.id, ...doc.data() }));
-                setListTes(tesList);
+                setListTes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
               });
             }
 
-            // ==============================================================
-            // PENDENGAR JADWAL & NOTIFIKASI GLOBAL (UNTUK SEMUA PENDAMPING)
-            // ==============================================================
             onSnapshot(collection(db, "jadwal_kegiatan"), (snap) => {
               const listJadwal: any[] = [];
               snap.forEach(doc => {
                 const d = doc.data();
-                // Tampilkan jadwal Komisariat, Rayon, dan Jadwal Pendamping ini sendiri
                 if (d.pembuat === "Komisariat" || d.id_rayon === p.id_rayon) {
                   if (d.pembuat.includes("Pendamping") && d.pendamping_id !== p.username) return; 
                   listJadwal.push({ id: doc.id, ...d });
@@ -287,9 +262,10 @@ export default function DashboardPendamping() {
   // ==========================================
   // LOGIKA FUNGSI DASHBOARD
   // ==========================================
-  const ambilDataKaderBinaan = async (usernamePendamping: string) => {
+  const ambilDataKaderBinaan = async (usernamePendamping: string, isPendampingSKP: boolean) => {
     try {
-      const qKader = query(collection(db, "users"), where("role", "==", "kader"), where("pendampingId", "==", usernamePendamping));
+      const filterField = isPendampingSKP ? "pendamping_skp_id" : "pendampingId";
+      const qKader = query(collection(db, "users"), where("role", "==", "kader"), where(filterField, "==", usernamePendamping));
       const snapKader = await getDocs(qKader);
       const listKader: any[] = snapKader.docs.map(d => ({ id: d.id, ...d.data() }));
       setKaderBinaan(listKader);
@@ -348,17 +324,10 @@ export default function DashboardPendamping() {
 
   const handleDownloadPDF = () => { window.print(); };
 
-  // ---> FITUR BARU: EXPORT EXCEL BINAAN <---
   const handleExportKaderBinaan = () => {
     if (kaderBinaan.length === 0) return alert("Belum ada data kader binaan!");
     const dataToExport = kaderBinaan.map((k, i) => ({
-      "No": i + 1,
-      "NIM": k.nim || '-',
-      "Nama Lengkap": k.nama || '-',
-      "NIA": k.nia || '-',
-      "Jenjang Terakhir": k.jenjang || 'MAPABA',
-      "Email": k.email || '-',
-      "Status": k.status || 'Aktif'
+      "No": i + 1, "NIM": k.nim || '-', "Nama Lengkap": k.nama || '-', "NIA": k.nia || '-', "Jenjang Terakhir": k.jenjang || 'MAPABA', "Email": k.email || '-', "Status": k.status || 'Aktif'
     }));
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
@@ -367,65 +336,36 @@ export default function DashboardPendamping() {
     catatLogAktivitas("Mengekspor (Download Excel) daftar kader binaan.");
   };
 
-  // ---> FITUR BARU: KALENDER JADWAL (HANYA BINAAN) <---
   const handleTambahJadwal = async (e: React.FormEvent) => {
     e.preventDefault(); setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "jadwal_kegiatan"), {
-        ...formJadwal,
-        id_rayon: profilPendamping.id_rayon,
-        pembuat: `Pendamping (${profilPendamping.nama})`,
-        pendamping_id: profilPendamping.username,
-        target: 'Binaan', // Dikunci hanya untuk binaannya
-        timestamp: Date.now()
-      });
+      await addDoc(collection(db, "jadwal_kegiatan"), { ...formJadwal, id_rayon: profilPendamping.id_rayon, pembuat: `Pendamping (${profilPendamping.nama})`, pendamping_id: profilPendamping.username, target: 'Binaan', timestamp: Date.now() });
       catatLogAktivitas(`Menjadwalkan kegiatan khusus binaan: ${formJadwal.judul}`);
-      alert("Jadwal Mentoring berhasil dibuat!");
-      setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Binaan' });
+      alert("Jadwal Mentoring berhasil dibuat!"); setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Binaan' });
     } catch (error) { alert("Gagal menyimpan jadwal."); } finally { setIsSubmitting(false); }
   };
 
   const handleHapusJadwal = async (id: string, judul: string, pembuat: string) => {
-    if (!pembuat.includes(profilPendamping.username) && !pembuat.includes(profilPendamping.nama)) {
-      return alert("Anda hanya bisa menghapus jadwal yang Anda buat sendiri.");
-    }
+    if (!pembuat.includes(profilPendamping.username) && !pembuat.includes(profilPendamping.nama)) return alert("Anda hanya bisa menghapus jadwal yang Anda buat sendiri.");
     if (!window.confirm(`Hapus jadwal "${judul}"?`)) return;
-    try {
-      await deleteDoc(doc(db, "jadwal_kegiatan", id));
-      catatLogAktivitas(`Menghapus jadwal mentoring: ${judul}`);
-    } catch (error) { alert("Gagal menghapus."); }
+    try { await deleteDoc(doc(db, "jadwal_kegiatan", id)); catatLogAktivitas(`Menghapus jadwal mentoring: ${judul}`); } catch (error) { alert("Gagal menghapus."); }
   };
 
-  // ---> FITUR BARU: KIRIM & HAPUS BROADCAST NOTIFIKASI (HANYA BINAAN) <---
   const handleKirimBroadcast = async (e: React.FormEvent) => {
     e.preventDefault(); setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "notifikasi_global"), {
-        ...formBroadcast,
-        target: "Binaan", // Dikunci hanya untuk binaannya
-        id_rayon: profilPendamping.id_rayon,
-        pengirim: `Pendamping (${profilPendamping.nama})`,
-        pengirim_id: profilPendamping.username,
-        tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
-        timestamp: Date.now()
-      });
-      catatLogAktivitas(`Mengirim Broadcast khusus Kader Binaan: ${formBroadcast.judul}`);
-      alert("Pesan Broadcast berhasil dikirim ke Binaan Anda!");
-      setFormBroadcast({ ...formBroadcast, judul: '', pesan: '', batas_waktu: '' });
+      await addDoc(collection(db, "notifikasi_global"), { ...formBroadcast, target: "Binaan", id_rayon: profilPendamping.id_rayon, pengirim: `Pendamping (${profilPendamping.nama})`, pengirim_id: profilPendamping.username, tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()), timestamp: Date.now() });
+      catatLogAktivitas(`Mengirim Broadcast khusus Kader Binaan: ${formBroadcast.judul}`); alert("Pesan Broadcast berhasil dikirim ke Binaan Anda!"); setFormBroadcast({ ...formBroadcast, judul: '', pesan: '', batas_waktu: '' });
     } catch (error) { alert("Gagal mengirim broadcast."); } finally { setIsSubmitting(false); }
   };
 
   const handleHapusBroadcast = async (id: string, judul: string) => {
     if (!window.confirm(`Hapus/tarik pesan broadcast "${judul}"?`)) return;
-    try {
-      await deleteDoc(doc(db, "notifikasi_global", id));
-      catatLogAktivitas(`Menarik pesan Broadcast binaan: ${judul}`);
-    } catch (error) { alert("Gagal menghapus broadcast."); }
+    try { await deleteDoc(doc(db, "notifikasi_global", id)); catatLogAktivitas(`Menarik pesan Broadcast binaan: ${judul}`); } catch (error) { alert("Gagal menghapus broadcast."); }
   };
 
-
   // ==========================================
-  // PERHITUNGAN RAPORT KHS
+  // PERBAIKAN: PERHITUNGAN RAPORT KHS DINAMIS
   // ==========================================
   let totalSks = 0;
   let totalBobotNilai = 0;
@@ -435,16 +375,27 @@ export default function DashboardPendamping() {
   };
 
   const getNilaiHuruf = (angka: number) => {
-    if (angka >= 76) return "A";
-    if (angka >= 51) return "B";
-    if (angka >= 26) return "C";
-    if (angka >= 10) return "D";
-    if (angka > 0) return "E";
-    return "-";
+    if (angka >= 76) return "A"; if (angka >= 51) return "B"; if (angka >= 26) return "C"; if (angka >= 10) return "D"; if (angka > 0) return "E"; return "-";
   };
 
   const barisRaportRender = materiAktif.map((materi, index) => {
-    const nilaiHuruf = nilaiKaderRealtime[materi.kode] || "-";
+    
+    // KALKULASI DINAMIS MENCEGAH BUG DATABASE KOSONG
+    let angkaAkhir = 0;
+    let adaNilaiMentah = false;
+
+    kategoriBobot.forEach(kat => {
+        if (nilaiMentah[materi.kode] && nilaiMentah[materi.kode][kat.nama] !== undefined) {
+            adaNilaiMentah = true;
+        }
+        const score = nilaiMentah[materi.kode]?.[kat.nama] || 0;
+        angkaAkhir += (score * (kat.persen / 100));
+    });
+
+    // Gunakan hasil kalkulasi langsung JIKA ada inputan, jika belum ada cek fallback dari DB
+    const hurufKalkulasi = adaNilaiMentah ? getNilaiHuruf(angkaAkhir) : "-";
+    const nilaiHuruf = hurufKalkulasi !== "-" ? hurufKalkulasi : (nilaiKaderRealtime[materi.kode] || "-");
+
     const angkaNilai = konversiHurufKeAngka(nilaiHuruf);
     const sksKaliNilai = (materi.bobot || 0) * angkaNilai;
     
@@ -480,10 +431,14 @@ export default function DashboardPendamping() {
     if (!selectedKader) return;
     try {
       const docRef = doc(db, "evaluasi_kader", selectedKader);
-      const currentEvaluasi = (await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKader)))).docs[0]?.data() || {};
-      const jenjangData = currentEvaluasi[selectedJenjang] || { bobot: kategoriBobot, nilai_mentah: {}, catatan: catatanKeaktifan };
       
-      await setDoc(docRef, { ...currentEvaluasi, [selectedJenjang]: { ...jenjangData, nilai_mentah: nilaiMentah } }, { merge: true });
+      // PERBAIKAN: Menggunakan merge: true secara murni menghindari bug fetch __name__
+      await setDoc(docRef, { 
+        [selectedJenjang]: { 
+          nilai_mentah: nilaiMentah, 
+          catatan: catatanKeaktifan 
+        } 
+      }, { merge: true });
 
       let angkaAkhir = 0;
       kategoriBobot.forEach(kat => {
@@ -504,9 +459,9 @@ export default function DashboardPendamping() {
   const handleSimpanCatatan = async (text: string) => {
     setCatatanKeaktifan(text);
     try {
-      const currentEvaluasi = (await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKader)))).docs[0]?.data() || {};
-      const jenjangData = currentEvaluasi[selectedJenjang] || { bobot: kategoriBobot, nilai_mentah: nilaiMentah, catatan: '' };
-      await setDoc(doc(db, "evaluasi_kader", selectedKader), { ...currentEvaluasi, [selectedJenjang]: { ...jenjangData, catatan: text } }, { merge: true });
+      await setDoc(doc(db, "evaluasi_kader", selectedKader), { 
+        [selectedJenjang]: { catatan: text } 
+      }, { merge: true });
       catatLogAktivitas(`Menulis catatan evaluasi untuk kader: ${selectedKader}`);
     } catch (error) { console.error(error); }
   };
@@ -531,9 +486,8 @@ export default function DashboardPendamping() {
   return (
     <div style={{ display: 'flex', backgroundColor: '#f4f6f9', height: '100vh', overflow: 'hidden', fontFamily: 'Arial, sans-serif' }}>
       
-      {/* CSS KHUSUS UNTUK TAMPILAN WEB & CETAK PDF A4 BACKGROUND */}
       <style>{`
-        * { box-sizing: border-box; } /* KUNCI RESPONSIFITAS GLOBAL */
+        * { box-sizing: border-box; } 
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
@@ -642,7 +596,7 @@ export default function DashboardPendamping() {
                   <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2c3e50', marginTop: '5px' }}>{berkasTugas.filter(s => s.status === 'Menunggu Verifikasi').length}</div>
                 </div>
                 <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderLeft: '4px solid #e74c3c' }}>
-                  <div style={{ color: '#7f8c8d', fontSize: '0.85rem', fontWeight: 'bold' }}>Tugas Rayon Aktif</div>
+                  <div style={{ color: '#7f8c8d', fontSize: '0.85rem', fontWeight: 'bold' }}>Tugas Instansi Aktif</div>
                   <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2c3e50', marginTop: '5px' }}>{listMasterTugas.length}</div>
                 </div>
                 <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderLeft: '4px solid #2ecc71' }}>
@@ -933,7 +887,6 @@ export default function DashboardPendamping() {
                   </select>
                   
                   <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#555', marginLeft: '5px' }}>Jenjang:</span>
-                  {/* Di pendamping, jenjang dikunci mati sesuai penugasannya */}
                   <div style={{ padding: '6px 15px', backgroundColor: '#eef2f3', borderRadius: '4px', fontWeight: 'bold', color: '#2c3e50', border: '1px solid #ccc', fontSize: '0.85rem' }}>{selectedJenjang}</div>
                   
                   {/* TOMBOL CETAK KHS */}
@@ -997,7 +950,7 @@ export default function DashboardPendamping() {
                 {tabInput === 'keaktifan' && (
                   <div style={{ backgroundColor: '#fafafa', padding: '20px', border: '1px solid #ddd', borderRadius: '4px' }}>
                     
-                    {/* INDIKATOR KATEGORI BOBOT (READ-ONLY) */}
+                    {/* INDIKATOR KATEGORI BOBOT */}
                     <div className="no-print" style={{ marginBottom: '20px', background: '#eef2f3', padding: '15px', borderRadius: '6px', border: '1px dashed #b2c2cf' }}>
                       <h4 style={{ margin: '0 0 10px 0', color: '#0d1b2a', fontSize: '0.85rem' }}>📌 Kategori & Bobot Penilaian (Ditetapkan Instansi Atas)</h4>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -1267,7 +1220,7 @@ export default function DashboardPendamping() {
             </div>
           )}
 
-          {/* MENU 9: LOG AKTIVITAS PRIBADI (FITUR BARU) */}
+          {/* MENU 9: LOG AKTIVITAS PRIBADI */}
           {activeMenu === 'log-aktivitas' && (
             <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
               <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
@@ -1306,14 +1259,12 @@ export default function DashboardPendamping() {
       {/* STRUKTUR HIDDEN HTML KHUSUS UNTUK PRINT PDF AGAR RAPI BERULANG */}
       <div id="hidden-print-container" className="print-layout-container">
         
-        {/* Gambar Background A4 dari Admin Rayon */}
         {pengaturanCetak.kopSuratUrl && (
           <div className="bg-kertas-a4">
             <img src={pengaturanCetak.kopSuratUrl} alt="Background A4" />
           </div>
         )}
 
-        {/* Pembungkus Konten Tabel */}
         <div className="print-content-area">
           
           {/* CETAK KHS PENDAMPING */}

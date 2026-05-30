@@ -19,13 +19,14 @@ export default function DashboardKader() {
     nama: 'Loading...', nim: '', nia: '-', angkatan: '',
     email: '', tempatLahir: '', tanggalLahir: '',
     alamatAsal: '', alamatDomisili: '', id_rayon: '', jenjang: 'MAPABA',
-    status: 'Aktif', pendampingId: '', pendamping_skp_id: '' // Ditambahkan state untuk pendamping SKP
+    status: 'Aktif', pendampingId: '', pendamping_skp_id: '' 
   });
   
   const [namaRayonAsli, setNamaRayonAsli] = useState('Memuat Rayon...');
   const [namaPendamping, setNamaPendamping] = useState('Menunggu Plotting...');
-  const [namaPendampingSkp, setNamaPendampingSkp] = useState('Menunggu Plotting SKP...'); // Ditambahkan state nama pendamping SKP
+  const [namaPendampingSkp, setNamaPendampingSkp] = useState('Menunggu Plotting SKP...'); 
   const [pengaturanCetak, setPengaturanCetak] = useState({ kopSuratUrl: '', footerUrl: '' });
+  const [pengaturanCetakKomisariat, setPengaturanCetakKomisariat] = useState({ kopSuratUrl: '', footerUrl: '' });
 
   const [isEditingProfil, setIsEditingProfil] = useState(false);
   const [fotoFile, setFotoFile] = useState<File | null>(null);
@@ -53,7 +54,9 @@ export default function DashboardKader() {
   // --- STATE BOBOT DARI RAYON & KOMISARIAT ---
   const [kategoriBobotRayon, setKategoriBobotRayon] = useState<Record<string, any[]>>({});
   const [kategoriBobotKomisariat, setKategoriBobotKomisariat] = useState<Record<string, any[]>>({});
-  const [evaluasiKader, setEvaluasiKader] = useState<{ nilai_mentah: any, catatan: string }>({ nilai_mentah: {}, catatan: '' });
+  
+  // STATE EVALUASI GLOBAL (Semua Jenjang Sekaligus)
+  const [evaluasiKaderGlobal, setEvaluasiKaderGlobal] = useState<Record<string, any>>({});
 
   // --- STATE PERPUS & SARAN ---
   const [listPerpus, setListPerpus] = useState<any[]>([]);
@@ -87,7 +90,7 @@ export default function DashboardKader() {
         timestamp: Date.now(),
         waktu_format: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
       });
-    } catch (e) { console.error("Gagal mencatat log", e); }
+    } catch (e) {}
   };
 
   // ==========================================
@@ -134,7 +137,7 @@ export default function DashboardKader() {
               jenjang: dataDB.jenjang || 'MAPABA',
               status: dataDB.status || 'Aktif',
               pendampingId: dataDB.pendampingId || '',
-              pendamping_skp_id: dataDB.pendamping_skp_id || '' // Assign field pendamping SKP dari Firestore
+              pendamping_skp_id: dataDB.pendamping_skp_id || '' 
             });
 
             if (dataDB.jenjang) setFilterRaport(dataDB.jenjang);
@@ -147,33 +150,28 @@ export default function DashboardKader() {
                    setPengaturanCetak({ kopSuratUrl: rData.kopSuratUrl || '', footerUrl: rData.footerUrl || '' });
                 }
               });
-              jalankanPendengarDataRayon(dataDB.nim, user.email, dataDB.id_rayon, dataDB.pendampingId);
+              jalankanPendengarDataRayon(dataDB.nim, user.email, dataDB.id_rayon, dataDB.pendampingId, dataDB.pendamping_skp_id);
             }
 
-            // Dapatkan nama Pendamping Rayon
             if(dataDB.pendampingId) {
                onSnapshot(doc(db, "users", dataDB.pendampingId), (pendampingSnap) => {
                   if(pendampingSnap.exists()) setNamaPendamping(pendampingSnap.data().nama);
                });
-            } else {
-               setNamaPendamping("Belum Diplotkan");
-            }
+            } else { setNamaPendamping("Belum Diplotkan"); }
 
-            // Dapatkan nama Pendamping SKP (Komisariat)
             if(dataDB.pendamping_skp_id) {
                onSnapshot(doc(db, "users", dataDB.pendamping_skp_id), (pendampingSnap) => {
                   if(pendampingSnap.exists()) setNamaPendampingSkp(pendampingSnap.data().nama);
                });
-            } else {
-               setNamaPendampingSkp("Belum Diplotkan (SKP)");
-            }
+            } else { setNamaPendampingSkp("Belum Diplotkan (SKP)"); }
           }
         });
         
-        // PENDENGAR SETTING KOMISARIAT (UNTUK BOBOT SKP)
         onSnapshot(doc(db, "pengaturan_sistem", "komisariat_settings"), (docSnap) => {
-          if (docSnap.exists() && docSnap.data().bobot_penilaian) {
-            setKategoriBobotKomisariat(docSnap.data().bobot_penilaian);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.bobot_penilaian) setKategoriBobotKomisariat(data.bobot_penilaian);
+            setPengaturanCetakKomisariat({ kopSuratUrl: data.kopSuratUrl || '', footerUrl: data.footerUrl || '' });
           }
         });
 
@@ -187,19 +185,16 @@ export default function DashboardKader() {
   // ==========================================
   // 2. FUNGSI PENDENGAR DATA GABUNGAN (RAYON & KOMISARIAT)
   // ==========================================
-  const jalankanPendengarDataRayon = (nimKader: string, emailKader: string | null, idRayon: string, pendampingId: string) => {
+  const jalankanPendengarDataRayon = (nimKader: string, emailKader: string | null, idRayon: string, pendampingId: string, pendampingSkpId: string) => {
     if(!nimKader || !emailKader || !idRayon) return;
 
-    // --- PENGGABUNGAN KURIKULUM RAYON DAN KOMISARIAT (SKP) ---
     onSnapshot(doc(db, "kurikulum_rayon", idRayon), (docSnap) => {
       const dataRayon = docSnap.exists() ? docSnap.data() : {};
-      
-      onSnapshot(doc(db, "kurikulum_komisariat", "pusat_data"), (komisariatSnap) => {
-        const dataKomisariat = komisariatSnap.exists() ? komisariatSnap.data() : {};
-        setListKurikulum({ 
-          ...dataRayon, 
-          SKP: dataKomisariat.SKP || [] // Menimpa/mengisi SKP dari pusat_data komisariat
-        } as Record<string, any[]>);
+      onSnapshot(collection(db, "master_kurikulum_pusat"), (pusatSnap) => {
+        const skpMateri: any[] = [];
+        pusatSnap.forEach(d => { if (d.data().jenjang === 'SKP') skpMateri.push({ id: d.id, ...d.data() }); });
+        skpMateri.sort((a, b) => a.kode.localeCompare(b.kode, undefined, { numeric: true, sensitivity: 'base' }));
+        setListKurikulum({ ...dataRayon, SKP: skpMateri } as Record<string, any[]>);
       });
     });
 
@@ -213,7 +208,6 @@ export default function DashboardKader() {
       if (docSnap.exists()) setNilaiKader(docSnap.data());
     });
 
-    // Pendengar Surat
     const qSurat = query(collection(db, "pengajuan_surat"), where("email_kader", "==", emailKader));
     onSnapshot(qSurat, (snap) => {
       const dataSurat: any[] = [];
@@ -222,7 +216,6 @@ export default function DashboardKader() {
       setRiwayatSurat(dataSurat);
     });
 
-    // Pendengar Berkas
     const qBerkas = query(collection(db, "berkas_kader"), where("email_kader", "==", emailKader));
     onSnapshot(qBerkas, (snap) => {
       const dataBerkas: any[] = [];
@@ -231,7 +224,6 @@ export default function DashboardKader() {
       setRiwayatBerkas(dataBerkas);
     });
 
-    // --- PENGGABUNGAN TUGAS RAYON DAN KOMISARIAT (SKP) ---
     onSnapshot(query(collection(db, "master_tugas"), where("id_rayon", "==", idRayon)), (snapRayon) => {
       const dataTugasRayon: any[] = [];
       snapRayon.forEach((doc) => dataTugasRayon.push({ id: doc.id, ...doc.data() }));
@@ -239,7 +231,6 @@ export default function DashboardKader() {
       onSnapshot(query(collection(db, "master_tugas"), where("jenjang", "==", "SKP")), (snapSkp) => {
         const dataTugasSkp: any[] = [];
         snapSkp.forEach((doc) => dataTugasSkp.push({ id: doc.id, ...doc.data() }));
-
         const mergedTugas = [...dataTugasRayon, ...dataTugasSkp];
         const uniqueTugas = Array.from(new Map(mergedTugas.map(item => [item.id, item])).values());
         setListMasterTugas(uniqueTugas);
@@ -256,15 +247,13 @@ export default function DashboardKader() {
       setListPerpus(dataPerpus);
     });
 
-    // --- PENGGABUNGAN TES RAYON DAN KOMISARIAT (SKP) ---
     onSnapshot(query(collection(db, "master_tes"), where("id_rayon", "==", idRayon)), (snapRayon) => {
       const tesRayon: any[] = [];
       snapRayon.forEach((doc) => tesRayon.push({ id: doc.id, ...doc.data() }));
 
-      onSnapshot(query(collection(db, "master_tes"), where("jenjang", "==", "SKP")), (snapSkp) => {
+      onSnapshot(query(collection(db, "master_tes_pusat"), where("jenjang", "==", "SKP")), (snapSkp) => {
         const tesSkp: any[] = [];
         snapSkp.forEach((doc) => tesSkp.push({ id: doc.id, ...doc.data() }));
-
         const mergedTes = [...tesRayon, ...tesSkp];
         const uniqueTes = Array.from(new Map(mergedTes.map(item => [item.id, item])).values());
         setListTes(uniqueTes);
@@ -282,7 +271,7 @@ export default function DashboardKader() {
       snap.forEach(doc => {
         const d = doc.data();
         if (d.pembuat === "Komisariat" || d.id_rayon === idRayon) {
-          if (d.pembuat.includes("Pendamping") && d.pendamping_id !== pendampingId) return; 
+          if (d.pembuat.includes("Pendamping") && d.pendamping_id !== pendampingId && d.pendamping_id !== pendampingSkpId) return; 
           listJadwal.push({ id: doc.id, ...d });
         }
       });
@@ -294,8 +283,8 @@ export default function DashboardKader() {
       const listNotif: any[] = [];
       snap.forEach(doc => {
         const d = doc.data();
-        if (d.target === "Semua" || d.target === "Kader" || (d.target === "Binaan" && d.pengirim_id === pendampingId)) {
-          if (d.pengirim === "Pusat Komisariat" || d.id_rayon === idRayon) {
+        if (d.target === "Semua" || d.target === "Kader" || (d.target === "Binaan" && (d.pengirim_id === pendampingId || d.pengirim_id === pendampingSkpId))) {
+          if (d.pengirim === "Pusat Komisariat" || d.id_rayon === idRayon || d.pengirim_id === pendampingSkpId) {
             listNotif.push({ id: doc.id, ...d });
           }
         }
@@ -315,17 +304,18 @@ export default function DashboardKader() {
   useEffect(() => {
     if (!profil.nim) return;
     const unsubscribeKeaktifan = onSnapshot(doc(db, "evaluasi_kader", profil.nim), (docSnap) => {
-      if (docSnap.exists() && docSnap.data()[filterRaport]) {
-        setEvaluasiKader(docSnap.data()[filterRaport]);
+      if (docSnap.exists()) {
+        setEvaluasiKaderGlobal(docSnap.data());
       } else {
-        setEvaluasiKader({ nilai_mentah: {}, catatan: '' });
+        setEvaluasiKaderGlobal({});
       }
     });
     return () => unsubscribeKeaktifan();
-  }, [profil.nim, filterRaport]);
+  }, [profil.nim]);
+
 
   // ==========================================
-  // LOGIKA PERHITUNGAN NILAI & IPK
+  // LOGIKA PERHITUNGAN NILAI & IPK (DIREVISI AGAR REAL-TIME & AKURAT)
   // ==========================================
   const konversiHurufKeAngka = (huruf: string) => {
     if(huruf === 'A') return 4; if(huruf === 'B') return 3; if(huruf === 'C') return 2; if(huruf === 'D') return 1; return 0;
@@ -335,14 +325,35 @@ export default function DashboardKader() {
     if (angka >= 76) return "A"; if (angka >= 51) return "B"; if (angka >= 26) return "C"; if (angka >= 10) return "D"; if (angka > 0) return "E"; return "-";
   };
 
+  // Fungsi Kalkulator Anti-Ngelag (Menghitung Langsung dari Nilai Mentah Tanpa Menunggu Database KHS)
+  const getNilaiHurufRealtime = (kodeMateri: string, jenjangTujuan: string) => {
+    const bobotJenjang = jenjangTujuan === 'SKP' ? (kategoriBobotKomisariat['SKP'] || []) : (kategoriBobotRayon[jenjangTujuan] || []);
+    const mentah = evaluasiKaderGlobal[jenjangTujuan]?.nilai_mentah?.[kodeMateri];
+    
+    // Jika belum ada bobot yang disetting dari atas, biarkan kosong.
+    if (!bobotJenjang || bobotJenjang.length === 0) return "-";
+
+    // Fallback: Jika belum ada detail nilai mentah, tarik dari nilai_khs lama
+    if (!mentah || Object.keys(mentah).length === 0) {
+       return nilaiKader[kodeMateri] || "-";
+    }
+
+    let angkaAkhir = 0;
+    bobotJenjang.forEach((kat: any) => {
+        const score = mentah[kat.nama] || 0;
+        angkaAkhir += (score * (kat.persen / 100));
+    });
+
+    return getNilaiHuruf(angkaAkhir);
+  };
+
   const hitungIpkPerJenjang = (jenjang: string) => {
     const materi = listKurikulum[jenjang] || [];
     if (materi.length === 0) return null;
-    let tSks = 0;
-    let tBobot = 0;
-    let adaNilai = false;
+    let tSks = 0; let tBobot = 0; let adaNilai = false;
+    
     materi.forEach(m => {
-        const huruf = nilaiKader[m.kode] || "-";
+        const huruf = getNilaiHurufRealtime(m.kode, jenjang);
         tSks += (m.bobot || 0);
         if (huruf !== "-") {
             adaNilai = true;
@@ -363,8 +374,12 @@ export default function DashboardKader() {
   let totalSks = 0;
   let totalBobotNilai = 0;
 
+  const evaluasiKader = evaluasiKaderGlobal[filterRaport] || { nilai_mentah: {}, catatan: '' };
+  const nilaiMentah = evaluasiKader.nilai_mentah || {};
+  const kategoriBobot = filterRaport === 'SKP' ? (kategoriBobotKomisariat['SKP'] || []) : (kategoriBobotRayon[filterRaport] || []);
+
   const barisMateriRender = materiAktif.map((materi, index) => {
-    const nilaiHuruf = nilaiKader[materi.kode] || "-";
+    const nilaiHuruf = getNilaiHurufRealtime(materi.kode, filterRaport);
     const angkaNilai = konversiHurufKeAngka(nilaiHuruf);
     const sksKaliNilai = (materi.bobot || 0) * angkaNilai;
     
@@ -386,10 +401,6 @@ export default function DashboardKader() {
   });
 
   const ipKaderTampilan = totalSks > 0 ? (totalBobotNilai / totalSks).toFixed(2) : "0.00";
-
-  // Penentuan Bobot untuk Tab Persentase Detail
-  const kategoriBobot = filterRaport === 'SKP' ? (kategoriBobotKomisariat['SKP'] || []) : (kategoriBobotRayon[filterRaport] || []);
-  const nilaiMentah = evaluasiKader.nilai_mentah || {};
 
   // ==========================================
   // FUNGSI PROFIL, TUGAS, SURAT, & EXPORT
@@ -498,11 +509,10 @@ export default function DashboardKader() {
   const handleLogout = async () => { await signOut(auth); router.push('/'); };
   const handleDownloadPDF = () => { window.print(); };
 
-  // ---> FITUR BARU: EXPORT NILAI KHS EXCEL <---
   const handleExportNilaiExcel = () => {
     if (materiAktif.length === 0) return alert("Belum ada data nilai!");
     const dataToExport = materiAktif.map((m, i) => {
-      const huruf = nilaiKader[m.kode] || "-";
+      const huruf = getNilaiHurufRealtime(m.kode, filterRaport);
       const angka = konversiHurufKeAngka(huruf);
       return {
         "No": i + 1,
@@ -603,7 +613,7 @@ export default function DashboardKader() {
           <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer', display: 'block' }}>×</button>
         </div>
         <div style={{ padding: '15px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <img src={profil.fotoUrl} alt="Foto" style={{ width: '45px', height: '45px', backgroundColor: '#e74c3c', borderRadius: '50%', objectFit: 'cover', border: '2px solid #f1c40f' }} />
+          <img src={profil.fotoUrl} alt="Foto" style={{ width: '45px', height: '45px', backgroundColor: '#0000af', borderRadius: '50%', objectFit: 'cover', border: '2px solid #f1c40f' }} />
           <div>
             <h4 style={{ fontSize: '0.8rem', margin: '0 0 3px 0', color: '#fff', lineHeight: '1.2' }}>{profil.nama}</h4>
             <p style={{ fontSize: '0.7rem', color: '#f1c40f', margin: 0, fontWeight: 'bold' }}>{profil.nia}</p>
@@ -666,7 +676,7 @@ export default function DashboardKader() {
                   <div style={{ fontSize: '1.5rem', color: '#333', fontWeight: 'bold', marginTop: '5px' }}>{profil.jenjang}</div>
                 </div>
                 
-                {/* KARTU PENDAMPING (DIUBAH UNTUK MULTI-PENDAMPING) */}
+                {/* KARTU PENDAMPING */}
                 <div style={{ backgroundColor: '#fff', padding: '15px 20px', borderRadius: '8px', borderLeft: '4px solid #2ecc71', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
                   <div style={{ fontSize: '0.8rem', color: '#777', fontWeight: 'bold' }}>Pendamping Rayon</div>
                   <div style={{ fontSize: '1.1rem', color: '#333', fontWeight: 'bold', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{namaPendamping}</div>
@@ -869,7 +879,7 @@ export default function DashboardKader() {
                       </thead>
                       <tbody>
                         {materiAktif.length === 0 ? (
-                          <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum jenjang ini belum diatur.</td></tr>
+                          <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum jenjang ini belum diatur oleh Pengurus.</td></tr>
                         ) : barisMateriRender}
                         
                         <tr style={{ borderTop: '2px solid #ccc' }}>
@@ -885,7 +895,6 @@ export default function DashboardKader() {
                       </tbody>
                     </table>
                     <p style={{fontSize: '0.75rem', color: '#888', marginTop: '15px', fontStyle: 'italic'}}>*Catatan: Nilai Huruf pada tabel ini terisi otomatis berdasarkan perhitungan Matriks di tab "Rincian Persentase & Nilai".</p>
-
                   </div>
                 )}
 
@@ -896,7 +905,7 @@ export default function DashboardKader() {
                         <tr>
                           <th rowSpan={2} style={{ width: '3%' }}>No</th>
                           <th rowSpan={2} style={{ width: '8%', textAlign: 'left' }}>Kode</th>
-                          <th rowSpan={2} style={{ width: '35%', textAlign: 'left' }}>Nama Materi</th>
+                          <th rowSpan={2} style={{ width: '35%', textAlign: 'left' }}>Nama Matakuliah</th>
                           {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Nilai Detail (0-100)</th>}
                           <th rowSpan={2} style={{ width: '5%' }}>SKS</th>
                           <th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
@@ -961,7 +970,7 @@ export default function DashboardKader() {
                     </table>
 
                     <div className="no-print" style={{ marginTop: '20px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '4px', padding: '15px' }}>
-                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', fontSize: '0.85rem', color: '#1e824c' }}>Catatan Khusus dari Pendamping/Rayon:</label>
+                      <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', fontSize: '0.85rem', color: '#1e824c' }}>Catatan Khusus dari Pendamping/Instansi:</label>
                       <p style={{ margin: 0, fontSize: '0.85rem', color: evaluasiKader.catatan ? '#333' : '#999', fontStyle: evaluasiKader.catatan ? 'italic' : 'normal' }}>
                         {evaluasiKader.catatan ? `"${evaluasiKader.catatan}"` : 'Belum ada catatan evaluasi.'}
                       </p>
@@ -1043,7 +1052,7 @@ export default function DashboardKader() {
                         <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#ffebee', border: '1px solid #ffcdd2', borderRadius: '8px', color: '#c62828' }}>
                           <span style={{ fontSize: '2rem' }}>🔒</span>
                           <h4 style={{ margin: '10px 0' }}>Tes Sedang Dikunci</h4>
-                          <p style={{ margin: 0, fontSize: '0.9rem' }}>Admin Rayon belum membuka akses untuk tes ini. Silakan hubungi pengurus terkait.</p>
+                          <p style={{ margin: 0, fontSize: '0.9rem' }}>Admin belum membuka akses untuk tes ini. Silakan hubungi pengurus terkait.</p>
                         </div>
                       );
                     }
@@ -1117,7 +1126,7 @@ export default function DashboardKader() {
                               {tugas.statusPengerjaan === 'Selesai' ? (
                                 <a href={tugas.link_file} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', backgroundColor: '#fff', border: '1px solid #27ae60', color: '#27ae60', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', textDecoration: 'none', fontWeight: 'bold' }}>👁️ Lihat File</a>
                               ) : tugas.statusPengerjaan === 'Menunggu Verifikasi' ? (
-                                <span style={{ fontStyle: 'italic', color: '#aaa', fontSize: '0.75rem' }}>Sedang dinilai Pendamping...</span>
+                                <span style={{ fontStyle: 'italic', color: '#aaa', fontSize: '0.75rem' }}>Sedang dinilai...</span>
                               ) : (
                                 <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
                                   <input type="file" onChange={(e) => setFileToUpload(e.target.files ? e.target.files[0] : null)} style={{ width: '160px', fontSize: '0.75rem' }} />
@@ -1195,7 +1204,6 @@ export default function DashboardKader() {
                                   <span style={{color: '#999', fontSize: '0.75rem', fontStyle: 'italic'}}>⏳ Diproses</span>
                                 )}
                                 
-                                {/* TOMBOL HAPUS UNTUK KADER */}
                                 <button onClick={() => handleHapusSurat(surat.id)} style={{ display: 'block', margin: '10px auto 0 auto', background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Riwayat Surat">🗑️</button>
                               </td>
                             </tr>
@@ -1300,11 +1308,15 @@ export default function DashboardKader() {
       {/* STRUKTUR HIDDEN HTML KHUSUS UNTUK PRINT PDF AGAR RAPI BERULANG */}
       <div id="hidden-print-container" className="print-layout-container">
         
-        {/* Gambar Background A4 dari Admin Rayon */}
-        {pengaturanCetak.kopSuratUrl && (
-          <div className="bg-kertas-a4">
-            <img src={pengaturanCetak.kopSuratUrl} alt="Background A4" />
-          </div>
+        {/* Gambar Background A4 dari Admin Rayon/Komisariat (DIPERBAIKI UNTUK SKP) */}
+        {filterRaport === 'SKP' ? (
+          pengaturanCetakKomisariat.kopSuratUrl && (
+            <div className="bg-kertas-a4"><img src={pengaturanCetakKomisariat.kopSuratUrl} alt="Background A4" /></div>
+          )
+        ) : (
+          pengaturanCetak.kopSuratUrl && (
+            <div className="bg-kertas-a4"><img src={pengaturanCetak.kopSuratUrl} alt="Background A4" /></div>
+          )
         )}
 
         {/* Pembungkus Konten Tabel */}
@@ -1313,13 +1325,13 @@ export default function DashboardKader() {
           {/* CETAK KHS */}
           {activeMenu === 'raport' && tabRaport === 'raport' && (
             <div>
-              <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '0 0 15px 0', fontSize: '12pt' }}>RAPORT KADERISASI</h3>
+              <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '0 0 15px 0', fontSize: '12pt' }}>RAPORT KADERISASI {filterRaport === 'SKP' ? 'SKP' : ''}</h3>
               <table className="tabel-biodata">
                 <tbody>
                   <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{profil.nim || '...........................'}</td></tr>
                   <tr><td>Nomor Induk Anggota</td><td>:</td><td>{profil.nia || '...........................'}</td></tr>
                   <tr><td>Nama Mahasiswa</td><td>:</td><td>{profil.nama || '...........................'}</td></tr>
-                  <tr><td>Nama Rayon / Instansi</td><td>:</td><td>{namaRayonAsli || '...........................'}</td></tr>
+                  <tr><td>Nama Instansi Pelaksana</td><td>:</td><td>{filterRaport === 'SKP' ? 'Pusat Komisariat' : namaRayonAsli}</td></tr>
                   <tr><td>Angkatan</td><td>:</td><td>{profil.angkatan || '...........................'}</td></tr>
                   <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{filterRaport}</td></tr>
                 </tbody>
@@ -1338,7 +1350,7 @@ export default function DashboardKader() {
                 </thead>
                 <tbody>
                   {materiAktif.length === 0 ? (
-                    <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur oleh Pengurus Rayon.</td></tr>
+                    <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur.</td></tr>
                   ) : barisMateriRender}
                   <tr>
                     <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td>
@@ -1363,7 +1375,7 @@ export default function DashboardKader() {
                 <tbody>
                   <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{profil.nim || '...........................'}</td></tr>
                   <tr><td>Nama Mahasiswa</td><td>:</td><td>{profil.nama || '...........................'}</td></tr>
-                  <tr><td>Rayon / Angkatan</td><td>:</td><td>{namaRayonAsli} / {profil.angkatan || '...........................'}</td></tr>
+                  <tr><td>Instansi Pelaksana</td><td>:</td><td>{listTes.find(t => t.id === selectedTesId).jenjang === 'SKP' ? 'Pusat Komisariat' : namaRayonAsli}</td></tr>
                   <tr><td>Waktu Pengerjaan</td><td>:</td><td>{riwayatTes.find(r => r.id_tes === selectedTesId).tanggal}</td></tr>
                 </tbody>
               </table>

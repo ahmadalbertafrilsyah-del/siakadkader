@@ -129,24 +129,33 @@ export default function DashboardPendamping() {
             const isPendampingSKP = p.id_rayon === 'Komisariat';
             ambilDataKaderBinaan(p.username, isPendampingSKP);
 
-            // ... di dalam useEffect utama setelah pengecekan user
             if (isPendampingSKP) {
                 setNamaRayonInduk('Pusat Komisariat');
     
-                // Listener terpisah untuk setting
+                // Listener terpisah untuk setting Komisariat (Bobot & Kop Surat SKP)
                 onSnapshot(doc(db, "pengaturan_sistem", "komisariat_settings"), (docSnap) => {
-                    // ... logika setting
+                  if (docSnap.exists()) {
+                    const d = docSnap.data();
+                    setPengaturanCetak({ kopSuratUrl: d.kopSuratUrl || '', footerUrl: d.footerUrl || '' });
+                    if (d.bobot_penilaian && d.bobot_penilaian['SKP']) {
+                      setKategoriBobot(d.bobot_penilaian['SKP']);
+                    } else {
+                      setKategoriBobot([]);
+                    }
+                  } else {
+                    setKategoriBobot([]);
+                  }
                 });
             
-                // Listener terpisah untuk Kurikulum
+                // Listener terpisah untuk Kurikulum SKP Pusat
                 onSnapshot(query(collection(db, "master_kurikulum_pusat"), where("jenjang", "==", "SKP")), (snap) => {
-                    type Materi = { id: string; kode: string; [key: string]: any };
-                    const listMateri = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Materi[];
-                  listMateri.sort((a, b) => a.kode.localeCompare(b.kode, 'id', { numeric: true, sensitivity: 'base' }));
+                    const listMateri: any[] = [];
+                    snap.docs.forEach(doc => listMateri.push({ id: doc.id, ...doc.data() }));
+                    listMateri.sort((a, b) => a.kode.localeCompare(b.kode, undefined, { numeric: true, sensitivity: 'base' }));
                     setListKurikulum(prev => ({ ...prev, SKP: listMateri }));
                 });
             
-                // Listener terpisah untuk Tes
+                // Listener terpisah untuk Tes SKP Pusat
                 onSnapshot(query(collection(db, "master_tes_pusat"), where("jenjang", "==", "SKP")), (snap) => {
                     setListTes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
                 });
@@ -432,9 +441,15 @@ export default function DashboardPendamping() {
     try {
       const docRef = doc(db, "evaluasi_kader", selectedKader);
       
-      // PERBAIKAN: Menggunakan merge: true secara murni menghindari bug fetch __name__
+      // Ambil dokumen lama dulu untuk mencegah overwrite jenjang lain
+      const existingSnap = await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKader)));
+      const currentEvaluasi = existingSnap.empty ? {} : existingSnap.docs[0].data();
+      const jenjangData = currentEvaluasi[selectedJenjang] || { catatan: catatanKeaktifan };
+
       await setDoc(docRef, { 
+        ...currentEvaluasi,
         [selectedJenjang]: { 
+          ...jenjangData,
           nilai_mentah: nilaiMentah, 
           catatan: catatanKeaktifan 
         } 
@@ -459,8 +474,13 @@ export default function DashboardPendamping() {
   const handleSimpanCatatan = async (text: string) => {
     setCatatanKeaktifan(text);
     try {
+      const existingSnap = await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKader)));
+      const currentEvaluasi = existingSnap.empty ? {} : existingSnap.docs[0].data();
+      const jenjangData = currentEvaluasi[selectedJenjang] || { nilai_mentah: nilaiMentah };
+
       await setDoc(doc(db, "evaluasi_kader", selectedKader), { 
-        [selectedJenjang]: { catatan: text } 
+        ...currentEvaluasi,
+        [selectedJenjang]: { ...jenjangData, catatan: text } 
       }, { merge: true });
       catatLogAktivitas(`Menulis catatan evaluasi untuk kader: ${selectedKader}`);
     } catch (error) { console.error(error); }
@@ -950,7 +970,7 @@ export default function DashboardPendamping() {
                 {tabInput === 'keaktifan' && (
                   <div style={{ backgroundColor: '#fafafa', padding: '20px', border: '1px solid #ddd', borderRadius: '4px' }}>
                     
-                    {/* INDIKATOR KATEGORI BOBOT */}
+                    {/* INDIKATOR KATEGORI BOBOT (READ-ONLY) */}
                     <div className="no-print" style={{ marginBottom: '20px', background: '#eef2f3', padding: '15px', borderRadius: '6px', border: '1px dashed #b2c2cf' }}>
                       <h4 style={{ margin: '0 0 10px 0', color: '#0d1b2a', fontSize: '0.85rem' }}>📌 Kategori & Bobot Penilaian (Ditetapkan Instansi Atas)</h4>
                       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -1259,12 +1279,14 @@ export default function DashboardPendamping() {
       {/* STRUKTUR HIDDEN HTML KHUSUS UNTUK PRINT PDF AGAR RAPI BERULANG */}
       <div id="hidden-print-container" className="print-layout-container">
         
+        {/* Gambar Background A4 yang sudah disederhanakan */}
         {pengaturanCetak.kopSuratUrl && (
           <div className="bg-kertas-a4">
             <img src={pengaturanCetak.kopSuratUrl} alt="Background A4" />
           </div>
         )}
 
+        {/* Pembungkus Konten Tabel */}
         <div className="print-content-area">
           
           {/* CETAK KHS PENDAMPING */}
@@ -1275,8 +1297,8 @@ export default function DashboardPendamping() {
                 <tbody>
                   <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{kaderDicetak.nim || '...........................'}</td></tr>
                   <tr><td>Nama Mahasiswa</td><td>:</td><td>{kaderDicetak.nama || '...........................'}</td></tr>
-                  <tr><td>Nama Instansi Pelaksana</td><td>:</td><td>{namaRayonInduk || '...........................'}</td></tr>
-                  <tr><td>Angkatan</td><td>:</td><td>{kaderDicetak.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '...........................'}</td></tr>
+                  <tr><td>Nama Instansi Pelaksana</td><td>:</td><td>{selectedJenjang === 'SKP' ? 'Pusat Komisariat' : namaRayonInduk}</td></tr>
+                  <tr><td>Angkatan</td><td>:</td><td>{kaderDicetak.angkatan || (kaderDicetak.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '...........................')}</td></tr>
                   <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{selectedJenjang}</td></tr>
                 </tbody>
               </table>

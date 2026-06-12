@@ -14,7 +14,6 @@ export default function DashboardAdminRayon() {
   const [activeMenu, setActiveMenu] = useState('beranda');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  // STATE BARU UNTUK POP-UP MODAL
   const [activeModal, setActiveModal] = useState<string | null>(null);
 
   const [adminRayonId, setAdminRayonId] = useState(''); 
@@ -58,7 +57,6 @@ export default function DashboardAdminRayon() {
   const [isSavingKurikulum, setIsSavingKurikulum] = useState(false);
   const [masterKurikulumPusat, setMasterKurikulumPusat] = useState<any[]>([]); 
   
-  // STATE UNTUK EDIT MATERI 
   const [editingMateriId, setEditingMateriId] = useState<string | null>(null);
   const [editMateriForm, setEditMateriForm] = useState({ kode: '', nama: '', muatan: '', bobot: 0 });
 
@@ -69,7 +67,6 @@ export default function DashboardAdminRayon() {
   const [evaluasiKader, setEvaluasiKader] = useState<{ catatan: string }>({ catatan: '' });
   const [tabRaportAdmin, setTabRaportAdmin] = useState('raport'); 
   
-  // STATE PENILAIAN MATRIKS DETAIL (GLOBAL PER JENJANG)
   const [kategoriBobotGlobal, setKategoriBobotGlobal] = useState<Record<string, any[]>>({});
   const [nilaiMentah, setNilaiMentah] = useState<Record<string, Record<string, number>>>({});
   const [formKategori, setFormKategori] = useState({ nama: '', persen: 0 });
@@ -92,23 +89,21 @@ export default function DashboardAdminRayon() {
   const [selectedTesHasil, setSelectedTesHasil] = useState<any>(null);
   const [formTes, setFormTes] = useState({ judul: '', jenjang: 'MAPABA', soal: '' });
   
-  // ---> STATE BARU: TARIK TES DARI KOMISARIAT PUSAT <---
   const [masterTesPusat, setMasterTesPusat] = useState<any[]>([]);
 
-  // ---> STATE BARU: FITUR ENTERPRISE (KALENDER, BROADCAST, LOG) <---
+  // --- STATE ENTERPRISE (KALENDER, BROADCAST, LOG) ---
   const [jadwalKegiatan, setJadwalKegiatan] = useState<any[]>([]);
   const [logAktivitas, setLogAktivitas] = useState<any[]>([]);
   const [riwayatBroadcast, setRiwayatBroadcast] = useState<any[]>([]);
   const [notifikasiInbox, setNotifikasiInbox] = useState<any[]>([]); 
 
-  // ---> UPDATE TARGET DI JADWAL <---
   const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Semua' });
   const [formBroadcast, setFormBroadcast] = useState({ judul: '', pesan: '', target: 'Semua', batas_waktu: '' });
 
   const materiAktif = listKurikulum[selectedJenjangNilai] || [];
 
   // ==========================================
-  // FUNGSI PENCATAT LOG AKTIVITAS (AUDIT TRAIL)
+  // FUNGSI PENCATAT LOG AKTIVITAS
   // ==========================================
   const catatLogAktivitas = async (aksi: string) => {
     if (!adminRayonId) return;
@@ -124,9 +119,6 @@ export default function DashboardAdminRayon() {
     } catch (e) { console.error("Gagal mencatat log", e); }
   };
 
-  // ==========================================
-  // API HELPER: FUNGSI UPLOAD CLOUDINARY
-  // ==========================================
   const uploadToCloudinary = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -181,8 +173,17 @@ export default function DashboardAdminRayon() {
               setDataPendamping(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             });
 
-            onSnapshot(query(collection(db, "users"), where("role", "==", "kader"), where("id_rayon", "==", currentRayonId)), (snap) => {
-              const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // LOGIKA BARU PENDENGAR KADER (MENDUKUNG TARIK LINTAS RAYON)
+            onSnapshot(query(collection(db, "users"), where("role", "==", "kader")), (snap) => {
+              const list: any[] = [];
+              snap.docs.forEach(doc => {
+                 const data = doc.data();
+                 const terdaftarDi = data.terdaftar_di || [data.id_rayon];
+                 // Tampilkan kader yang Asal Rayon-nya sini ATAU yang sedang ditarik/terdaftar di sini
+                 if (terdaftarDi.includes(currentRayonId)) {
+                    list.push({ id: doc.id, ...data });
+                 }
+              });
               setDataKader(list);
               if(list.length > 0 && !selectedKaderNilai) setSelectedKaderNilai((list[0] as any).nim);
             });
@@ -283,7 +284,7 @@ export default function DashboardAdminRayon() {
   }, [router]);
 
   // ==========================================
-  // EFEK 2: PANTAU NILAI KADER
+  // EFEK 2: PANTAU NILAI KADER (HANYA NILAI MENTAH SAJA)
   // ==========================================
   useEffect(() => {
     if (!selectedKaderNilai) return;
@@ -375,12 +376,7 @@ export default function DashboardAdminRayon() {
       const docRef = doc(db, "pengaturan_rayon", adminRayonId);
       const newBobot = [...kategoriBobotAktif, { id: Date.now().toString(), nama: formKategori.nama, persen: formKategori.persen }];
       
-      await setDoc(docRef, { 
-        bobot_penilaian: {
-          ...kategoriBobotGlobal,
-          [selectedJenjangNilai]: newBobot
-        }
-      }, { merge: true });
+      await setDoc(docRef, { bobot_penilaian: { ...kategoriBobotGlobal, [selectedJenjangNilai]: newBobot } }, { merge: true });
       
       catatLogAktivitas(`Menambahkan Kategori Bobot: ${formKategori.nama} (${formKategori.persen}%)`);
       setFormKategori({ nama: '', persen: 0 });
@@ -393,13 +389,7 @@ export default function DashboardAdminRayon() {
     try {
       const docRef = doc(db, "pengaturan_rayon", adminRayonId);
       const newBobot = kategoriBobotAktif.filter((item: any) => item.id !== id);
-      
-      await setDoc(docRef, { 
-        bobot_penilaian: {
-          ...kategoriBobotGlobal,
-          [selectedJenjangNilai]: newBobot
-        }
-      }, { merge: true });
+      await setDoc(docRef, { bobot_penilaian: { ...kategoriBobotGlobal, [selectedJenjangNilai]: newBobot } }, { merge: true });
     } catch (error) { alert("Gagal menghapus."); }
   };
 
@@ -421,7 +411,7 @@ export default function DashboardAdminRayon() {
       let angkaAkhir = 0;
       kategoriBobotAktif.forEach((kat: any) => {
           const score = nilaiMentah[kodeMateri]?.[kat.nama] || 0;
-          angkaAkhir += score * (kat.persen / 100);
+          angkaAkhir += (score * (kat.persen / 100));
       });
 
       const hurufAkhir = getNilaiHuruf(angkaAkhir);
@@ -442,7 +432,7 @@ export default function DashboardAdminRayon() {
   };
 
   // ==========================================
-  // FUNGSI LAINNYA & FITUR BARU ENTERPRISE
+  // FITUR ENTERPRISE LENGKAP
   // ==========================================
   const handleExportKaderRayon = () => {
     if (dataKader.length === 0) return alert("Belum ada data kader!");
@@ -450,6 +440,7 @@ export default function DashboardAdminRayon() {
       "No": i + 1,
       "NIM": k.nim || '-',
       "Nama Lengkap": k.nama || '-',
+      "Asal Rayon": k.id_rayon || '-',
       "NIA": k.nia || '-',
       "Pendamping": k.pendampingId || '-',
       "Jenjang Terakhir": k.jenjang || 'MAPABA',
@@ -468,12 +459,7 @@ export default function DashboardAdminRayon() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "jadwal_kegiatan"), {
-        ...formJadwal,
-        id_rayon: adminRayonId,
-        pembuat: "Rayon",
-        timestamp: Date.now()
-      });
+      await addDoc(collection(db, "jadwal_kegiatan"), { ...formJadwal, id_rayon: adminRayonId, pembuat: "Rayon", timestamp: Date.now() });
       catatLogAktivitas(`Menambahkan jadwal kegiatan rayon (Target: ${formJadwal.target}): ${formJadwal.judul}`);
       alert("Jadwal kegiatan berhasil ditambahkan!");
       setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Semua' });
@@ -493,13 +479,7 @@ export default function DashboardAdminRayon() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "notifikasi_global"), {
-        ...formBroadcast,
-        id_rayon: adminRayonId,
-        pengirim: `Admin Rayon (${namaRayonAsli || adminRayonId})`,
-        tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()),
-        timestamp: Date.now()
-      });
+      await addDoc(collection(db, "notifikasi_global"), { ...formBroadcast, id_rayon: adminRayonId, pengirim: `Admin Rayon (${namaRayonAsli || adminRayonId})`, tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()), timestamp: Date.now() });
       catatLogAktivitas(`Mengirim Broadcast (${formBroadcast.target}): ${formBroadcast.judul}`);
       alert("Pesan Broadcast berhasil disiarkan ke Rayon Anda!");
       setFormBroadcast({ judul: '', pesan: '', target: 'Semua', batas_waktu: '' });
@@ -533,20 +513,13 @@ export default function DashboardAdminRayon() {
       await addDoc(collection(db, "master_tes"), { id_rayon: adminRayonId, judul: formTes.judul, jenjang: formTes.jenjang, daftar_soal: daftarSoalArray, status: 'Tutup', timestamp: Date.now() });
       catatLogAktivitas(`Membuat Tes Pemahaman: ${formTes.judul}`);
       alert("Tes berhasil dibuat!"); setFormTes({ judul: '', jenjang: 'MAPABA', soal: '' });
-      setActiveModal(null); // Tutup Modal
+      setActiveModal(null);
     } catch (error) { alert("Gagal."); }
   };
 
   const handleTarikTesPusat = async (tesPusat: any) => {
     try {
-      await addDoc(collection(db, "master_tes"), { 
-        id_rayon: adminRayonId, 
-        judul: tesPusat.judul, 
-        jenjang: tesPusat.jenjang, 
-        daftar_soal: tesPusat.daftar_soal || [], 
-        status: 'Tutup', 
-        timestamp: Date.now() 
-      });
+      await addDoc(collection(db, "master_tes"), { id_rayon: adminRayonId, judul: tesPusat.judul, jenjang: tesPusat.jenjang, daftar_soal: tesPusat.daftar_soal || [], status: 'Tutup', timestamp: Date.now() });
       catatLogAktivitas(`Menarik Master Tes dari Komisariat: ${tesPusat.judul}`);
       alert("Tes dari Pusat Komisariat berhasil ditarik ke Rayon!");
     } catch (error) { alert("Gagal menarik tes pusat."); }
@@ -579,7 +552,7 @@ export default function DashboardAdminRayon() {
     try { 
       await addDoc(collection(db, "master_jenis_surat"), { id_rayon: adminRayonId, jenis: newJenisSurat, syarat: newSyaratSurat, timestamp: Date.now() }); 
       setNewJenisSurat(''); setNewSyaratSurat(''); alert("Surat ditambahkan!"); 
-      setActiveModal(null); // Tutup modal
+      setActiveModal(null);
     } catch(err) {} finally { setIsSavingJenisSurat(false); }
   };
 
@@ -598,14 +571,6 @@ export default function DashboardAdminRayon() {
   const handleUbahStatusAkun = async (idAkun: string, statusSekarang: string) => { const statusBaru = statusSekarang === "Aktif" ? "Pasif" : "Aktif"; if (!window.confirm(`Ubah status ke ${statusBaru}?`)) return; try { await updateDoc(doc(db, "users", idAkun), { status: statusBaru }); } catch (error) {} };
   const handleHapusAkun = async (idAkun: string, nama: string) => { if (!window.confirm(`Hapus permanen "${nama}"?`)) return; try { await deleteDoc(doc(db, "users", idAkun)); alert(`Dihapus.`); } catch (error) {} };
   const handleUbahPlottingPendamping = async (nimKader: string, pendampingBaru: string) => { try { await updateDoc(doc(db, "users", nimKader), { pendampingId: pendampingBaru }); } catch (error) {} };
-  
-  const handleUbahJenjangKader = async (nimKader: string, jenjangBaru: string) => { 
-    if (!window.confirm(`Pindah jenjang? Pendamping akan diriset (dikosongkan).`)) return; 
-    try { 
-      await updateDoc(doc(db, "users", nimKader), { jenjang: jenjangBaru, pendampingId: "" }); 
-      alert("Sukses memindah jenjang kader."); 
-    } catch (error) {} 
-  };
   
   const handleUbahAngkatanKader = async (nimKader: string, angkatanBaru: string) => {
     try { await updateDoc(doc(db, "users", nimKader), { angkatan: angkatanBaru }); } catch (error) { console.error("Gagal update angkatan", error); }
@@ -696,16 +661,47 @@ export default function DashboardAdminRayon() {
 
   const getSecondaryAuth = () => { const apps = getApps(); const secondaryApp = apps.find(app => app.name === 'SecondaryApp') || initializeApp(auth.app.options, 'SecondaryApp'); return getAuth(secondaryApp); };
 
+  // ==========================================
+  // PERBAIKAN: BUAT AKUN KADER MANUAL
+  // ==========================================
   const handleBuatAkunKader = async (e: React.FormEvent) => {
     e.preventDefault(); setIsSubmitting(true); const secondaryAuth = getSecondaryAuth();
     try {
-      const emailBaru = `${formKader.nim}@pmii-uinmalang.or.id`.toLowerCase();
-      await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formKader.password);
-      await setDoc(doc(db, "users", formKader.nim), { nim: formKader.nim, nia: formKader.nia, nama: formKader.nama, email: emailBaru, role: "kader", id_rayon: adminRayonId, jenjang: "MAPABA", pendampingId: formKader.pendampingId, angkatan: formKader.angkatan, status: "Aktif", createdAt: Date.now() });
-      await signOutSecondary(secondaryAuth); 
-      catatLogAktivitas(`Membuat akun kader baru: ${formKader.nama}`);
-      alert(`Sukses!`); setFormKader({ nim: '', nia: '', nama: '', password: '', pendampingId: '', angkatan: new Date().getFullYear().toString() });
-      setActiveModal(null); // Tutup modal
+      const safeNim = formKader.nim.trim();
+      const qCek = query(collection(db, "users"), where("nim", "==", safeNim), where("role", "==", "kader"));
+      const snapCek = await getDocs(qCek);
+
+      if (!snapCek.empty) {
+         // KADER LAMA (SUDAH ADA)
+         const existingDoc = snapCek.docs[0];
+         const existingData = existingDoc.data();
+         const existingTerdaftar = existingData.terdaftar_di || [existingData.id_rayon];
+         
+         // Masukkan ID Rayon ini ke daftar "Pernah ikut kaderisasi disini"
+         if (!existingTerdaftar.includes(adminRayonId)) existingTerdaftar.push(adminRayonId);
+
+         await updateDoc(doc(db, "users", existingDoc.id), {
+             pendampingId: formKader.pendampingId,
+             terdaftar_di: existingTerdaftar
+         });
+         catatLogAktivitas(`Menarik akun kader lama ke Rayon: ${existingData.nama}`);
+         alert(`Kader dengan NIM ${safeNim} sudah terdaftar di Rayon ${existingData.id_rayon}. Data berhasil ditarik ke Rayon Anda tanpa mengubah Asal Rayon aslinya!`);
+      } else {
+          // KADER BARU
+          const emailBaru = `${safeNim}@pmii-uinmalang.or.id`.toLowerCase();
+          await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formKader.password);
+          await setDoc(doc(db, "users", safeNim), { 
+            nim: safeNim, nia: formKader.nia, nama: formKader.nama, email: emailBaru, 
+            role: "kader", id_rayon: adminRayonId, jenjang: "MAPABA", 
+            pendampingId: formKader.pendampingId, angkatan: formKader.angkatan, 
+            status: "Aktif", createdAt: Date.now(), terdaftar_di: [adminRayonId] 
+          });
+          await signOutSecondary(secondaryAuth); 
+          catatLogAktivitas(`Membuat akun kader baru: ${formKader.nama}`);
+          alert(`Sukses! Akun kader berhasil dibuat.`);
+      }
+      setFormKader({ nim: '', nia: '', nama: '', password: '', pendampingId: '', angkatan: new Date().getFullYear().toString() });
+      setActiveModal(null);
     } catch (error: any) { alert(error.message); } finally { setIsSubmitting(false); }
   };
 
@@ -722,13 +718,17 @@ export default function DashboardAdminRayon() {
     } catch (error: any) { alert(error.message); } finally { setIsSubmitting(false); }
   };
 
+  // ==========================================
+  // PERBAIKAN: IMPORT AKUN KADER VIA EXCEL
+  // ==========================================
   const handleImportExcel = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault(); const fileInput = (e.target as HTMLFormElement).elements[0] as HTMLInputElement; const file = fileInput?.files?.[0];
     if (!file) return alert("Pilih file!"); setIsSubmitting(true); setImportProgress("Membaca file Excel..."); const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
         const bstr = evt.target?.result; const wb = XLSX.read(bstr, { type: 'binary' }); const wsname = wb.SheetNames[0]; const ws = wb.Sheets[wsname]; const data = XLSX.utils.sheet_to_json(ws); 
-        if (data.length === 0) throw new Error("Kosong."); const secondaryAuth = getSecondaryAuth(); let successCount = 0; let errorCount = 0;
+        if (data.length === 0) throw new Error("Kosong."); const secondaryAuth = getSecondaryAuth(); let successCount = 0; let errorCount = 0; let updateCount = 0;
+        
         for (let i = 0; i < data.length; i++) {
           const row: any = data[i]; 
           const nim = String(row['NIM'] || row['nim'] || '').trim(); 
@@ -746,13 +746,33 @@ export default function DashboardAdminRayon() {
 
           if (!nim || !nama || !tglLahir) { errorCount++; continue; }
           setImportProgress(`Memproses: ${nama} (${i + 1}/${data.length})`);
-          const emailBaru = `${nim}@pmii-uinmalang.or.id`.toLowerCase();
-          try {
-            await createUserWithEmailAndPassword(secondaryAuth, emailBaru, tglLahir);
-            await setDoc(doc(db, "users", nim), { nim: nim, nia: nia, nama: nama, email: emailBaru, role: "kader", id_rayon: adminRayonId, jenjang: "MAPABA", pendampingId: pendampingToSave, angkatan: angkatan, status: "Aktif", createdAt: Date.now() }); successCount++;
-          } catch(err: any) { errorCount++; }
+          
+          const qCek = query(collection(db, "users"), where("nim", "==", nim), where("role", "==", "kader"));
+          const snapCek = await getDocs(qCek);
+          
+          if (!snapCek.empty) {
+             // KADER LAMA: Jangan ubah id_rayon
+             const existingDoc = snapCek.docs[0];
+             const existingData = existingDoc.data();
+             const existingTerdaftar = existingData.terdaftar_di || [existingData.id_rayon];
+             if (!existingTerdaftar.includes(adminRayonId)) existingTerdaftar.push(adminRayonId);
+
+             await updateDoc(doc(db, "users", existingDoc.id), {
+                 pendampingId: pendampingToSave,
+                 terdaftar_di: existingTerdaftar
+             });
+             updateCount++;
+          } else {
+             // KADER BARU
+             const emailBaru = `${nim}@pmii-uinmalang.or.id`.toLowerCase();
+             try {
+                await createUserWithEmailAndPassword(secondaryAuth, emailBaru, tglLahir);
+                await setDoc(doc(db, "users", nim), { nim: nim, nia: nia, nama: nama, email: emailBaru, role: "kader", id_rayon: adminRayonId, jenjang: "MAPABA", pendampingId: pendampingToSave, angkatan: angkatan, status: "Aktif", createdAt: Date.now(), terdaftar_di: [adminRayonId] }); 
+                successCount++;
+             } catch(err: any) { errorCount++; }
+          }
         }
-        await signOutSecondary(secondaryAuth); alert(`Selesai! Berhasil: ${successCount}. Gagal: ${errorCount}`); fileInput.value = ''; 
+        await signOutSecondary(secondaryAuth); alert(`Selesai! Buat Baru: ${successCount}. Ditarik dari Rayon Lain: ${updateCount}. Gagal: ${errorCount}`); fileInput.value = ''; 
         setActiveModal(null); // Tutup modal
       } catch (error: any) { alert(error.message); } finally { setIsSubmitting(false); setImportProgress(''); }
     };
@@ -1223,7 +1243,7 @@ export default function DashboardAdminRayon() {
                             {surat.status === 'Menunggu Verifikasi' ? (
                               <input type="file" accept=".pdf, .jpg, .png" onChange={(e) => handleFileSuratChange(surat.id, e.target.files ? e.target.files[0] : null)} style={{ padding: '4px', fontSize: '0.75rem', maxWidth: '180px' }} />
                             ) : surat.status === 'Disetujui' && surat.file_balasan_url ? (
-                              <a href={surat.file_balasan_url} target="_blank" style={{ color: 'blue', textDecoration: 'none', fontWeight: 'bold' }}>Lihat Balasan</a>
+                              <a href={surat.file_balasan_url} target="_blank" rel="noopener noreferrer" style={{ color: 'blue', textDecoration: 'none', fontWeight: 'bold' }}>Lihat Balasan</a>
                             ) : (<span style={{ color: '#ccc' }}>-</span>)}
                           </td>
                           <td style={{ padding: '10px', textAlign: 'center' }}>
@@ -1267,14 +1287,12 @@ export default function DashboardAdminRayon() {
               {tabAkun === 'kader' && (
                 <div style={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px', display: 'flex', flexDirection: 'column' }}>
                   <div style={{ padding: '15px', borderBottom: '1px solid #eee', backgroundColor: '#fdfdfd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                    <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '0.95rem' }}>🔄 Daftar Kader, Plotting & Jenjang</h4>
+                    <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '0.95rem' }}>🔄 Daftar Kader & Plotting</h4>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <button onClick={() => setActiveModal('buatAkunKader')} style={{ backgroundColor: '#0000af', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>➕ Buat Akun</button>
                       <button onClick={() => setActiveModal('importKader')} style={{ backgroundColor: '#f1c40f', color: '#333', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>📗 Import Excel</button>
                       <button onClick={() => setActiveModal('bersihKader')} style={{ backgroundColor: '#e74c3c', color: 'white', padding: '6px 12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>🧹 Bersihkan Data</button>
-                      <select value={filterJenjangKader} onChange={(e) => setFilterJenjangKader(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '20px', outline: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
-                        <option value="">Semua Jenjang</option><option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option>
-                      </select>
+                      
                       <input type="text" placeholder="🔍 Cari NIM atau Nama..." value={searchKader} onChange={(e) => setSearchKader(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '20px', outline: 'none', fontSize: '0.8rem' }} />
                     </div>
                   </div>
@@ -1285,30 +1303,32 @@ export default function DashboardAdminRayon() {
                         <tr style={{ backgroundColor: '#f8f9fa', color: '#333', textAlign: 'center' }}>
                           <th style={{ padding: '10px' }}>NIM / Tahun</th>
                           <th style={{ padding: '10px' }}>Nama Kader</th>
+                          <th style={{ padding: '10px' }}>Asal Rayon</th>
                           <th style={{ padding: '10px' }}>Nomor NIA</th>
-                          <th style={{ padding: '10px' }}>Jenjang (Ubah)</th>
+                          <th style={{ padding: '10px' }}>Jenjang</th>
                           <th style={{ padding: '10px' }}>Pendamping</th>
                           <th style={{ padding: '10px', textAlign: 'center' }}>Status</th>
                           <th style={{ padding: '10px', textAlign: 'center' }}>Aksi</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredKader.length === 0 ? (<tr><td colSpan={7} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Tidak ada data kader yang cocok.</td></tr>) : (
+                        {filteredKader.length === 0 ? (<tr><td colSpan={8} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Tidak ada data kader yang cocok.</td></tr>) : (
                           filteredKader.map((k) => {
                             const thnMasuk = k.angkatan || (k.createdAt ? new Date(k.createdAt).getFullYear() : '-');
                             return (
                               <tr key={k.id} style={{ borderBottom: '1px solid #eee' }}>
-                                <td style={{ padding: '10px', fontWeight: 'bold', color: '#555' }}>
+                                <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', textAlign: 'center' }}>
                                   {k.nim} <br/> 
                                   <input 
                                     type="number" 
                                     placeholder="Tahun" 
                                     value={k.angkatan || (k.createdAt ? new Date(k.createdAt).getFullYear() : '')} 
                                     onChange={(e) => handleUbahAngkatanKader(k.nim, e.target.value)} 
-                                    style={{ padding: '2px 6px', border: '1px solid #ccc', borderRadius: '4px', width: '65px', fontSize: '0.75rem', outline: 'none', marginTop: '4px', fontWeight: 'bold', color: '#1e824c' }}
+                                    style={{ padding: '2px 6px', border: '1px solid #ccc', borderRadius: '4px', width: '65px', fontSize: '0.75rem', outline: 'none', marginTop: '4px', fontWeight: 'bold', color: '#1e824c', textAlign: 'center' }}
                                   />
                                 </td>
                                 <td style={{ padding: '10px', fontWeight: 'bold', color: '#333' }}>{k.nama}</td>
+                                <td style={{ padding: '10px', fontWeight: 'bold', color: '#1e824c', textAlign: 'center', fontSize: '0.8rem' }}>{k.id_rayon}</td>
                                 <td style={{ padding: '10px' }}>
                                   <input 
                                     type="text" 
@@ -1318,15 +1338,13 @@ export default function DashboardAdminRayon() {
                                     style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px', width: '100%', maxWidth: '120px', fontSize: '0.75rem', outline: 'none' }}
                                   />
                                 </td>
-                                <td style={{ padding: '10px' }}>
-                                  <select value={k.jenjang || "MAPABA"} onChange={(e) => handleUbahJenjangKader(k.nim, e.target.value)} style={{ padding: '4px', border: '1px solid #3498db', borderRadius: '4px', backgroundColor: '#eaf4fc', fontWeight: 'bold', cursor: 'pointer', width: '100%', maxWidth: '100px', fontSize: '0.75rem', color: '#2c3e50' }}>
-                                    <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option>
-                                  </select>
+                                <td style={{ padding: '10px', textAlign: 'center' }}>
+                                  <span style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: '#eaf4fc', fontWeight: 'bold', fontSize: '0.75rem', color: '#2c3e50' }}>{k.jenjang || "MAPABA"}</span>
                                 </td>
                                 <td style={{ padding: '10px' }}>
                                    <select value={k.pendampingId || ""} onChange={(e) => handleUbahPlottingPendamping(k.nim, e.target.value)} style={{ padding: '4px', border: '1px solid #0000af', borderRadius: '4px', backgroundColor: '#fff', fontWeight: 'bold', cursor: 'pointer', width: '100%', maxWidth: '130px', fontSize: '0.75rem' }}>
                                      <option value="">- Kosong -</option>
-                                     {dataPendamping.map(p => <option key={p.id} value={p.id}>{p.nama}</option>)}
+                                     {dataPendamping.map(p => <option key={p.id} value={p.username}>{p.nama}</option>)}
                                    </select>
                                 </td>
                                 <td style={{ padding: '10px', textAlign: 'center' }}>
@@ -1626,10 +1644,9 @@ export default function DashboardAdminRayon() {
                       </tr>
                     </tbody>
                   </table>
-                  <p style={{fontSize: '0.7rem', color: '#888', marginTop: '10px', fontStyle: 'italic'}}>*Tips: Ketik nilai (0-100) di kotak, lalu klik sembarang tempat di luar kotak agar sistem otomatis menyimpan & menghitung hasil.</p>
 
-                  <div className="no-print" style={{ marginTop: '20px' }}>
-                    <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', fontSize: '0.85rem' }}>Catatan Khusus untuk Kader Ini:</label>
+                  <div className="no-print" style={{ marginTop: '20px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '4px', padding: '15px' }}>
+                    <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', fontSize: '0.85rem', color: '#1e824c' }}>Catatan Khusus dari Pendamping/Instansi:</label>
                     <textarea value={evaluasiKader.catatan} onChange={e => handleSimpanCatatan(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', height: '60px', resize: 'vertical', fontSize: '0.85rem', boxSizing: 'border-box' }} placeholder="Tulis catatan perkembangan kader disini..." />
                   </div>
                 </div>
@@ -1832,21 +1849,20 @@ export default function DashboardAdminRayon() {
               <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
                 {Object.keys(groupedPerpus).length === 0 ? (<div style={{ textAlign: 'center', padding: '30px', color: '#999', border: '1px solid #eee', borderRadius: '8px' }}>Perpustakaan kosong.</div>) : (
                   Object.keys(groupedPerpus).map(folderName => (
-                    <div key={folderName} style={{ marginBottom: '20px', border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden' }}>
-                      <div style={{ backgroundColor: '#1e824c', color: 'white', padding: '10px 15px', fontSize: '0.9rem', fontWeight: 'bold' }}>📁 Folder: {folderName}</div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem', minWidth: '400px' }}>
-                        <tbody>
-                          {groupedPerpus[folderName].map((item: any) => (
-                            <tr key={item.id} style={{ borderBottom: '1px solid #eee' }}>
-                              <td style={{ padding: '12px' }}>{item.nama_file}</td>
-                              <td style={{ padding: '12px', textAlign: 'right' }}>
-                                <a href={item.link_file} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', backgroundColor: '#3498db', color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', marginRight: '5px' }}>Buka</a>
-                                <button onClick={() => handleHapusPerpus(item.id)} style={{ color: 'white', backgroundColor: '#e74c3c', padding: '4px 8px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Hapus</button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div key={folderName} style={{ marginBottom: '20px', border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#fafafa', display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ backgroundColor: '#1e824c', color: 'white', padding: '8px 12px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        📁 {folderName}
+                      </div>
+                      <div style={{ padding: '15px', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {groupedPerpus[folderName].map((item: any) => (
+                           <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee', paddingBottom: '8px', flexWrap: 'wrap', gap: '5px' }}>
+                             <span style={{ fontSize: '0.85rem', color: '#333' }}>{item.nama_file}</span>
+                             <a href={item.link_file} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#f1c40f', color: '#333', padding: '4px 8px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.75rem', border: '1px solid #d4ac0d' }}>
+                               Buka
+                             </a>
+                           </div>
+                        ))}
+                      </div>
                     </div>
                   ))
                 )}
@@ -1941,7 +1957,7 @@ export default function DashboardAdminRayon() {
                   <input type="text" placeholder="Password (Misal: 20042004)" value={formKader.password} onChange={e => setFormKader({...formKader, password: e.target.value})} required style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }} />
                   <select required value={formKader.pendampingId} onChange={e => setFormKader({...formKader, pendampingId: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem' }}>
                     <option value="" disabled>-- Pilih Pendamping --</option>
-                    {dataPendamping.map(p => <option key={p.id} value={p.id}>{p.nama}</option>)}
+                    {dataPendamping.map(p => <option key={p.id} value={p.username}>{p.nama}</option>)}
                   </select>
                   <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>{isSubmitting ? 'Memproses...' : 'Buat Akun'}</button>
                 </form>
@@ -2067,7 +2083,13 @@ export default function DashboardAdminRayon() {
       {/* STRUKTUR HIDDEN HTML KHUSUS UNTUK PRINT PDF DENGAN BACKGROUND GAMBAR A4 */}
       {/* ================================================================================ */}
       <div id="hidden-print-container" className="print-layout-container">
-        {pengaturanCetak.kopSuratUrl && (<div className="bg-kertas-a4"><img src={pengaturanCetak.kopSuratUrl} alt="Background A4" /></div>)}
+        
+        {/* Gambar Background A4 dari Admin Rayon */}
+        {pengaturanCetak.kopSuratUrl && (
+          <div className="bg-kertas-a4"><img src={pengaturanCetak.kopSuratUrl} alt="Background A4" /></div>
+        )}
+
+        {/* Pembungkus Konten Tabel */}
         <div className="print-content-area">
           
           {/* CETAK KHS RAPORT ADMIN */}
@@ -2077,19 +2099,39 @@ export default function DashboardAdminRayon() {
               <table className="tabel-biodata">
                 <tbody>
                   <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{kaderDicetak.nim || '...........................'}</td></tr>
+                  <tr><td>Nomor Induk Anggota</td><td>:</td><td>{kaderDicetak.nia || '...........................'}</td></tr>
                   <tr><td>Nama Mahasiswa</td><td>:</td><td>{kaderDicetak.nama || '...........................'}</td></tr>
+                  <tr><td>Nama Instansi Pelaksana</td><td>:</td><td>{namaRayonAsli || '...........................'}</td></tr>
                   <tr><td>Angkatan</td><td>:</td><td>{kaderDicetak.angkatan || (kaderDicetak.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '...........................')}</td></tr>
                   <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{selectedJenjangNilai}</td></tr>
                 </tbody>
               </table>
+
               <table className="tabel-utama">
                 <thead>
-                  <tr><th style={{ width: '5%' }}>No</th><th style={{ width: '12%', textAlign: 'center' }}>Kode</th><th style={{ width: '53%', textAlign: 'center' }}>Nama Materi</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai</th><th style={{ width: '10%' }}>SKS x Nilai</th></tr>
+                  <tr>
+                    <th style={{ width: '5%' }}>No</th>
+                    <th style={{ width: '12%', textAlign: 'center' }}>Kode</th>
+                    <th style={{ width: '53%', textAlign: 'center' }}>Nama Materi</th>
+                    <th style={{ width: '10%' }}>SKS</th>
+                    <th style={{ width: '10%' }}>Nilai</th>
+                    <th style={{ width: '10%' }}>SKS x Nilai</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {materiAktif.length === 0 ? (<tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur.</td></tr>) : barisRaportRender}
-                  <tr><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td><td></td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td></tr>
-                  <tr><td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kader)</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{ipKader}</td></tr>
+                  {materiAktif.length === 0 ? (
+                    <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur.</td></tr>
+                  ) : barisRaportRender}
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td>
+                    <td></td>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td>
+                  </tr>
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kaderisasi)</td>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{ipKader}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -2109,7 +2151,7 @@ export default function DashboardAdminRayon() {
                   <div key={jawab.nim} style={{ marginBottom: '40px', pageBreakInside: 'avoid' }}>
                     <table className="tabel-biodata" style={{ marginBottom: '10px' }}>
                       <tbody>
-                        <tr><td style={{width: '150px'}}>Nama Kader Binaan</td><td style={{width: '15px'}}>:</td><td style={{fontWeight: 'bold'}}>{jawab.nama}</td></tr>
+                        <tr><td style={{width: '150px'}}>Nama Kader</td><td style={{width: '15px'}}>:</td><td style={{fontWeight: 'bold'}}>{jawab.nama}</td></tr>
                         <tr><td>NIM</td><td>:</td><td>{jawab.nim}</td></tr>
                         <tr><td>Waktu Submit</td><td>:</td><td>{jawab.tanggal}</td></tr>
                       </tbody>

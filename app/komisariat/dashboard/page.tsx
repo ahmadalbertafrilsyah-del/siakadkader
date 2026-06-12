@@ -53,9 +53,11 @@ export default function DashboardKomisariat() {
   const [formRayon, setFormRayon] = useState({ id_rayon: '', nama_rayon: '', password: '' });
   const [formPendampingSKP, setFormPendampingSKP] = useState({ nama: '', username: '', password: '' });
   
-  const [modeInputKaderSKP, setModeInputKaderSKP] = useState<'pilih' | 'baru'>('pilih');
-  const [formPilihKaderSKP, setFormPilihKaderSKP] = useState({ nim: '', pendampingId: '' });
-  const [formKaderSKP, setFormKaderSKP] = useState({ nim: '', nama: '', password: '', id_rayon: '', pendampingId: '', angkatan: new Date().getFullYear().toString() });
+  // ---> REVISI STATE KADER SKP (MULTI-PENDAMPING & IMPORT) <---
+  const [modeInputKaderSKP, setModeInputKaderSKP] = useState<'pilih' | 'baru' | 'import'>('pilih');
+  const [formPilihKaderSKP, setFormPilihKaderSKP] = useState({ nim: '', pendampingId: [] as string[] });
+  const [formKaderSKP, setFormKaderSKP] = useState({ nim: '', nama: '', password: '', id_rayon: '', pendampingId: [] as string[], angkatan: new Date().getFullYear().toString() });
+  const [importProgress, setImportProgress] = useState('');
   
   const [formKurikulum, setFormKurikulum] = useState({ jenjang: 'MAPABA', kode: '', nama: '', muatan: '', bobot: 3 });
   const [formTesPusat, setFormTesPusat] = useState({ judul: '', jenjang: 'MAPABA', soal: '' });
@@ -204,7 +206,7 @@ export default function DashboardKomisariat() {
       if (docSnap.exists() && docSnap.data()['SKP']) {
         const data = docSnap.data()['SKP'];
         setNilaiMentah(data.nilai_mentah || {}); 
-        setEvaluasiKader(data); // Pastikan ini menyimpan seluruh data evaluasi SKP
+        setEvaluasiKader(data); 
       } else { 
         setNilaiMentah({}); 
         setEvaluasiKader({ catatan: '' }); 
@@ -298,33 +300,115 @@ export default function DashboardKomisariat() {
     } catch (error: any) { alert("Gagal membuat Pendamping SKP: " + error.message); } finally { setIsSubmitting(false); }
   };
 
+  // PLOT KADER EXISTING KE SKP
   const handlePlotKaderSKP = async (e: React.FormEvent) => {
     e.preventDefault(); setIsSubmitting(true);
-    if (!formPilihKaderSKP.nim || !formPilihKaderSKP.pendampingId) { alert("Harap lengkapi pilihan kader dan pendamping!"); setIsSubmitting(false); return; }
+    if (!formPilihKaderSKP.nim || formPilihKaderSKP.pendampingId.length === 0) { 
+      alert("Harap lengkapi pilihan kader dan centang minimal 1 pendamping!"); 
+      setIsSubmitting(false); return; 
+    }
     try {
-      await updateDoc(doc(db, "users", formPilihKaderSKP.nim), { jenjang: "SKP", pendamping_skp_id: formPilihKaderSKP.pendampingId });
+      await updateDoc(doc(db, "users", formPilihKaderSKP.nim), { 
+        jenjang: "SKP", 
+        pendamping_skp_id: formPilihKaderSKP.pendampingId 
+      });
       catatLogAktivitas(`Meng-upgrade NIM ${formPilihKaderSKP.nim} menjadi peserta SKP.`);
-      alert("Berhasil memplotkan/upgrade kader menjadi peserta SKP!"); setFormPilihKaderSKP({nim: '', pendampingId: ''});
+      alert("Berhasil memplotkan/upgrade kader menjadi peserta SKP!"); 
+      setFormPilihKaderSKP({nim: '', pendampingId: []});
     } catch(err) { alert("Gagal memplotkan kader."); } finally { setIsSubmitting(false); }
   };
 
+  // BUAT KADER SKP MANUAL (MENDETEKSI KADER LAMA JUGA)
   const handleBuatAkunKaderSKP_Manual = async (e: React.FormEvent) => {
     e.preventDefault(); setIsSubmitting(true); const secondaryAuth = getSecondaryAuth();
     try {
-      const safeNim = formKaderSKP.nim.trim(); const emailBaru = `${safeNim}@pmii-uinmalang.or.id`.toLowerCase();
-      await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formKaderSKP.password);
+      const safeNim = formKaderSKP.nim.trim(); 
+      const emailBaru = `${safeNim}@pmii-uinmalang.or.id`.toLowerCase();
       
-      const tanggalBuatModif = new Date();
-      tanggalBuatModif.setFullYear(parseInt(formKaderSKP.angkatan));
+      const existingKader = databaseKader.find(k => k.nim === safeNim);
 
-      await setDoc(doc(db, "users", safeNim), {
-        nim: safeNim, nama: formKaderSKP.nama, email: emailBaru, role: "kader",
-        id_rayon: formKaderSKP.id_rayon || "Luar Komisariat", jenjang: "SKP", 
-        pendamping_skp_id: formKaderSKP.pendampingId, 
-        status: "Aktif", createdAt: tanggalBuatModif.getTime()
-      });
-      await signOutSecondary(secondaryAuth); catatLogAktivitas(`Mendaftarkan Akun Kader SKP Manual: ${formKaderSKP.nama}`); alert(`Sukses! Akun Kader SKP berhasil dibuat manual.`); setFormKaderSKP({ nim: '', nama: '', password: '', id_rayon: '', pendampingId: '', angkatan: new Date().getFullYear().toString() });
-    } catch (error: any) { alert("Gagal membuat Kader SKP: " + error.message); } finally { setIsSubmitting(false); }
+      if (existingKader) {
+        // Jika kader sudah ada, cukup update datanya
+        await updateDoc(doc(db, "users", existingKader.id), {
+          jenjang: "SKP",
+          pendamping_skp_id: formKaderSKP.pendampingId 
+        });
+        catatLogAktivitas(`Menghubungkan Kader Lama ke SKP: ${existingKader.nama}`);
+        alert(`Kader dengan NIM ${safeNim} sudah terdaftar di sistem. Data berhasil diperbarui dan dihubungkan ke SKP!`);
+      } else {
+        // Kader benar-benar baru
+        await createUserWithEmailAndPassword(secondaryAuth, emailBaru, formKaderSKP.password);
+        const tanggalBuatModif = new Date();
+        tanggalBuatModif.setFullYear(parseInt(formKaderSKP.angkatan));
+
+        await setDoc(doc(db, "users", safeNim), {
+          nim: safeNim, nama: formKaderSKP.nama, email: emailBaru, role: "kader",
+          id_rayon: formKaderSKP.id_rayon || "Luar Komisariat", jenjang: "SKP", 
+          pendamping_skp_id: formKaderSKP.pendampingId, 
+          status: "Aktif", createdAt: tanggalBuatModif.getTime()
+        });
+        await signOutSecondary(secondaryAuth); 
+        catatLogAktivitas(`Mendaftarkan Akun Kader SKP Baru: ${formKaderSKP.nama}`); 
+        alert(`Sukses! Akun Kader SKP baru berhasil dibuat.`);
+      }
+      setFormKaderSKP({ nim: '', nama: '', password: '', id_rayon: '', pendampingId: [], angkatan: new Date().getFullYear().toString() });
+    } catch (error: any) { alert("Gagal memproses Kader SKP: " + error.message); } finally { setIsSubmitting(false); }
+  };
+
+  // IMPORT KADER SKP VIA EXCEL (MULTI-PENDAMPING & DETEKSI LAMA)
+  const handleImportExcelSKP = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); const fileInput = (e.target as HTMLFormElement).elements[0] as HTMLInputElement; const file = fileInput?.files?.[0];
+    if (!file) return alert("Pilih file!"); setIsSubmitting(true); setImportProgress("Membaca file Excel..."); const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result; const wb = XLSX.read(bstr, { type: 'binary' }); const wsname = wb.SheetNames[0]; const ws = wb.Sheets[wsname]; const data = XLSX.utils.sheet_to_json(ws); 
+        if (data.length === 0) throw new Error("Kosong."); const secondaryAuth = getSecondaryAuth(); let successCount = 0; let errorCount = 0; let updateCount = 0;
+        
+        for (let i = 0; i < data.length; i++) {
+          const row: any = data[i]; 
+          const nim = String(row['NIM'] || row['nim'] || '').trim(); 
+          const nama = row['Nama'] || row['nama'] || ''; 
+          const asalRayon = row['Asal Rayon'] || row['asal rayon'] || row['Rayon'] || 'Luar Komisariat';
+          const angkatan = String(row['Angkatan'] || row['angkatan'] || new Date().getFullYear()).trim(); 
+          const password = String(row['Password'] || row['password'] || '').trim() || nim; 
+          
+          let pendampingInput = String(row['Pendamping'] || row['pendamping'] || '').trim();
+          let pendampingArray: string[] = [];
+          
+          if (pendampingInput) {
+             const names = pendampingInput.split(',').map(n => n.trim());
+             names.forEach(n => {
+                 const matched = dataPendamping.find(p => p.nama.toLowerCase() === n.toLowerCase() || p.username.toLowerCase() === n.toLowerCase());
+                 if (matched) pendampingArray.push(matched.username);
+                 else pendampingArray.push(n); 
+             });
+          }
+
+          if (!nim || !nama) { errorCount++; continue; }
+          setImportProgress(`Memproses: ${nama} (${i + 1}/${data.length})`);
+          
+          const existingKader = databaseKader.find(k => k.nim === nim);
+          
+          if (existingKader) {
+              await updateDoc(doc(db, "users", existingKader.id), {
+                  jenjang: "SKP",
+                  pendamping_skp_id: pendampingArray
+              });
+              updateCount++;
+          } else {
+              const emailBaru = `${nim}@pmii-uinmalang.or.id`.toLowerCase();
+              try {
+                await createUserWithEmailAndPassword(secondaryAuth, emailBaru, password);
+                const tanggalBuatModif = new Date(); tanggalBuatModif.setFullYear(parseInt(angkatan));
+                await setDoc(doc(db, "users", nim), { nim: nim, nama: nama, email: emailBaru, role: "kader", id_rayon: asalRayon, jenjang: "SKP", pendamping_skp_id: pendampingArray, angkatan: angkatan, status: "Aktif", createdAt: tanggalBuatModif.getTime() }); 
+                successCount++;
+              } catch(err: any) { errorCount++; }
+          }
+        }
+        await signOutSecondary(secondaryAuth); alert(`Selesai! Buat Baru: ${successCount}. Update Lama (Link to SKP): ${updateCount}. Gagal: ${errorCount}`); fileInput.value = ''; 
+      } catch (error: any) { alert(error.message); } finally { setIsSubmitting(false); setImportProgress(''); }
+    };
+    reader.readAsBinaryString(file);
   };
 
   const handleUbahStatusAkun = async (idAkun: string, statusSekarang: string) => {
@@ -953,8 +1037,9 @@ export default function DashboardKomisariat() {
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
                   <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
                     <div style={{ display: 'flex', gap: '5px', marginBottom: '15px' }}>
-                      <button onClick={() => setModeInputKaderSKP('pilih')} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: modeInputKaderSKP === 'pilih' ? '#0000af' : '#eee', color: modeInputKaderSKP === 'pilih' ? '#fff' : '#555' }}>Pilih Database</button>
-                      <button onClick={() => setModeInputKaderSKP('baru')} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: modeInputKaderSKP === 'baru' ? '#0000af' : '#eee', color: modeInputKaderSKP === 'baru' ? '#fff' : '#555' }}>Buat Manual</button>
+                      <button type="button" onClick={() => setModeInputKaderSKP('pilih')} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: modeInputKaderSKP === 'pilih' ? '#0000af' : '#eee', color: modeInputKaderSKP === 'pilih' ? '#fff' : '#555' }}>Pilih Database</button>
+                      <button type="button" onClick={() => setModeInputKaderSKP('baru')} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: modeInputKaderSKP === 'baru' ? '#0000af' : '#eee', color: modeInputKaderSKP === 'baru' ? '#fff' : '#555' }}>Buat Manual</button>
+                      <button type="button" onClick={() => setModeInputKaderSKP('import')} style={{ flex: 1, padding: '8px', fontSize: '0.75rem', fontWeight: 'bold', border: 'none', borderRadius: '4px', cursor: 'pointer', backgroundColor: modeInputKaderSKP === 'import' ? '#27ae60' : '#eee', color: modeInputKaderSKP === 'import' ? '#fff' : '#555' }}>📗 Import</button>
                     </div>
 
                     {modeInputKaderSKP === 'pilih' ? (
@@ -968,31 +1053,79 @@ export default function DashboardKomisariat() {
                           </select>
                         </div>
                         <div>
-                          <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Plot ke Pendamping SKP</label>
-                          <select value={formPilihKaderSKP.pendampingId} onChange={e => setFormPilihKaderSKP({...formPilihKaderSKP, pendampingId: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }}>
-                            <option value="" disabled>-- Pilih Pendamping SKP --</option>
-                            {dataPendamping.filter(p => p.jenjangTugas === 'SKP').map(p => <option key={p.id} value={p.username}>{p.nama}</option>)}
-                          </select>
+                          <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Plot ke Pendamping SKP (Bisa pilih lebih dari 1)</label>
+                          <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #ccc', borderRadius: '4px', padding: '10px', backgroundColor: '#fff', marginTop: '4px' }}>
+                            {dataPendamping.filter(p => p.jenjangTugas === 'SKP').map(p => (
+                              <label key={p.id} style={{ display: 'flex', alignItems: 'center', fontSize: '0.85rem', marginBottom: '8px', cursor: 'pointer', color: '#333' }}>
+                                <input 
+                                  type="checkbox" 
+                                  value={p.username}
+                                  checked={formPilihKaderSKP.pendampingId.includes(p.username)}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if(e.target.checked) setFormPilihKaderSKP(prev => ({...prev, pendampingId: [...prev.pendampingId, val]}));
+                                    else setFormPilihKaderSKP(prev => ({...prev, pendampingId: prev.pendampingId.filter(id => id !== val)}));
+                                  }}
+                                  style={{ marginRight: '10px', transform: 'scale(1.2)' }}
+                                />
+                                {p.nama}
+                              </label>
+                            ))}
+                            {dataPendamping.filter(p => p.jenjangTugas === 'SKP').length === 0 && <span style={{fontSize: '0.75rem', color: '#999'}}>Belum ada pendamping SKP terdaftar.</span>}
+                          </div>
                         </div>
                         <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#ffffff' : '#2ecc71', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', fontSize: '0.85rem' }}>
                           {isSubmitting ? 'Memproses...' : '✓ Upgrade ke SKP'}
                         </button>
                       </form>
-                    ) : (
+                    ) : modeInputKaderSKP === 'baru' ? (
                       <form onSubmit={handleBuatAkunKaderSKP_Manual} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#555', fontStyle: 'italic', marginBottom: '5px' }}>Khusus kader delegasi luar yang belum punya akun.</div>
+                        <div style={{ fontSize: '0.75rem', color: '#555', fontStyle: 'italic', marginBottom: '5px' }}>Khusus kader delegasi luar yang belum punya akun. Jika NIM sudah ada di sistem, otomatis akan dihubungkan ke SKP.</div>
                         <input type="text" placeholder="NIM Kader" value={formKaderSKP.nim} onChange={e => setFormKaderSKP({...formKaderSKP, nim: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
                         <input type="text" placeholder="Nama Lengkap" value={formKaderSKP.nama} onChange={e => setFormKaderSKP({...formKaderSKP, nama: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
                         <input type="text" placeholder="Asal Rayon / Cabang" value={formKaderSKP.id_rayon} onChange={e => setFormKaderSKP({...formKaderSKP, id_rayon: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
                         <input type="number" placeholder="Angkatan (Cth: 2026)" value={formKaderSKP.angkatan} onChange={e => setFormKaderSKP({...formKaderSKP, angkatan: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
-                        <select value={formKaderSKP.pendampingId} onChange={e => setFormKaderSKP({...formKaderSKP, pendampingId: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }}>
-                          <option value="" disabled>-- Pilih Pendamping SKP --</option>
-                          {dataPendamping.filter(p => p.jenjangTugas === 'SKP').map(p => <option key={p.id} value={p.username}>{p.nama}</option>)}
-                        </select>
+                        
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Pilih Pendamping SKP (Bisa lebih dari 1)</label>
+                          <div style={{ maxHeight: '120px', overflowY: 'auto', border: '1px solid #ccc', borderRadius: '4px', padding: '10px', backgroundColor: '#fff', marginTop: '4px' }}>
+                            {dataPendamping.filter(p => p.jenjangTugas === 'SKP').map(p => (
+                              <label key={p.id} style={{ display: 'flex', alignItems: 'center', fontSize: '0.85rem', marginBottom: '8px', cursor: 'pointer', color: '#333' }}>
+                                <input 
+                                  type="checkbox" 
+                                  value={p.username}
+                                  checked={formKaderSKP.pendampingId.includes(p.username)}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if(e.target.checked) setFormKaderSKP(prev => ({...prev, pendampingId: [...prev.pendampingId, val]}));
+                                    else setFormKaderSKP(prev => ({...prev, pendampingId: prev.pendampingId.filter(id => id !== val)}));
+                                  }}
+                                  style={{ marginRight: '10px', transform: 'scale(1.2)' }}
+                                />
+                                {p.nama}
+                              </label>
+                            ))}
+                            {dataPendamping.filter(p => p.jenjangTugas === 'SKP').length === 0 && <span style={{fontSize: '0.75rem', color: '#999'}}>Belum ada pendamping SKP.</span>}
+                          </div>
+                        </div>
+
                         <input type="text" placeholder="Password Login" value={formKaderSKP.password} onChange={e => setFormKaderSKP({...formKaderSKP, password: e.target.value})} required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '0.85rem' }} />
                         <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#ffffff' : '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', marginTop: '5px', fontSize: '0.85rem' }}>
-                          {isSubmitting ? 'Memproses...' : '+ Daftarkan Manual'}
+                          {isSubmitting ? 'Memproses...' : '+ Daftarkan Kader'}
                         </button>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleImportExcelSKP} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#555', fontStyle: 'italic', marginBottom: '5px' }}>
+                          Format Kolom Excel (Baris Pertama):<br/>
+                          <b>NIM | Nama | Asal Rayon | Angkatan | Password | Pendamping</b><br/>
+                          <span style={{color: '#e74c3c'}}>*Kolom Pendamping bisa diisi lebih dari 1 dengan pemisah koma (Cth: Siti, Aisyah). Jika NIM sudah ada, akan otomatis di-upgrade ke SKP.</span>
+                        </div>
+                        <input type="file" accept=".xlsx, .xls" required style={{ padding: '8px', border: '1px dashed #1e824c', borderRadius: '4px', backgroundColor: '#fff', fontSize: '0.8rem' }} />
+                        <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#27ae60', color: 'white', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: isSubmitting ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}>
+                          🚀 Mulai Import Data
+                        </button>
+                        {importProgress && <div style={{fontSize: '0.75rem', color: '#e67e22', fontWeight: 'bold', textAlign: 'center'}}>{importProgress}</div>}
                       </form>
                     )}
                   </div>
@@ -1013,13 +1146,22 @@ export default function DashboardKomisariat() {
                           <tr><td colSpan={6} style={{textAlign: 'center', padding: '20px', color: '#999'}}>Belum ada kader SKP.</td></tr>
                         ) : (
                           databaseKader.filter(k => k.jenjang === 'SKP').map(k => {
-                            const thnMasuk = k.createdAt ? new Date(k.createdAt).getFullYear() : '-';
+                            const thnMasuk = k.angkatan || (k.createdAt ? new Date(k.createdAt).getFullYear() : '-');
+                            
+                            // Logika render multiple pendamping
+                            let namaPendampingDisplay = '-';
+                            if (Array.isArray(k.pendamping_skp_id) && k.pendamping_skp_id.length > 0) {
+                                namaPendampingDisplay = k.pendamping_skp_id.map((id:string) => dataPendamping.find(p=>p.username === id)?.nama || id).join(', ');
+                            } else if (k.pendamping_skp_id && typeof k.pendamping_skp_id === 'string') {
+                                namaPendampingDisplay = dataPendamping.find(p=>p.username === k.pendamping_skp_id)?.nama || k.pendamping_skp_id;
+                            }
+
                             return (
                               <tr key={k.id} style={{ borderBottom: '1px solid #eee' }}>
                                 <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', textAlign: 'center' }}>{k.nim} <br/> <span style={{fontSize: '0.7rem', color: '#1e824c'}}>{thnMasuk}</span></td>
                                 <td style={{ padding: '10px', fontWeight: 'bold', color: '#0d1b2a' }}>{k.nama}</td>
                                 <td style={{ padding: '10px', color: '#666', textAlign: 'center', fontSize: '0.8rem' }}>{k.id_rayon}</td>
-                                <td style={{ padding: '10px', color: '#666', textAlign: 'center', fontSize: '0.8rem' }}>{k.pendamping_skp_id || '-'}</td>
+                                <td style={{ padding: '10px', color: '#666', textAlign: 'center', fontSize: '0.8rem' }}>{namaPendampingDisplay}</td>
                                 <td style={{ padding: '10px', textAlign: 'center' }}>
                                   <button onClick={() => handleUbahStatusAkun(k.id, k.status || 'Aktif')} style={{ padding: '4px 8px', border: 'none', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: (!k.status || k.status === 'Aktif') ? '#e8f5e9' : '#ffebee', color: (!k.status || k.status === 'Aktif') ? '#2e7d32' : '#c62828' }}>
                                     {(!k.status || k.status === 'Aktif') ? '🟢 Aktif' : '🔴 Pasif'}

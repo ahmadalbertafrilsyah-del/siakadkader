@@ -48,6 +48,7 @@ export default function DashboardPendamping() {
   const [kategoriBobot, setKategoriBobot] = useState<{id: string, nama: string, persen: number}[]>([]);
   const [nilaiMentah, setNilaiMentah] = useState<Record<string, Record<string, number>>>({});
   const [catatanKeaktifan, setCatatanKeaktifan] = useState('');
+  const [evaluasiKader, setEvaluasiKader] = useState<{ nilai_mentah?: any, catatan: string }>({ nilai_mentah: {}, catatan: '' });
 
   // --- STATE TAMBAHAN UNTUK BERANDA & TES ---
   const [listMasterTugas, setListMasterTugas] = useState<any[]>([]);
@@ -259,9 +260,11 @@ export default function DashboardPendamping() {
         const data = docSnap.data()[selectedJenjang];
         setNilaiMentah(data.nilai_mentah || {});
         setCatatanKeaktifan(data.catatan || '');
+        setEvaluasiKader(data); // Sync evaluasi penuh
       } else {
         setNilaiMentah({});
         setCatatanKeaktifan('');
+        setEvaluasiKader({ catatan: '' });
       }
     });
     
@@ -273,23 +276,49 @@ export default function DashboardPendamping() {
   // ==========================================
   const ambilDataKaderBinaan = async (usernamePendamping: string, isPendampingSKP: boolean) => {
     try {
-      const filterField = isPendampingSKP ? "pendamping_skp_id" : "pendampingId";
-      const qKader = query(collection(db, "users"), where("role", "==", "kader"), where(filterField, "==", usernamePendamping));
+      const qKader = query(collection(db, "users"), where("role", "==", "kader"));
       const snapKader = await getDocs(qKader);
-      const listKader: any[] = snapKader.docs.map(d => ({ id: d.id, ...d.data() }));
+      const listKader: any[] = [];
+      
+      snapKader.docs.forEach(d => {
+        const data = d.data();
+        if (isPendampingSKP) {
+            if (Array.isArray(data.pendamping_skp_id)) {
+                if (data.pendamping_skp_id.includes(usernamePendamping)) listKader.push({ id: d.id, ...data });
+            } else if (data.pendamping_skp_id === usernamePendamping) {
+                listKader.push({ id: d.id, ...data });
+            }
+        } else {
+            if (data.pendampingId === usernamePendamping) {
+                listKader.push({ id: d.id, ...data });
+            }
+        }
+      });
+      
       setKaderBinaan(listKader);
       if (listKader.length > 0 && !selectedKader) setSelectedKader(listKader[0].nim);
 
       const emailKaderBinaan = listKader.map(k => k.email);
+      const nimKaderBinaan = listKader.map(k => k.nim);
+
       if (emailKaderBinaan.length > 0) {
-        const qBerkas = query(collection(db, "berkas_kader"), where("email_kader", "in", emailKaderBinaan));
-        onSnapshot(qBerkas, (snap) => {
-           setBerkasTugas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        onSnapshot(collection(db, "berkas_kader"), (snap) => {
+           const dataBerkas: any[] = [];
+           snap.forEach(doc => {
+             const d = doc.data();
+             if (emailKaderBinaan.includes(d.email_kader)) dataBerkas.push({ id: doc.id, ...d });
+           });
+           dataBerkas.sort((a, b) => b.timestamp - a.timestamp);
+           setBerkasTugas(dataBerkas);
         });
 
-        const qTes = query(collection(db, "jawaban_tes"), where("nim", "in", listKader.map(k => k.nim)));
-        onSnapshot(qTes, (snap) => {
-          setRiwayatTesBinaan(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        onSnapshot(collection(db, "jawaban_tes"), (snap) => {
+          const dataTes: any[] = [];
+          snap.forEach(doc => {
+             const d = doc.data();
+             if (nimKaderBinaan.includes(d.nim)) dataTes.push({ id: doc.id, ...d });
+          });
+          setRiwayatTesBinaan(dataTes);
         });
       }
     } catch (error) { console.error(error); }
@@ -374,7 +403,7 @@ export default function DashboardPendamping() {
   };
 
   // ==========================================
-  // PERBAIKAN: PERHITUNGAN RAPORT KHS DINAMIS
+  // PERHITUNGAN RAPORT KHS DINAMIS (ANTI-LAG)
   // ==========================================
   let totalSks = 0;
   let totalBobotNilai = 0;
@@ -387,24 +416,22 @@ export default function DashboardPendamping() {
     if (angka >= 76) return "A"; if (angka >= 51) return "B"; if (angka >= 26) return "C"; if (angka >= 10) return "D"; if (angka > 0) return "E"; return "-";
   };
 
-  const barisRaportRender = materiAktif.map((materi, index) => {
-    
-    // KALKULASI DINAMIS MENCEGAH BUG DATABASE KOSONG
+  // Cek nilai real-time kalkulasi matriks 
+  const getNilaiHurufRealtime = (kodeMateri: string) => {
+    const mentah = evaluasiKader?.nilai_mentah?.[kodeMateri];
+    if (!mentah || Object.keys(mentah).length === 0) {
+      return nilaiKaderRealtime[kodeMateri] || "-";
+    }
     let angkaAkhir = 0;
-    let adaNilaiMentah = false;
-
-    kategoriBobot.forEach(kat => {
-        if (nilaiMentah[materi.kode] && nilaiMentah[materi.kode][kat.nama] !== undefined) {
-            adaNilaiMentah = true;
-        }
-        const score = nilaiMentah[materi.kode]?.[kat.nama] || 0;
-        angkaAkhir += (score * (kat.persen / 100));
+    kategoriBobot.forEach((kat: any) => {
+      const score = mentah[kat.nama] || 0;
+      angkaAkhir += score * (kat.persen / 100);
     });
+    return getNilaiHuruf(angkaAkhir);
+  };
 
-    // Gunakan hasil kalkulasi langsung JIKA ada inputan, jika belum ada cek fallback dari DB
-    const hurufKalkulasi = adaNilaiMentah ? getNilaiHuruf(angkaAkhir) : "-";
-    const nilaiHuruf = hurufKalkulasi !== "-" ? hurufKalkulasi : (nilaiKaderRealtime[materi.kode] || "-");
-
+  const barisRaportRender = materiAktif.map((materi, index) => {
+    const nilaiHuruf = getNilaiHurufRealtime(materi.kode);
     const angkaNilai = konversiHurufKeAngka(nilaiHuruf);
     const sksKaliNilai = (materi.bobot || 0) * angkaNilai;
     
@@ -441,7 +468,6 @@ export default function DashboardPendamping() {
     try {
       const docRef = doc(db, "evaluasi_kader", selectedKader);
       
-      // Ambil dokumen lama dulu untuk mencegah overwrite jenjang lain
       const existingSnap = await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKader)));
       const currentEvaluasi = existingSnap.empty ? {} : existingSnap.docs[0].data();
       const jenjangData = currentEvaluasi[selectedJenjang] || { catatan: catatanKeaktifan };
@@ -490,14 +516,14 @@ export default function DashboardPendamping() {
 
   const getHeaderTitle = () => {
     switch (activeMenu) {
-      case 'beranda': return 'Dashboard';
+      case 'beranda': return 'Dashboard Utama';
       case 'kalender': return 'Jadwal Mentoring';
-      case 'broadcast': return 'Broadcast';
+      case 'broadcast': return 'Broadcast Binaan';
       case 'profil': return 'Profil Saya';
       case 'daftar-kader': return 'Binaan Saya';
       case 'input-nilai': return 'Raport Kaderisasi';
       case 'berkas-tugas': return 'Tugas Kader';
-      case 'tes-pemahaman': return 'Hasil Tes';
+      case 'tes-pemahaman': return 'Hasil Tes Binaan';
       case 'log-aktivitas': return 'Log Aktivitas';
       default: return 'Dashboard Pendamping';
     }
@@ -597,7 +623,7 @@ export default function DashboardPendamping() {
 
         <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
 
-          {/* MENU 0: BERANDA UTAMA (DIPERBARUI DENGAN INFO/JADWAL) */}
+          {/* MENU 0: BERANDA UTAMA */}
           {activeMenu === 'beranda' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
@@ -874,10 +900,10 @@ export default function DashboardPendamping() {
                   <thead><tr style={{ backgroundColor: '#f8f9fa', color: '#333' }}><th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>NIM</th><th style={{ padding: '10px', textAlign: 'left', borderBottom: '2px solid #ddd' }}>Nama Kader</th><th style={{ padding: '10px', textAlign: 'center', borderBottom: '2px solid #ddd' }}>Aksi</th></tr></thead>
                   <tbody>
                     {kaderBinaan.map(k => {
-                      const thnMasuk = k.createdAt ? new Date(k.createdAt).getFullYear() : '-';
+                      const thnMasuk = k.angkatan || (k.createdAt ? new Date(k.createdAt).getFullYear() : '-');
                       return (
                         <tr key={k.nim} style={{ borderBottom: '1px solid #eee' }}>
-                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#555' }}>{k.nim} <br/> <span style={{fontSize: '0.7rem', color: '#1e824c'}}>Agt. {thnMasuk}</span></td>
+                          <td style={{ padding: '10px', fontWeight: 'bold', color: '#555' }}>{k.nim} <br/> <span style={{fontSize: '0.7rem', color: '#1e824c'}}>Angkatan: {thnMasuk}</span></td>
                           <td style={{ padding: '10px', fontWeight: 'bold', color: '#0d1b2a' }}>{k.nama}</td>
                           <td style={{ padding: '10px', textAlign: 'center' }}><button onClick={() => { setSelectedKader(k.nim); setActiveMenu('input-nilai'); }} style={{ padding: '6px 12px', backgroundColor: '#3498db', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }}>Buka Raport 📝</button></td>
                         </tr>
@@ -901,7 +927,7 @@ export default function DashboardPendamping() {
                   <select value={selectedKader} onChange={(e) => setSelectedKader(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px', fontWeight: 'bold', minWidth: '180px', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
                     {kaderBinaan.length === 0 && <option value="">Tidak ada binaan</option>}
                     {kaderBinaan.map(k => {
-                      const thnMasuk = k.createdAt ? new Date(k.createdAt).getFullYear() : '-';
+                      const thnMasuk = k.angkatan || (k.createdAt ? new Date(k.createdAt).getFullYear() : '-');
                       return <option key={k.nim} value={k.nim}>{k.nama} ({thnMasuk})</option>
                     })}
                   </select>
@@ -1279,11 +1305,9 @@ export default function DashboardPendamping() {
       {/* STRUKTUR HIDDEN HTML KHUSUS UNTUK PRINT PDF AGAR RAPI BERULANG */}
       <div id="hidden-print-container" className="print-layout-container">
         
-        {/* Gambar Background A4 yang sudah disederhanakan */}
+        {/* Gambar Background A4 dari Admin Rayon/Komisariat */}
         {pengaturanCetak.kopSuratUrl && (
-          <div className="bg-kertas-a4">
-            <img src={pengaturanCetak.kopSuratUrl} alt="Background A4" />
-          </div>
+          <div className="bg-kertas-a4"><img src={pengaturanCetak.kopSuratUrl} alt="Background A4" /></div>
         )}
 
         {/* Pembungkus Konten Tabel */}
@@ -1307,8 +1331,8 @@ export default function DashboardPendamping() {
                 <thead>
                   <tr>
                     <th style={{ width: '5%' }}>No</th>
-                    <th style={{ width: '12%', textAlign: 'left' }}>Kode</th>
-                    <th style={{ width: '53%', textAlign: 'left' }}>Nama Materi</th>
+                    <th style={{ width: '12%', textAlign: 'center' }}>Kode</th>
+                    <th style={{ width: '53%', textAlign: 'center' }}>Nama Materi</th>
                     <th style={{ width: '10%' }}>SKS</th>
                     <th style={{ width: '10%' }}>Nilai</th>
                     <th style={{ width: '10%' }}>SKS x Nilai</th>

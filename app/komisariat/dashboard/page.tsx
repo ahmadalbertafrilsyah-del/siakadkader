@@ -858,30 +858,29 @@ export default function DashboardKomisariat() {
               </div>
 
               {tabAkunPusat === 'rayon' && (
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 300px', backgroundColor: '#fff', padding: '25px', border: '1px solid #eaeaea', borderRadius: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ backgroundColor: '#fff', padding: '25px', border: '1px solid #eaeaea', borderRadius: '10px' }}>
                     <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px', fontSize: '0.9rem' }}>✏️ Buat Akun Admin Rayon</h4>
-                    <form onSubmit={handleBuatAkunRayon} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
+                    <form onSubmit={handleBuatAkunRayon} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginTop: '15px', alignItems: 'end' }}>
                       <div>
                         <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Nama Rayon Pengenal</label>
                         <input type="text" placeholder="Misal: PR. PMII Tarbiyah" value={formRayon.nama_rayon} onChange={e => setFormRayon({...formRayon, nama_rayon: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', marginTop: '5px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} />
                       </div>
                       <div>
-                        <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Username Login (Kode Rayon)</label>
+                        <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Username Login (Kode Rayon) <span style={{fontSize:'0.65rem', fontWeight:'normal'}}>*huruf kecil tanpa spasi</span></label>
                         <input type="text" placeholder="Misal: admin_rkcd" value={formRayon.id_rayon} onChange={e => setFormRayon({...formRayon, id_rayon: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', marginTop: '5px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} />
-                        <span style={{fontSize: '0.7rem', color: '#888', marginTop: '4px', display: 'block'}}>*Gunakan huruf kecil & tanpa spasi</span>
                       </div>
                       <div>
                         <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Password Login</label>
                         <input type="text" placeholder="Masukkan Password" value={formRayon.password} onChange={e => setFormRayon({...formRayon, password: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', marginTop: '5px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} />
                       </div>
-                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#2ecc71', color: 'white', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', fontSize: '0.9rem', width: '100%' }}>
+                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#2ecc71', color: 'white', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', width: '100%', height: '40px' }}>
                         {isSubmitting ? 'Memproses...' : '+ Daftarkan Rayon'}
                       </button>
                     </form>
                   </div>
 
-                  <div style={{ flex: '2 1 600px', overflowX: 'auto', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '10px', padding: '10px' }}>
+                  <div style={{ width: '100%', overflowX: 'auto', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '10px', padding: '10px' }}>
                     <table className="tabel-utama" style={{ minWidth: '400px' }}>
                       <thead style={{ borderBottom: '2px solid #eee' }}>
                         <tr>
@@ -918,10 +917,10 @@ export default function DashboardKomisariat() {
               )}
 
               {tabAkunPusat === 'pendamping-skp' && (
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 300px', backgroundColor: '#fff', padding: '25px', border: '1px solid #eaeaea', borderRadius: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ backgroundColor: '#fff', padding: '25px', border: '1px solid #eaeaea', borderRadius: '10px' }}>
                     <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px', fontSize: '0.9rem' }}>✏️ Buat Pendamping SKP</h4>
-                    <form onSubmit={handleBuatAkunPendampingSKP} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
+                    <form onSubmit={handleBuatAkunPendampingSKP} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginTop: '15px', alignItems: 'end' }}>
                       <div>
                         <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Nama Lengkap</label>
                         <input type="text" placeholder="Misal: Siti Aminah" value={formPendampingSKP.nama} onChange={e => setFormPendampingSKP({...formPendampingSKP, nama: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', marginTop: '5px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} />
@@ -934,12 +933,12 @@ export default function DashboardKomisariat() {
                         <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Password Login</label>
                         <input type="text" placeholder="Masukkan Password" value={formPendampingSKP.password} onChange={e => setFormPendampingSKP({...formPendampingSKP, password: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', marginTop: '5px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} />
                       </div>
-                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#2ecc71', color: 'white', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', fontSize: '0.9rem', width: '100%' }}>
+                      <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#2ecc71', color: 'white', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', width: '100%', height: '40px' }}>
                         {isSubmitting ? 'Memproses...' : '+ Daftarkan Pendamping'}
                       </button>
                     </form>
                   </div>
-                  <div style={{ flex: '2 1 600px', overflowX: 'auto', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '10px', padding: '10px' }}>
+                  <div style={{ width: '100%', overflowX: 'auto', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '10px', padding: '10px' }}>
                     <table className="tabel-utama" style={{ minWidth: '400px' }}>
                       <thead style={{ borderBottom: '2px solid #eee' }}>
                         <tr>
@@ -976,8 +975,8 @@ export default function DashboardKomisariat() {
               )}
 
               {tabAkunPusat === 'kader-skp' && (
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                  <div style={{ flex: '1 1 300px', backgroundColor: '#fff', padding: '25px', border: '1px solid #eaeaea', borderRadius: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div style={{ backgroundColor: '#fff', padding: '25px', border: '1px solid #eaeaea', borderRadius: '10px' }}>
                     <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
                       <button type="button" onClick={() => setModeInputKaderSKP('pilih')} style={{ flex: 1, padding: '10px 5px', fontSize: '0.75rem', fontWeight: 'bold', border: modeInputKaderSKP === 'pilih' ? 'none' : '1px solid #ccc', borderRadius: '6px', cursor: 'pointer', backgroundColor: modeInputKaderSKP === 'pilih' ? '#0000af' : '#fff', color: modeInputKaderSKP === 'pilih' ? '#fff' : '#555', transition: '0.2s' }}>Pilih Database</button>
                       <button type="button" onClick={() => setModeInputKaderSKP('baru')} style={{ flex: 1, padding: '10px 5px', fontSize: '0.75rem', fontWeight: 'bold', border: modeInputKaderSKP === 'baru' ? 'none' : '1px solid #ccc', borderRadius: '6px', cursor: 'pointer', backgroundColor: modeInputKaderSKP === 'baru' ? '#0000af' : '#fff', color: modeInputKaderSKP === 'baru' ? '#fff' : '#555', transition: '0.2s' }}>Buat Manual</button>
@@ -1021,24 +1020,33 @@ export default function DashboardKomisariat() {
                         </button>
                       </form>
                     ) : modeInputKaderSKP === 'baru' ? (
-                      <form onSubmit={handleBuatAkunKaderSKP_Manual} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#777', fontStyle: 'italic', marginBottom: '5px' }}>Khusus kader delegasi luar yang belum punya akun. Jika NIM sudah ada di sistem, otomatis akan dihubungkan ke SKP.</div>
-                        <div><input type="text" placeholder="NIM Kader" value={formKaderSKP.nim} onChange={e => setFormKaderSKP({...formKaderSKP, nim: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} /></div>
-                        <div><input type="text" placeholder="Nama Lengkap" value={formKaderSKP.nama} onChange={e => setFormKaderSKP({...formKaderSKP, nama: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} /></div>
+                      <form onSubmit={handleBuatAkunKaderSKP_Manual} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', alignItems: 'end' }}>
+                        <div style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: '#777', fontStyle: 'italic', marginBottom: '5px' }}>Khusus kader delegasi luar yang belum punya akun. Jika NIM sudah ada di sistem, otomatis akan dihubungkan ke SKP.</div>
                         <div>
+                          <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>NIM Kader</label>
+                          <input type="text" placeholder="NIM Kader" value={formKaderSKP.nim} onChange={e => setFormKaderSKP({...formKaderSKP, nim: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Nama Lengkap</label>
+                          <input type="text" placeholder="Nama Lengkap" value={formKaderSKP.nama} onChange={e => setFormKaderSKP({...formKaderSKP, nama: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Asal Rayon</label>
                           <select value={formKaderSKP.id_rayon} onChange={e => setFormKaderSKP({...formKaderSKP, id_rayon: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none', backgroundColor: '#fff' }}>
                              <option value="" disabled>-- Pilih Asal Rayon --</option>
                              {dataRayon.map(r => <option key={r.id_rayon} value={r.id_rayon}>{r.nama}</option>)}
                              <option value="Luar Komisariat">Delegasi Luar Komisariat</option>
                           </select>
                         </div>
-                        <div><input type="number" placeholder="Angkatan (Cth: 2026)" value={formKaderSKP.angkatan} onChange={e => setFormKaderSKP({...formKaderSKP, angkatan: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} /></div>
-                        
                         <div>
+                          <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Tahun Angkatan</label>
+                          <input type="number" placeholder="Angkatan (Cth: 2026)" value={formKaderSKP.angkatan} onChange={e => setFormKaderSKP({...formKaderSKP, angkatan: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} />
+                        </div>
+                        <div style={{ gridColumn: '1 / -1' }}>
                           <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Pilih Pendamping SKP (Bisa lebih dari 1)</label>
                           <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #ccc', borderRadius: '6px', padding: '12px', backgroundColor: '#fafafa', marginTop: '5px' }}>
                             {dataPendamping.filter(p => p.jenjangTugas === 'SKP').map(p => (
-                              <label key={p.id} style={{ display: 'flex', alignItems: 'center', fontSize: '0.85rem', marginBottom: '10px', cursor: 'pointer', color: '#333' }}>
+                              <label key={p.id} style={{ display: 'inline-flex', alignItems: 'center', fontSize: '0.85rem', marginRight: '20px', marginBottom: '10px', cursor: 'pointer', color: '#333' }}>
                                 <input 
                                   type="checkbox" 
                                   value={p.username}
@@ -1048,7 +1056,7 @@ export default function DashboardKomisariat() {
                                     if(e.target.checked) setFormKaderSKP(prev => ({...prev, pendampingId: [...prev.pendampingId, val]}));
                                     else setFormKaderSKP(prev => ({...prev, pendampingId: prev.pendampingId.filter(id => id !== val)}));
                                   }}
-                                  style={{ marginRight: '12px', transform: 'scale(1.2)', accentColor: '#0000af' }}
+                                  style={{ marginRight: '8px', transform: 'scale(1.2)', accentColor: '#0000af' }}
                                 />
                                 {p.nama}
                               </label>
@@ -1056,11 +1064,15 @@ export default function DashboardKomisariat() {
                             {dataPendamping.filter(p => p.jenjangTugas === 'SKP').length === 0 && <span style={{fontSize: '0.75rem', color: '#999'}}>Belum ada pendamping SKP.</span>}
                           </div>
                         </div>
-
-                        <div><input type="text" placeholder="Password Login" value={formKaderSKP.password} onChange={e => setFormKaderSKP({...formKaderSKP, password: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} /></div>
-                        <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#2ecc71', color: 'white', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', fontSize: '0.9rem', width: '100%' }}>
-                          {isSubmitting ? 'Memproses...' : '+ Daftarkan Kader'}
-                        </button>
+                        <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
+                           <div style={{ flex: 1 }}>
+                              <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Password Login</label>
+                              <input type="text" placeholder="Password Login" value={formKaderSKP.password} onChange={e => setFormKaderSKP({...formKaderSKP, password: e.target.value})} required style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} />
+                           </div>
+                           <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#2ecc71', color: 'white', border: 'none', padding: '12px 25px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem', height: '40px' }}>
+                             {isSubmitting ? 'Memproses...' : '+ Daftarkan Kader'}
+                           </button>
+                        </div>
                       </form>
                     ) : (
                       <form onSubmit={handleImportExcelSKP} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -1077,7 +1089,7 @@ export default function DashboardKomisariat() {
                       </form>
                     )}
                   </div>
-                  <div style={{ flex: '2 1 600px', overflowX: 'auto', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '10px', padding: '10px' }}>
+                  <div style={{ width: '100%', overflowX: 'auto', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '10px', padding: '10px' }}>
                     <table className="tabel-utama" style={{ minWidth: '800px' }}>
                       <thead style={{ borderBottom: '2px solid #eee' }}>
                         <tr>
@@ -1728,7 +1740,11 @@ export default function DashboardKomisariat() {
                                 setEditKaderModal({
                                   oldNim: kader.nim, id: kader.id, nim: kader.nim, nama: kader.nama, nia: kader.nia || '', angkatan: kader.angkatan || '',
                                   tanggalLahir: kader.tanggalLahir || '', id_rayon: kader.id_rayon || '', jenjang: kader.jenjang || 'MAPABA',
-                                  riwayat_kaderisasi: kader.riwayat_kaderisasi || { MAPABA: true, PKD: false, SIG: false, SKP: false }
+                                  riwayat_kaderisasi: kader.riwayat_kaderisasi || { MAPABA: true, PKD: false, SIG: false, SKP: false },
+                                  pendamping_mapaba_id: kader.pendamping_mapaba_id || (kader.pendampingId ? (Array.isArray(kader.pendampingId) ? kader.pendampingId : [kader.pendampingId]) : []),
+                                  pendamping_pkd_id: kader.pendamping_pkd_id || [],
+                                  pendamping_sig_id: kader.pendamping_sig_id || [],
+                                  pendamping_skp_id: kader.pendamping_skp_id || []
                                 });
                               }} style={{ backgroundColor: '#f1c40f', color: '#333', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem', transition: '0.2s' }}>✏️ Edit</button>
                               <button onClick={async () => {
@@ -1776,10 +1792,25 @@ export default function DashboardKomisariat() {
                          const newNim = editKaderModal.nim.trim(); const docRef = doc(db, "users", editKaderModal.id);
                          if (newNim !== editKaderModal.oldNim) {
                             const oldKaderData = (await getDocs(query(collection(db, "users"), where("nim", "==", editKaderModal.oldNim)))).docs[0]?.data() || {};
-                            await setDoc(doc(db, "users", newNim), { ...oldKaderData, nim: newNim, nama: editKaderModal.nama, nia: editKaderModal.nia, angkatan: editKaderModal.angkatan, tanggalLahir: editKaderModal.tanggalLahir, id_rayon: editKaderModal.id_rayon, jenjang: editKaderModal.jenjang, riwayat_kaderisasi: editKaderModal.riwayat_kaderisasi });
+                            await setDoc(doc(db, "users", newNim), { 
+                              ...oldKaderData, nim: newNim, nama: editKaderModal.nama, nia: editKaderModal.nia, 
+                              angkatan: editKaderModal.angkatan, tanggalLahir: editKaderModal.tanggalLahir, 
+                              id_rayon: editKaderModal.id_rayon, jenjang: editKaderModal.jenjang, riwayat_kaderisasi: editKaderModal.riwayat_kaderisasi,
+                              pendamping_mapaba_id: editKaderModal.pendamping_mapaba_id,
+                              pendamping_pkd_id: editKaderModal.pendamping_pkd_id,
+                              pendamping_sig_id: editKaderModal.pendamping_sig_id,
+                              pendamping_skp_id: editKaderModal.pendamping_skp_id
+                            });
                             await deleteDoc(docRef); alert("Data & NIM berhasil diperbarui! Pastikan tugas/nilai kader disesuaikan jika perlu.");
                          } else {
-                            await updateDoc(docRef, { nama: editKaderModal.nama, nia: editKaderModal.nia, angkatan: editKaderModal.angkatan, tanggalLahir: editKaderModal.tanggalLahir, id_rayon: editKaderModal.id_rayon, jenjang: editKaderModal.jenjang, riwayat_kaderisasi: editKaderModal.riwayat_kaderisasi });
+                            await updateDoc(docRef, { 
+                              nama: editKaderModal.nama, nia: editKaderModal.nia, angkatan: editKaderModal.angkatan, 
+                              tanggalLahir: editKaderModal.tanggalLahir, id_rayon: editKaderModal.id_rayon, jenjang: editKaderModal.jenjang, riwayat_kaderisasi: editKaderModal.riwayat_kaderisasi,
+                              pendamping_mapaba_id: editKaderModal.pendamping_mapaba_id,
+                              pendamping_pkd_id: editKaderModal.pendamping_pkd_id,
+                              pendamping_sig_id: editKaderModal.pendamping_sig_id,
+                              pendamping_skp_id: editKaderModal.pendamping_skp_id
+                            });
                             alert("Data berhasil diperbarui!");
                          }
                          setEditKaderModal(null);
@@ -1835,6 +1866,43 @@ export default function DashboardKomisariat() {
                         </div>
                       </div>
 
+                      <div style={{ backgroundColor: '#fdfdfd', border: '1px solid #ccc', padding: '20px', borderRadius: '8px' }}>
+                        <h4 style={{ margin: '0 0 10px 0', color: '#0d1b2a', fontSize: '1rem' }}>👨‍🏫 Plotting Pendamping per Jenjang</h4>
+                        <p style={{fontSize: '0.75rem', color: '#555', marginTop: '0', marginBottom: '15px'}}>Pilih pendamping yang bertugas membimbing kader ini di setiap jenjangnya. (Dapat dipilih lebih dari satu dari berbagai Rayon/Komisariat)</p>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                          {['mapaba', 'pkd', 'sig', 'skp'].map(jenjangKey => {
+                              const fieldName = `pendamping_${jenjangKey}_id`;
+                              const jenjangLabel = jenjangKey.toUpperCase();
+                              return (
+                                <div key={jenjangKey} style={{ border: '1px solid #ddd', borderRadius: '6px', padding: '10px', backgroundColor: '#fff' }}>
+                                  <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#1e824c', display: 'block', marginBottom: '8px', borderBottom: '1px solid #eee', paddingBottom: '4px' }}>Pendamping {jenjangLabel}</label>
+                                  <div style={{ maxHeight: '150px', overflowY: 'auto', padding: '2px' }}>
+                                    {dataPendamping.map(p => (
+                                      <label key={p.id} style={{ display: 'flex', alignItems: 'flex-start', fontSize: '0.7rem', marginBottom: '6px', cursor: 'pointer', color: '#333' }}>
+                                        <input 
+                                          type="checkbox" 
+                                          value={p.username}
+                                          checked={(editKaderModal[fieldName] || []).includes(p.username)}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            const currentArr = editKaderModal[fieldName] || [];
+                                            if(e.target.checked) setEditKaderModal({...editKaderModal, [fieldName]: [...currentArr, val]});
+                                            else setEditKaderModal({...editKaderModal, [fieldName]: currentArr.filter((id: string) => id !== val)});
+                                          }}
+                                          style={{ marginRight: '6px', marginTop: '2px' }}
+                                        />
+                                        <span style={{lineHeight: '1.2'}}>{p.nama} <br/><span style={{fontSize: '0.6rem', color: '#888'}}>({getNamaRayon(p.id_rayon)})</span></span>
+                                      </label>
+                                    ))}
+                                    {dataPendamping.length === 0 && <span style={{fontSize: '0.65rem', color: '#999'}}>Belum ada pendamping.</span>}
+                                  </div>
+                                </div>
+                              )
+                          })}
+                        </div>
+                      </div>
+
                       <button disabled={isSubmitting} type="submit" style={{ backgroundColor: isSubmitting ? '#95a5a6' : '#0000af', color: 'white', border: 'none', padding: '15px', borderRadius: '6px', fontWeight: 'bold', cursor: isSubmitting ? 'not-allowed' : 'pointer', marginTop: '10px', fontSize: '1rem', width: '100%', transition: '0.2s' }}>
                         {isSubmitting ? 'Menyimpan...' : '💾 Simpan Perubahan Global'}
                       </button>
@@ -1874,7 +1942,7 @@ export default function DashboardKomisariat() {
                 {/* LIST BOTTOM LAYOUT */}
                 <div style={{ border: '1px solid #eaeaea', borderRadius: '10px', padding: '20px', backgroundColor: '#fff' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px dashed #ccc', paddingBottom: '10px' }}>
-                    <h4 style={{ margin: 0, color: '#333', fontSize: '1rem' }}>📋 Daftar Teks Berjalan Saat Ini</h4>
+                    <h4 style={{ margin: '0 0 15px 0', color: '#333', fontSize: '1rem' }}>📋 Daftar Teks Berjalan Saat Ini</h4>
                     <button 
                       onClick={handleSimpanPengumuman} 
                       disabled={isSavingPengumuman}

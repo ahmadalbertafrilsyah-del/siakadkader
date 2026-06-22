@@ -133,7 +133,7 @@ export default function DashboardKader() {
               id_rayon: dataDB.id_rayon || '', 
               jenjang: dataDB.jenjang || 'MAPABA',
               status: dataDB.status || 'Aktif',
-              pendampingId: dataDB.pendampingId || '',
+              pendampingId: dataDB.pendamping_mapaba_id || dataDB.pendampingId || '',
               pendamping_skp_id: dataDB.pendamping_skp_id || '' 
             });
 
@@ -146,7 +146,16 @@ export default function DashboardKader() {
                    setPengaturanCetak({ kopSuratUrl: rData.kopSuratUrl || '', footerUrl: rData.footerUrl || '' });
                 }
               });
-              jalankanPendengarDataRayon(dataDB.nim, user.email, dataDB.id_rayon, dataDB.pendampingId, dataDB.pendamping_skp_id);
+
+              // Gabungkan semua pendamping dari berbagai jenjang kader
+              const allP = [
+                ...(Array.isArray(dataDB.pendamping_mapaba_id) ? dataDB.pendamping_mapaba_id : (dataDB.pendamping_mapaba_id ? [dataDB.pendamping_mapaba_id] : [])),
+                ...(Array.isArray(dataDB.pendamping_pkd_id) ? dataDB.pendamping_pkd_id : (dataDB.pendamping_pkd_id ? [dataDB.pendamping_pkd_id] : [])),
+                ...(Array.isArray(dataDB.pendamping_sig_id) ? dataDB.pendamping_sig_id : (dataDB.pendamping_sig_id ? [dataDB.pendamping_sig_id] : [])),
+                ...(Array.isArray(dataDB.pendampingId) ? dataDB.pendampingId : (dataDB.pendampingId ? [dataDB.pendampingId] : []))
+              ];
+
+              jalankanPendengarDataRayon(dataDB.nim, user.email, dataDB.id_rayon, allP, dataDB.pendamping_skp_id);
             }
           }
         });
@@ -239,12 +248,20 @@ export default function DashboardKader() {
     const pIdSkp = Array.isArray(pendampingSkpId) ? pendampingSkpId : (pendampingSkpId ? [pendampingSkpId] : []);
     const allPendampingIds = [...pIdRayon, ...pIdSkp].filter(Boolean);
 
+    // Buka Filter Jadwal agar kader melihat event dengan benar
     onSnapshot(collection(db, "jadwal_kegiatan"), (snap) => {
       const listJadwal: any[] = [];
       snap.forEach(doc => {
         const d = doc.data();
-        if (d.pembuat === "Komisariat" || d.id_rayon === idRayon) {
-          if (d.pembuat.includes("Pendamping") && !allPendampingIds.includes(d.pendamping_id)) return; 
+        if (d.pembuat === "Komisariat" || d.pembuat === "Pusat Komisariat" || d.id_rayon === "Komisariat" || d.id_rayon === idRayon) {
+          
+          if (d.target === "Rayon" || d.target === "Pendamping") return; // Kader tidak bisa melihat
+          
+          // Jika target binaan, cek apakah pengirim adalah salah satu pendamping kader ini
+          if (d.target === "Binaan" || (d.pembuat && d.pembuat.includes("Pendamping"))) {
+             if (!allPendampingIds.includes(d.pendamping_id)) return;
+          }
+
           listJadwal.push({ id: doc.id, ...d });
         }
       });
@@ -252,12 +269,13 @@ export default function DashboardKader() {
       setJadwalKegiatan(listJadwal);
     });
 
+    // Buka Filter Notifikasi
     onSnapshot(collection(db, "notifikasi_global"), (snap) => {
       const listNotif: any[] = [];
       snap.forEach(doc => {
         const d = doc.data();
         if (d.target === "Semua" || d.target === "Kader" || (d.target === "Binaan" && allPendampingIds.includes(d.pengirim_id))) {
-          if (d.pengirim === "Pusat Komisariat" || d.id_rayon === idRayon || allPendampingIds.includes(d.pengirim_id)) {
+          if (d.pengirim === "Pusat Komisariat" || d.id_rayon === "Komisariat" || d.id_rayon === idRayon || allPendampingIds.includes(d.pengirim_id)) {
             listNotif.push({ id: doc.id, ...d });
           }
         }
@@ -738,8 +756,8 @@ export default function DashboardKader() {
                         <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999', fontSize: '0.85rem' }}>Belum ada agenda kegiatan dalam waktu dekat.</div>
                       ) : (
                         jadwalKegiatan.map(jadwal => {
-                          const isKomisariat = jadwal.pembuat === 'Komisariat';
-                          const isPendamping = jadwal.pembuat.includes('Pendamping');
+                          const isKomisariat = jadwal.pembuat === 'Komisariat' || jadwal.pembuat === 'Pusat Komisariat' || jadwal.id_rayon === 'Komisariat';
+                          const isPendamping = jadwal.pembuat?.includes('Pendamping');
                           const borderColor = isKomisariat ? '#f1c40f' : isPendamping ? '#3498db' : '#e74c3c';
                           const labelPembuat = isKomisariat ? 'Pusat Komisariat' : isPendamping ? 'Jadwal Mentoring' : 'Pengurus Rayon';
 

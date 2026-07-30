@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 
@@ -16,7 +16,7 @@ export default function PageKalenderRayon() {
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
-        const { query, where } = require('firebase/firestore');
+        // PERBAIKAN: Menggunakan fungsi query & where dari import di bagian paling atas
         const qRole = query(collection(db, "users"), where("email", "==", user.email));
         onSnapshot(qRole, (snapRole: any) => {
           if (!snapRole.empty) {

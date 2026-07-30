@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 
@@ -18,7 +18,7 @@ export default function PageBroadcastRayon() {
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
-        const { query, where } = require('firebase/firestore');
+        // PERBAIKAN: Menggunakan fungsi query & where dari import di bagian paling atas
         const qRole = query(collection(db, "users"), where("email", "==", user.email));
         onSnapshot(qRole, (snapRole: any) => {
           if (!snapRole.empty) {
@@ -70,11 +70,8 @@ export default function PageBroadcastRayon() {
   };
 
   const handleHapusBroadcast = async (id: string, judul: string) => {
-    if (!window.confirm(`Hapus pesan broadcast "${judul}"?`)) return;
-    try { 
-      await deleteDoc(doc(db, "notifikasi_global", id)); 
-      catatLogAktivitas(`Menarik pesan Broadcast: ${judul}`); 
-    } catch (error) {}
+    if (!window.confirm(`Hapus/tarik pesan broadcast "${judul}"?`)) return;
+    try { await deleteDoc(doc(db, "notifikasi_global", id)); catatLogAktivitas(`Menarik pesan Broadcast: ${judul}`); } catch (error) {}
   };
 
   return (
@@ -134,7 +131,7 @@ export default function PageBroadcastRayon() {
 
           {/* KANAN: RIWAYAT BROADCAST YANG DIKIRIM */}
           <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxSizing: 'border-box' }}>
-            <table className="tabel-utama" style={{ minWidth: '550px' }}>
+            <table className="tabel-utama" style={{ minWidth: '550px', width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}>
                   <th style={{ padding: '10px', borderBottom: '2px solid #ddd', color: 'white', textAlign: 'left' }}>Judul & Pesan Terkirim</th>

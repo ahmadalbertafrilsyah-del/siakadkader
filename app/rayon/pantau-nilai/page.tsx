@@ -25,7 +25,6 @@ export default function PagePantauNilaiRayon() {
   const [formKategori, setFormKategori] = useState({ nama: '', persen: 0 });
   const [isSavingEvaluasi, setIsSavingEvaluasi] = useState(false);
 
-  // File Upload State
   const [fileKop, setFileKop] = useState<File | null>(null);
   const [isSavingPengaturan, setIsSavingPengaturan] = useState(false);
 
@@ -38,7 +37,6 @@ export default function PagePantauNilaiRayon() {
             const currentRayonId = snapRole.docs[0].data().username;
             setAdminRayonId(currentRayonId);
             
-            // Ambil Nama & Kop Surat Rayon
             onSnapshot(doc(db, "users", currentRayonId), (rayonSnap: any) => {
               if (rayonSnap.exists()) {
                 const rData = rayonSnap.data();
@@ -47,17 +45,14 @@ export default function PagePantauNilaiRayon() {
               }
             });
 
-            // Ambil Bobot Penilaian
             onSnapshot(doc(db, "pengaturan_rayon", currentRayonId), (docSnap: any) => {
               if (docSnap.exists()) setKategoriBobotGlobal(docSnap.data().bobot_penilaian || {});
             });
 
-            // Ambil Kurikulum Rayon
             onSnapshot(doc(db, "kurikulum_rayon", currentRayonId), (docSnap: any) => {
               if (docSnap.exists()) setListKurikulum(docSnap.data());
             });
 
-            // Ambil Data Kader Terdaftar di Rayon ini
             onSnapshot(query(collection(db, "users"), where("role", "==", "kader")), (snap: any) => {
               const list: any[] = [];
               snap.docs.forEach((doc: any) => {
@@ -91,7 +86,6 @@ export default function PagePantauNilaiRayon() {
     return () => { unsubscribeNilai(); unsubscribeKeaktifan(); };
   }, [selectedKaderNilai, selectedJenjangNilai]);
 
-  // Upload ke Cloudinary
   const uploadToCloudinary = async (file: File) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -113,7 +107,6 @@ export default function PagePantauNilaiRayon() {
     } catch (e) {}
   };
 
-  // --- LOGIKA KALKULASI NILAI ---
   const konversiHurufKeAngka = (huruf: string) => {
     if(huruf === 'A') return 4; if(huruf === 'B') return 3; if(huruf === 'C') return 2; if(huruf === 'D') return 1; return 0;
   };
@@ -122,28 +115,62 @@ export default function PagePantauNilaiRayon() {
     if (angka >= 76) return "A"; if (angka >= 51) return "B"; if (angka >= 26) return "C"; if (angka >= 10) return "D"; if (angka > 0) return "E"; return "-";
   };
 
+  const handleInputNilaiMentah = (kodeMateri: string, namaKategori: string, value: string) => {
+    let valNum = Number(value); if (valNum > 100) valNum = 100; if (valNum < 0) valNum = 0;
+    setNilaiMentah({ ...nilaiMentah, [kodeMateri]: { ...(nilaiMentah[kodeMateri] || {}), [namaKategori]: valNum } });
+  };
+
+  const handleAutoSaveNilaiDetail = async (kodeMateri: string) => {
+    if (!selectedKaderNilai) return;
+    try {
+      const docRef = doc(db, "evaluasi_kader", selectedKaderNilai);
+      const currentEvaluasi = (await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", selectedKaderNilai)))).docs[0]?.data() || {};
+      const jenjangData = currentEvaluasi[selectedJenjangNilai] || { nilai_mentah: {}, catatan: evaluasiKader.catatan };
+      await setDoc(docRef, { ...currentEvaluasi, [selectedJenjangNilai]: { ...jenjangData, nilai_mentah: nilaiMentah } }, { merge: true });
+
+      let angkaAkhir = 0;
+      (kategoriBobotGlobal[selectedJenjangNilai] || []).forEach((kat: any) => { const score = nilaiMentah[kodeMateri]?.[kat.nama] || 0; angkaAkhir += (score * (kat.persen / 100)); });
+      const hurufAkhir = getNilaiHuruf(angkaAkhir);
+      await setDoc(doc(db, "nilai_khs", selectedKaderNilai), { [kodeMateri]: hurufAkhir, terakhirDiubah: Date.now(), diubahOleh: "Admin Rayon" }, { merge: true });
+    } catch (error) {}
+  };
+
   const materiAktif = listKurikulum[selectedJenjangNilai] || [];
   const kategoriBobotAktif = kategoriBobotGlobal[selectedJenjangNilai] || [];
   const totalBobotTersimpan = kategoriBobotAktif.reduce((sum: number, k: any) => sum + k.persen, 0);
   const kaderDicetak = dataKader.find(k => k.nim === selectedKaderNilai) || {};
 
   let totalSks = 0; let totalBobotNilai = 0;
+  
   const barisRaportRender = materiAktif.map((materi, index) => {
-    const nilaiHuruf = nilaiKaderRealtime[materi.kode] || "-";
-    const angkaNilai = konversiHurufKeAngka(nilaiHuruf);
-    const sksKaliNilai = materi.bobot * angkaNilai;
-    totalSks += materi.bobot; 
-    if (nilaiHuruf !== "-") totalBobotNilai += sksKaliNilai;
+    let nilaiHuruf = nilaiKaderRealtime[materi.kode] || "-";
+    let angkaAkhir = 0;
+    const mentah = nilaiMentah[materi.kode];
+    
+    if (mentah && Object.keys(mentah).length > 0 && kategoriBobotAktif.length > 0) {
+      kategoriBobotAktif.forEach((kat: any) => { angkaAkhir += (mentah[kat.nama] || 0) * (kat.persen / 100); });
+      nilaiHuruf = getNilaiHuruf(angkaAkhir);
+    }
+
+    const displayAngka = angkaAkhir > 0 ? parseFloat(angkaAkhir.toFixed(2)) : '-';
+    
+    const angkaSkala4 = angkaAkhir > 0 ? (angkaAkhir / 25) : 0; 
+    const sksKaliNilai = (materi.bobot || 0) * angkaSkala4;
+    totalSks += (materi.bobot || 0); 
+    if (angkaAkhir > 0) totalBobotNilai += sksKaliNilai;
+    
     return (
       <tr key={materi.kode}>
         <td style={{ padding: '6px 10px', textAlign: 'center' }}>{index + 1}</td><td style={{ padding: '6px 10px', textAlign: 'left' }}>{materi.kode}</td>
         <td style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 'bold' }}>{materi.nama}</td><td style={{ padding: '6px 10px', textAlign: 'center' }}>{materi.bobot}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: '#004a87' }}>{displayAngka}</td>
         <td style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: nilaiHuruf !== '-' ? '#27ae60' : '#555' }}>{nilaiHuruf}</td>
-        <td style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold' }}>{nilaiHuruf === '-' ? 0 : sksKaliNilai}</td>
+        <td style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold' }}>{sksKaliNilai > 0 ? sksKaliNilai.toFixed(2) : 0}</td>
       </tr>
     );
   });
-  const ipKader = totalSks > 0 ? (totalBobotNilai / totalSks).toFixed(2) : "0.00";
+  
+  const ipKader = totalSks > 0 ? parseFloat((totalBobotNilai / totalSks).toFixed(2)) : 0;
 
   return (
     <>
@@ -174,7 +201,6 @@ export default function PagePantauNilaiRayon() {
         @media screen { .print-layout-container { display: none !important; } }
       `}</style>
 
-      {/* WEB UI CONTAINER */}
       <div className="web-ui-container" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         
         <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '15px' }}>
@@ -210,11 +236,16 @@ export default function PagePantauNilaiRayon() {
         {tabRaportAdmin === 'raport' && (
           <div style={{ width: '100%', overflowX: 'auto', padding: '15px 0 0px 0' }}>
             <table className="tabel-utama" style={{ minWidth: '600px' }}>
-              <thead><tr><th style={{ width: '5%' }}>No</th><th>Kode</th><th>Nama Materi</th><th>SKS</th><th>Nilai Huruf</th><th>SKS x Nilai</th></tr></thead>
+              <thead>
+                <tr>
+                  <th style={{ width: '5%' }}>No</th><th style={{ width: '12%', textAlign: 'center' }}>Kode</th><th style={{ width: '53%', textAlign: 'center' }}>Nama Materi</th>
+                  <th style={{ width: '8%' }}>SKS</th><th style={{ width: '8%' }}>Angka</th><th style={{ width: '8%' }}>Nilai Huruf</th><th style={{ width: '8%' }}>SKS x Nilai</th>
+                </tr>
+              </thead>
               <tbody>
-                {materiAktif.length === 0 ? (<tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur.</td></tr>) : barisRaportRender}
-                <tr><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td><td></td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai}</td></tr>
-                <tr><td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kader)</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{ipKader}</td></tr>
+                {materiAktif.length === 0 ? (<tr><td colSpan={7} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur.</td></tr>) : barisRaportRender}
+                <tr style={{ borderTop: '2px solid #ccc' }}><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalSks}</td><td colSpan={2}></td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{totalBobotNilai > 0 ? totalBobotNilai.toFixed(2) : 0}</td></tr>
+                <tr style={{ borderTop: '1px solid #ccc', borderBottom: '1px solid #ccc' }}><td colSpan={6} style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '0.95rem' }}>IPK (Indeks Prestasi Kader)</td><td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem', color: '#333' }}>{ipKader}</td></tr>
               </tbody>
             </table>
           </div>
@@ -226,14 +257,14 @@ export default function PagePantauNilaiRayon() {
               <div>
                 <h4 style={{ margin: '0 0 10px 0', color: '#1e824c', fontSize: '0.9rem' }}>⚙️ Kategori & Bobot Penilaian ({selectedJenjangNilai})</h4>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {kategoriBobotAktif.map((kat: any) => (
+                  {(kategoriBobotGlobal[selectedJenjangNilai] || []).map((kat: any) => (
                     <div key={kat.id} style={{ backgroundColor: '#eaf4fc', padding: '5px 10px', borderRadius: '20px', border: '1px solid #3498db', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontWeight: 'bold', color: '#2c3e50' }}>{kat.nama}: {kat.persen}%</span>
                       <button type="button" onClick={async () => {
                           if(!window.confirm("Hapus kategori bobot ini?")) return;
-                          const newBobot = kategoriBobotAktif.filter((item: any) => item.id !== kat.id);
+                          const newBobot = (kategoriBobotGlobal[selectedJenjangNilai] || []).filter((item: any) => item.id !== kat.id);
                           await setDoc(doc(db, "pengaturan_rayon", adminRayonId), { bobot_penilaian: { ...kategoriBobotGlobal, [selectedJenjangNilai]: newBobot } }, { merge: true });
-                      }} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontWeight: 'bold' }}>×</button>
+                      }} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>×</button>
                     </div>
                   ))}
                 </div>
@@ -247,9 +278,9 @@ export default function PagePantauNilaiRayon() {
                   if(totalBobotTersimpan + formKategori.persen > 100) return alert("Total bobot melebihi 100%!");
                   setIsSavingEvaluasi(true);
                   try {
-                    const newBobot = [...kategoriBobotAktif, { id: Date.now().toString(), nama: formKategori.nama, persen: formKategori.persen }];
+                    const newBobot = [...(kategoriBobotGlobal[selectedJenjangNilai] || []), { id: Date.now().toString(), nama: formKategori.nama, persen: formKategori.persen }];
                     await setDoc(doc(db, "pengaturan_rayon", adminRayonId), { bobot_penilaian: { ...kategoriBobotGlobal, [selectedJenjangNilai]: newBobot } }, { merge: true });
-                    catatLogAktivitas(`Menambah Bobot ${selectedJenjangNilai}: ${formKategori.nama}`); setFormKategori({ nama: '', persen: 0 });
+                    setFormKategori({ nama: '', persen: 0 });
                   } catch (error) {} finally { setIsSavingEvaluasi(false); }
               }} style={{ display: 'flex', gap: '8px' }}>
                 <input type="text" required placeholder="Nama Kategori" value={formKategori.nama} onChange={e => setFormKategori({...formKategori, nama: e.target.value})} style={{ padding: '6px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', width: '120px' }} />
@@ -258,36 +289,38 @@ export default function PagePantauNilaiRayon() {
               </form>
             </div>
 
-            <table className="tabel-utama" style={{ textAlign: 'center', minWidth: '900px', fontSize: '0.85rem' }}>
+            <table className="tabel-utama" style={{ textAlign: 'center', minWidth: '900px', fontSize: '0.85rem', backgroundColor: '#fff' }}>
               <thead>
                 <tr>
-                  <th rowSpan={2} style={{ width: '3%' }}>No</th><th rowSpan={2} style={{ width: '10%' }}>Kode</th><th rowSpan={2} style={{ width: '25%' }}>Nama Materi</th>
-                  {kategoriBobotAktif.length > 0 && <th colSpan={kategoriBobotAktif.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
-                  <th rowSpan={2} style={{ width: '5%' }}>SKS</th><th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
+                  <th rowSpan={2} style={{ width: '3%', textAlign: 'center' }}>No</th><th rowSpan={2} style={{ width: '10%', textAlign: 'center' }}>Kode</th><th rowSpan={2} style={{ width: '25%', textAlign: 'center' }}>Nama Materi</th>
+                  {(kategoriBobotGlobal[selectedJenjangNilai] || []).length > 0 && <th colSpan={(kategoriBobotGlobal[selectedJenjangNilai] || []).length} style={{ borderBottom: '1px solid #ddd', textAlign: 'center', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
+                  <th rowSpan={2} style={{ width: '5%', textAlign: 'center' }}>SKS</th><th colSpan={2} style={{ borderBottom: '1px solid #ddd', textAlign: 'center', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
                 </tr>
                 <tr>
-                  {kategoriBobotAktif.map((kat: any) => <th key={kat.id} style={{ fontSize: '0.75rem', padding: '6px', backgroundColor: '#f0fbf4', color: '#1e824c' }}>{kat.nama} <br/><span style={{color: '#e74c3c'}}>{kat.persen}%</span></th>)}
-                  <th style={{ fontSize: '0.75rem', padding: '6px', backgroundColor: '#eaf4fc', color: '#004a87' }}>Angka</th><th style={{ fontSize: '0.75rem', padding: '6px', backgroundColor: '#eaf4fc', color: '#004a87' }}>Huruf</th>
+                  {(kategoriBobotGlobal[selectedJenjangNilai] || []).map((kat: any) => <th key={kat.id} style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#1e824c', backgroundColor: '#f0fbf4' }}>{kat.nama} <br/><span style={{color: '#e74c3c'}}>{kat.persen}%</span></th>)}
+                  <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', textAlign: 'center', backgroundColor: '#eaf4fc' }}>Angka</th><th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', textAlign: 'center', backgroundColor: '#eaf4fc' }}>Huruf</th>
                 </tr>
               </thead>
               <tbody>
                 {materiAktif.length === 0 ? (
-                  <tr><td colSpan={6 + kategoriBobotAktif.length} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada materi.</td></tr>
+                  <tr><td colSpan={6 + (kategoriBobotGlobal[selectedJenjangNilai] || []).length} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada materi.</td></tr>
                 ) : (
                   materiAktif.map((materi, index) => {
                     let angkaAkhir = 0;
-                    kategoriBobotAktif.forEach((kat: any) => {
+                    (kategoriBobotGlobal[selectedJenjangNilai] || []).forEach((kat: any) => {
                         const score = nilaiMentah[materi.kode]?.[kat.nama] || 0;
                         angkaAkhir += (score * (kat.persen / 100));
                     });
                     const hurufAkhir = getNilaiHuruf(angkaAkhir);
+                    const displayAngka = angkaAkhir > 0 ? parseFloat(angkaAkhir.toFixed(2)) : '-';
 
                     return (
                       <tr key={`rinci-${materi.kode}`}>
                         <td>{index + 1}</td><td style={{ textAlign: 'left' }}>{materi.kode}</td><td style={{ textAlign: 'left', fontWeight: 'bold' }}>{materi.nama}</td>
-                        {kategoriBobotAktif.map((kat: any) => (
+                        {(kategoriBobotGlobal[selectedJenjangNilai] || []).map((kat: any) => (
                           <td key={kat.id} style={{ backgroundColor: '#fcfcfc' }}>
-                            <input type="number" min="0" max="100" placeholder="0" value={nilaiMentah[materi.kode]?.[kat.nama] === 0 ? '' : (nilaiMentah[materi.kode]?.[kat.nama] || '')} 
+                            <input type="number" min="0" max="100" placeholder="0"
+                              value={nilaiMentah[materi.kode]?.[kat.nama] === 0 ? '' : (nilaiMentah[materi.kode]?.[kat.nama] || '')}
                               onChange={(e) => {
                                   let valNum = Number(e.target.value); if (valNum > 100) valNum = 100; if (valNum < 0) valNum = 0;
                                   setNilaiMentah({ ...nilaiMentah, [materi.kode]: { ...(nilaiMentah[materi.kode] || {}), [kat.nama]: valNum } });
@@ -305,7 +338,7 @@ export default function PagePantauNilaiRayon() {
                           </td>
                         ))}
                         <td>{materi.bobot}</td>
-                        <td style={{ fontWeight: 'bold', color: '#004a87', backgroundColor: '#f4f9fd' }}>{angkaAkhir > 0 ? angkaAkhir.toFixed(1) : '-'}</td>
+                        <td style={{ fontWeight: 'bold', color: '#004a87', backgroundColor: '#f4f9fd' }}>{displayAngka}</td>
                         <td style={{ fontWeight: 'bold', color: hurufAkhir !== '-' ? '#27ae60' : '#999', backgroundColor: '#f4f9fd', fontSize: '1rem' }}>{hurufAkhir}</td>
                       </tr>
                     )
@@ -329,7 +362,7 @@ export default function PagePantauNilaiRayon() {
 
         {/* TAB 3: PENGATURAN CETAK */}
         {tabRaportAdmin === 'pengaturan' && (
-          <div style={{ backgroundColor: '#fafafa', border: '1px solid #ddd', borderRadius: '4px', padding: '20px' }}>
+          <div style={{ backgroundColor: '#fafafa', border: '1px solid #ddd', borderRadius: '4px', padding: '20px', marginTop: '15px' }}>
             <form onSubmit={async (e) => {
                 e.preventDefault(); setIsSavingPengaturan(true);
                 try {
@@ -374,11 +407,11 @@ export default function PagePantauNilaiRayon() {
                         </tbody>
                       </table>
                       <table className="tabel-utama">
-                        <thead><tr><th>No</th><th>Kode</th><th>Nama Materi</th><th>SKS</th><th>Nilai</th><th>SKS x Nilai</th></tr></thead>
+                        <thead><tr><th>No</th><th>Kode</th><th>Nama Materi</th><th>SKS</th><th>Angka</th><th>Nilai Huruf</th><th>SKS x Nilai</th></tr></thead>
                         <tbody>
-                          {barisRaportRender}
-                          <tr><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalSks}</td><td></td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalBobotNilai}</td></tr>
-                          <tr><td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold' }}>IPK (Indeks Prestasi Kader)</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ipKader}</td></tr>
+                          {materiAktif.length === 0 ? (<tr><td colSpan={7} style={{ padding: '30px', textAlign: 'center' }}>Kurikulum belum diatur oleh Pengurus.</td></tr>) : barisRaportRender}
+                          <tr><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalSks}</td><td colSpan={2}></td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalBobotNilai > 0 ? totalBobotNilai.toFixed(2) : 0}</td></tr>
+                          <tr><td colSpan={6} style={{ textAlign: 'center', fontWeight: 'bold' }}>IPK (Indeks Prestasi Kaderisasi)</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ipKader}</td></tr>
                         </tbody>
                       </table>
                     </>

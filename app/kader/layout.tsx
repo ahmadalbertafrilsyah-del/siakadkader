@@ -3,11 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import Link from 'next/link';
 
-export default function KomisariatLayout({ children }: { children: React.ReactNode }) {
+export default function KaderLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   
@@ -15,12 +15,10 @@ export default function KomisariatLayout({ children }: { children: React.ReactNo
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // MENGGUNAKAN LOGO BARU SEBAGAI DEFAULT FOTO
-  const logoPusat = "https://i.ibb.co.com/nNhTXzYD/Asset-6-4x.png";
-
-  const [profilKomisariat, setProfilKomisariat] = useState({ 
-    nama: 'Loading...', username: '', fotoUrl: logoPusat
+  const [profilKader, setProfilKader] = useState({ 
+    nama: 'Loading...', nim: '', fotoUrl: 'https://via.placeholder.com/200x250/3498db/fff?text=FOTO', jenjang: 'MAPABA', id_rayon: ''
   });
+  const [namaRayonInduk, setNamaRayonInduk] = useState('');
 
   useEffect(() => {
     let unsubs: (() => void)[] = [];
@@ -31,14 +29,24 @@ export default function KomisariatLayout({ children }: { children: React.ReactNo
         const unsubRole = onSnapshot(qRole, (snapRole: any) => {
           if (!snapRole.empty) {
             const p = snapRole.docs[0].data();
-            if (p.role !== 'komisariat') {
-              alert(`Akses Ditolak! Anda bukan Admin Komisariat.`);
+            if (p.role !== 'kader') {
+              alert(`Akses Ditolak! Anda bukan Kader.`);
               signOut(auth); router.push('/'); return;
             }
 
-            setProfilKomisariat({ 
-              nama: p.nama || 'Pusat Komisariat', username: p.username || '', fotoUrl: p.fotoUrl || logoPusat 
+            setProfilKader({ 
+              nama: p.nama || '', nim: p.nim || '', fotoUrl: p.fotoUrl || 'https://via.placeholder.com/200x250/3498db/fff?text=FOTO', 
+              jenjang: p.jenjang || 'MAPABA', id_rayon: p.id_rayon || ''
             });
+
+            if (p.id_rayon === 'Komisariat' || p.id_rayon === 'Pusat Komisariat') {
+               setNamaRayonInduk('Pusat Komisariat');
+            } else if (p.id_rayon) {
+               const unsubRayon = onSnapshot(doc(db, "users", p.id_rayon), (rayonSnap: any) => {
+                 if (rayonSnap.exists()) setNamaRayonInduk(rayonSnap.data().nama || p.id_rayon);
+               });
+               unsubs.push(unsubRayon);
+            }
             setIsLoading(false);
           }
         });
@@ -55,17 +63,15 @@ export default function KomisariatLayout({ children }: { children: React.ReactNo
   const handleLogout = async () => { await signOut(auth); router.push('/'); };
 
   const menuItems = [
-    { id: '/komisariat/dashboard', icon: '🏠', label: 'Dashboard Utama' },
-    { id: '/komisariat/statistik', icon: '📈', label: 'Statistik Visual' },
-    { id: '/komisariat/manajemen-rayon', icon: '🏢', label: 'Manajemen Rayon' },
-    { id: '/komisariat/database-kader', icon: '👥', label: 'Database Kader' },
-    { id: '/komisariat/master-kurikulum', icon: '📚', label: 'Master Kurikulum' },
-    { id: '/komisariat/master-tes', icon: '📝', label: 'Master Tes' },
-    { id: '/komisariat/pantau-nilai-skp', icon: '📊', label: 'Pantau Nilai SKP' },
-    { id: '/komisariat/kalender', icon: '📅', label: 'Kalender Terpusat' },
-    { id: '/komisariat/pengumuman', icon: '📢', label: 'Pengumuman' },
-    { id: '/komisariat/broadcast', icon: '📡', label: 'Broadcast Notifikasi' },
-    { id: '/komisariat/log-aktivitas', icon: '⏱️', label: 'Log Aktivitas' },
+    { id: '/kader/dashboard', icon: '🏠', label: 'Beranda' },
+    { id: '/kader/profil', icon: '👤', label: 'Profil Saya' },
+    { id: '/kader/raport', icon: '🎓', label: 'Kartu Hasil Studi' },
+    { id: '/kader/sertifikat', icon: '📜', label: 'Sertifikat Digital' },
+    { id: '/kader/kalender', icon: '📅', label: 'Jadwal Kegiatan' },
+    { id: '/kader/pengumuman', icon: '📢', label: 'Pengumuman' },
+    { id: '/kader/perpustakaan', icon: '📚', label: 'Perpustakaan' },
+    { id: '/kader/tugas', icon: '📋', label: 'Pengumpulan Tugas' },
+    { id: '/kader/tes', icon: '📝', label: 'Ujian & Tes' },
   ];
 
   const activeMenu = menuItems.find(m => pathname.includes(m.id)) || menuItems[0];
@@ -103,7 +109,7 @@ export default function KomisariatLayout({ children }: { children: React.ReactNo
       
       {isSidebarOpen && (<div className="no-print" onClick={() => setIsSidebarOpen(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 45 }} />)}
 
-      <aside className="no-print sidebar-desktop" style={{ width: isSidebarCollapsed ? '80px' : '260px', background: 'linear-gradient(100deg, #1a252f 100%)', color: 'white', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'all 0.3s ease' }}>
+      <aside className="no-print sidebar-desktop" style={{ width: isSidebarCollapsed ? '80px' : '260px', background: 'linear-gradient(100deg, #0000af 100%)', color: 'white', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'all 0.3s ease' }}>
         <div style={{ padding: '15px', fontSize: '1.1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: isSidebarCollapsed ? 'center' : 'space-between' }}>
           <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
             <span style={{ fontSize: '1.5rem' }}>🎓</span>
@@ -114,10 +120,10 @@ export default function KomisariatLayout({ children }: { children: React.ReactNo
         
         {!isSidebarCollapsed && (
           <div style={{ padding: '15px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <img src={profilKomisariat.fotoUrl} alt="Logo Pusat" style={{ width: '45px', height: '45px', backgroundColor: '#fff', borderRadius: '50%', objectFit: 'contain', padding: '2px', border: '2px solid #f1c40f' }} />
+            <img src={profilKader.fotoUrl} alt="Foto" style={{ width: '45px', height: '45px', backgroundColor: '#3498db', borderRadius: '50%', objectFit: 'cover', border: '2px solid #2ecc71' }} />
             <div>
-              <h4 style={{ fontSize: '0.8rem', margin: '0 0 3px 0', color: '#fff', lineHeight: '1.2' }}>{profilKomisariat.nama}</h4>
-              <p style={{ fontSize: '0.7rem', color: '#f1c40f', margin: 0, fontWeight: 'bold' }}>Admin Pusat</p>
+              <h4 style={{ fontSize: '0.8rem', margin: '0 0 3px 0', color: '#fff', lineHeight: '1.2' }}>{profilKader.nama}</h4>
+              <p style={{ fontSize: '0.7rem', color: '#2ecc71', margin: 0, fontWeight: 'bold' }}>{profilKader.nim}</p>
             </div>
           </div>
         )}
@@ -127,7 +133,7 @@ export default function KomisariatLayout({ children }: { children: React.ReactNo
             const isActive = pathname.includes(item.id);
             return (
               <li key={item.id}>
-                <Link href={item.id} onClick={() => setIsSidebarOpen(false)} style={{ textDecoration: 'none', width: '100%', textAlign: 'left', background: 'none', border: 'none', color: isActive ? '#f1c40f' : '#ecf0f1', padding: isSidebarCollapsed ? '15px 0' : '12px 15px', display: 'flex', alignItems: 'center', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start', gap: isSidebarCollapsed ? '0' : '10px', fontSize: '0.85rem', cursor: 'pointer', borderLeft: isActive ? '4px solid #f1c40f' : '4px solid transparent', backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent', transition: '0.2s', fontWeight: isActive ? 'bold' : 'normal' }}>
+                <Link href={item.id} onClick={() => setIsSidebarOpen(false)} style={{ textDecoration: 'none', width: '100%', textAlign: 'left', background: 'none', border: 'none', color: isActive ? '#2ecc71' : '#ecf0f1', padding: isSidebarCollapsed ? '15px 0' : '12px 15px', display: 'flex', alignItems: 'center', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start', gap: isSidebarCollapsed ? '0' : '10px', fontSize: '0.85rem', cursor: 'pointer', borderLeft: isActive ? '4px solid #2ecc71' : '4px solid transparent', backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent', transition: '0.2s', fontWeight: isActive ? 'bold' : 'normal' }}>
                   <span style={{ fontSize: '1.2rem' }} title={isSidebarCollapsed ? item.label : ''}>{item.icon}</span> 
                   {!isSidebarCollapsed && <span>{item.label}</span>}
                 </Link>
@@ -137,7 +143,7 @@ export default function KomisariatLayout({ children }: { children: React.ReactNo
         </ul>
 
         <div style={{ padding: '15px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <button onClick={handleLogout} style={{ width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#f1c40f', border: '1px solid #f1c40f', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', transition: '0.3s', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', gap: '10px' }}>
+          <button onClick={handleLogout} style={{ width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#2ecc71', border: '1px solid #2ecc71', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', transition: '0.3s', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', gap: '10px' }}>
             <span style={{ fontSize: '1.1rem' }} title={isSidebarCollapsed ? 'Keluar Sistem' : ''}>🚪</span>
             {!isSidebarCollapsed && <span>Keluar Sistem</span>}
           </button>
@@ -151,7 +157,7 @@ export default function KomisariatLayout({ children }: { children: React.ReactNo
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <h2 style={{ fontSize: '1rem', color: '#333', margin: 0, textTransform: 'uppercase', fontWeight: 'bold' }}>{activeMenu.label}</h2>
-            <div style={{ fontSize: '0.75rem', color: '#856404', fontWeight: 'bold', backgroundColor: '#fff3cd', padding: '4px 10px', borderRadius: '15px' }}>⭐ Super Admin</div>
+            <div style={{ fontSize: '0.75rem', color: '#004a87', fontWeight: 'bold', backgroundColor: '#eaf4fc', padding: '4px 10px', borderRadius: '15px' }}>🏛️ : {namaRayonInduk}</div>
           </div>
         </header>
 

@@ -25,9 +25,9 @@ export default function PageLogAktivitas() {
         <table className="tabel-utama" style={{ minWidth: '800px' }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', width: '20%' }}>Waktu Sistem</th>
-              <th style={{ textAlign: 'left', width: '20%' }}>Aktor Pengguna</th>
-              <th style={{ textAlign: 'left', width: '60%' }}>Aktivitas / Aksi yang Dilakukan</th>
+              <th style={{ textAlign: 'left', width: '15%' }}>Waktu Sistem</th>
+              <th style={{ textAlign: 'left', width: '30%' }}>Aktor Pengguna</th>
+              <th style={{ textAlign: 'left', width: '55%' }}>Aktivitas / Aksi yang Dilakukan</th>
             </tr>
           </thead>
           <tbody>

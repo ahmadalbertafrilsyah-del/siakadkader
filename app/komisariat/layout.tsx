@@ -56,7 +56,6 @@ export default function KomisariatLayout({ children }: { children: React.ReactNo
 
   const menuItems = [
     { id: '/komisariat/dashboard', icon: '🏠', label: 'Dashboard Utama' },
-    { id: '/komisariat/statistik', icon: '📈', label: 'Statistik Visual' },
     { id: '/komisariat/manajemen-rayon', icon: '🏢', label: 'Manajemen Rayon' },
     { id: '/komisariat/database-kader', icon: '👥', label: 'Database Kader' },
     { id: '/komisariat/master-kurikulum', icon: '📚', label: 'Master Kurikulum' },

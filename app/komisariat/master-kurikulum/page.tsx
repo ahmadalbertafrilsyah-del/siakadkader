@@ -84,8 +84,11 @@ export default function PageMasterKurikulum() {
           <table className="tabel-utama" style={{ minWidth: '700px' }}>
             <thead>
               <tr>
-                <th style={{ textAlign: 'center', width: '10%' }}>Jenjang</th><th style={{ textAlign: 'center', width: '10%' }}>Kode</th><th style={{ textAlign: 'center', width: '50%' }}>Nama Materi & Muatan</th>
-                <th style={{ textAlign: 'center', width: '10%' }}>Bobot</th><th style={{ textAlign: 'center', width: '20%' }}>Aksi</th>
+                <th style={{ textAlign: 'center', width: '10%' }}>Jenjang</th>
+                <th style={{ textAlign: 'center', width: '15%' }}>Kode</th>
+                <th style={{ textAlign: 'center', width: '60%' }}>Nama Materi & Muatan</th>
+                <th style={{ textAlign: 'center', width: '5%' }}>Bobot</th>
+                <th style={{ textAlign: 'center', width: '10%' }}>Aksi</th>
               </tr>
             </thead>
             <tbody>

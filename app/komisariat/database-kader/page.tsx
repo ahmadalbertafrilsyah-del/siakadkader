@@ -149,12 +149,12 @@ export default function PageDatabaseKader() {
                   style={{ cursor: 'pointer', transform: 'scale(1.2)', accentColor: '#0000af' }}
                 />
               </th>
-              <th style={{ textAlign: 'center', width: '4%' }}>No</th>
-              <th style={{ textAlign: 'center', width: '15%' }}>NIM</th>
-              <th style={{ textAlign: 'left', width: '23%' }}>Nama Lengkap</th>
-              <th style={{ textAlign: 'center', width: '15%' }}>Instansi</th>
-              <th style={{ textAlign: 'center', width: '10%' }}>Jenjang</th>
-              <th style={{ textAlign: 'center', width: '10%' }}>Status</th>
+              <th style={{ textAlign: 'center', width: '5%' }}>No</th>
+              <th style={{ textAlign: 'center', width: '10%' }}>NIM</th>
+              <th style={{ textAlign: 'center', width: '30%' }}>Nama Lengkap</th>
+              <th style={{ textAlign: 'center', width: '25%' }}>Instansi</th>
+              <th style={{ textAlign: 'center', width: '5%' }}>Jenjang</th>
+              <th style={{ textAlign: 'center', width: '5%' }}>Status</th>
               <th style={{ textAlign: 'center', width: '20%' }}>Aksi</th>
             </tr>
           </thead>

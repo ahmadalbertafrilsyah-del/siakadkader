@@ -231,8 +231,8 @@ export default function PageManajemenRayon() {
               <tbody>
                 {dataRayon.map((rayon) => (
                   <tr key={rayon.id}>
-                    <td style={{ fontWeight: 'bold', color: '#0d1b2a', textAlign: 'center' }}>{rayon.nama}</td>
-                    <td style={{ color: '#666', textAlign: 'center' }}>{rayon.username}</td>
+                    <td style={{ fontWeight: 'bold', color: '#0d1b2a', textAlign: 'left' }}>{rayon.nama}</td>
+                    <td style={{ color: '#666', textAlign: 'left' }}>{rayon.username}</td>
                     <td style={{ textAlign: 'center' }}>
                       <div onClick={() => handleUbahStatusAkun(rayon.id, rayon.status || 'Aktif')} style={{ display: 'inline-flex', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: (!rayon.status || rayon.status === 'Aktif') ? '#e8f5e9' : '#ffebee', color: (!rayon.status || rayon.status === 'Aktif') ? '#2e7d32' : '#c62828' }}>
                         {(!rayon.status || rayon.status === 'Aktif') ? 'Aktif' : 'Pasif'}
@@ -268,8 +268,8 @@ export default function PageManajemenRayon() {
              <tbody>
                {dataPendamping.filter(p => p.jenjangTugas === 'SKP').map(p => (
                  <tr key={p.id}>
-                   <td style={{ fontWeight: 'bold', color: '#0d1b2a', textAlign: 'center' }}>{p.nama}</td>
-                   <td style={{ color: '#666', textAlign: 'center' }}>{p.username}</td>
+                   <td style={{ fontWeight: 'bold', color: '#0d1b2a', textAlign: 'left' }}>{p.nama}</td>
+                   <td style={{ color: '#666', textAlign: 'left' }}>{p.username}</td>
                    <td style={{ textAlign: 'center' }}>
                      <div onClick={() => handleUbahStatusAkun(p.id, p.status || 'Aktif')} style={{ display: 'inline-flex', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: (!p.status || p.status === 'Aktif') ? '#e8f5e9' : '#ffebee', color: (!p.status || p.status === 'Aktif') ? '#2e7d32' : '#c62828' }}>
                        {(!p.status || p.status === 'Aktif') ? 'Aktif' : 'Pasif'}

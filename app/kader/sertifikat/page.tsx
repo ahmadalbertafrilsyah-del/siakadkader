@@ -78,7 +78,7 @@ export default function PageSertifikatKader() {
         });
       } else {
         setSettings({
-          templateUrl: 'https://via.placeholder.com/800x1131/ffffff/cccccc?text=Sertifikat+Belum+Diatur+Admin',
+          templateUrl: 'https://via.placeholder.com/800x1131/ffffff/cccccc?text=Sertifikat+Belum+Diatur+Instansi',
           orientasi: 'landscape',
           posisi: defaultPosisi
         });
@@ -87,9 +87,8 @@ export default function PageSertifikatKader() {
     return () => unsub();
   }, [profilKader.id_rayon, selectedJenjang, profilKader.angkatan]);
 
-  const nomorDitampilkan = profilKader.nia ? profilKader.nia : (profilKader.nomor_sertifikat ? profilKader.nomor_sertifikat : '- Belum Ada Nomor -');
+  const nomorDitampilkan = profilKader.nia && profilKader.nia !== '-' ? profilKader.nia : (profilKader.nomor_sertifikat ? profilKader.nomor_sertifikat : '- Belum Ada Nomor -');
   const aspectRatio = settings.orientasi === 'portrait' ? '1 / 1.414' : '1.414 / 1';
-  // Skala rasio Font (pt) ke Container Query Width (cqw) agar presisi
   const fontScaleCqw = settings.orientasi === 'portrait' ? 0.168 : 0.1188;
 
   const getDataTeks = (key: string) => {
@@ -105,45 +104,86 @@ export default function PageSertifikatKader() {
   return (
     <>
       <style>{`
+        @media (max-width: 767px) {
+           body, html, .app-container {
+             overflow-x: hidden;
+             -ms-overflow-style: none;
+             scrollbar-width: none;
+           }
+           ::-webkit-scrollbar {
+             display: none;
+           }
+           .mobile-card-padding {
+             padding: 15px !important;
+           }
+        }
+        
+        /* 
+          PERBAIKAN CSS PRINT: 
+          1. Paksa main untuk block (jangan none).
+          2. Sembunyikan khusus elemen web UI. 
+        */
         @media print {
           @page { size: A4 ${settings.orientasi}; margin: 0; }
-          main.no-print { display: none !important; }
-          header { display: none !important; }
-          .web-ui-container { display: none !important; }
-          aside { display: none !important; }
-          body, html { background-color: transparent !important; margin: 0; padding: 0; height: 100vh !important; width: 100vw !important; overflow: hidden; }
-          .print-layout-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: ${settings.orientasi === 'portrait' ? '210mm' : '297mm'} !important; height: ${settings.orientasi === 'portrait' ? '297mm' : '210mm'} !important; z-index: 9999 !important; background: white; }
-          .bg-sertifikat { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -10; }
+          body, html { background-color: white !important; margin: 0; padding: 0; height: 100vh !important; width: 100vw !important; overflow: hidden !important; }
+          
+          aside, header, nav, .web-ui-container { display: none !important; }
+          main.no-print { display: block !important; margin: 0 !important; padding: 0 !important; }
+          .mobile-content-wrapper { padding: 0 !important; margin: 0 !important; }
+
+          .print-layout-container { 
+             display: block !important; 
+             position: absolute !important; 
+             top: 0 !important; left: 0 !important; 
+             width: ${settings.orientasi === 'portrait' ? '210mm' : '297mm'} !important; 
+             height: ${settings.orientasi === 'portrait' ? '297mm' : '210mm'} !important; 
+             z-index: 9999 !important; 
+             background: white !important;
+          }
+
+          .bg-sertifikat { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
           .bg-sertifikat img { width: 100%; height: 100%; object-fit: fill; display: block; }
-          .isian-data { position: absolute; z-index: 10; font-family: "Arial Narrow", Arial, sans-serif; color: black; white-space: nowrap; line-height: 1.2; }
+          
+          .isian-data { 
+             position: absolute; 
+             z-index: 10; 
+             font-family: "Arial Narrow", Arial, sans-serif; 
+             color: black !important; 
+             white-space: nowrap; 
+             line-height: 1.2; 
+          }
+          
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen { .print-layout-container { display: none !important; } }
       `}</style>
 
+      {/* WEB UI CONTAINER (Disembunyikan saat print) */}
       <div className="web-ui-container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+        <div className="mobile-card-padding" style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #eaeaea' }}>
+          
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: '15px', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
             <div>
               <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.2rem' }}>🎓 Cetak Piagam / Sertifikat Digital</h3>
-              <p style={{ fontSize: '0.85rem', color: '#777', margin: '5px 0 0 0' }}>Sertifikat resmi PMII yang tata letaknya telah diatur oleh Admin.</p>
+              <p style={{ fontSize: '0.85rem', color: '#777', margin: '5px 0 0 0' }}>Sertifikat resmi PMII yang tata letaknya telah diatur oleh Pengurus.</p>
             </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <select value={selectedJenjang} onChange={e => setSelectedJenjang(e.target.value)} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', outline: 'none' }}>
-                <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <select value={selectedJenjang} onChange={e => setSelectedJenjang(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '6px', outline: 'none', fontWeight: 'bold', color: '#0000af', cursor: 'pointer' }}>
+                <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option><option value="SKP">SKP</option>
               </select>
-              <button onClick={() => window.print()} style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem' }}>
+              <button onClick={() => window.print()} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '9px 18px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', boxShadow: '0 2px 8px rgba(0,0,175,0.2)' }}>
                 🖨️ Cetak PDF
               </button>
             </div>
           </div>
 
-          <div style={{ backgroundColor: '#fdfdfd', border: '1px solid #eee', borderRadius: '8px', padding: '20px', textAlign: 'center' }}>
-            <p style={{ marginBottom: '15px', color: '#555', fontSize: '0.9rem' }}>Pratinjau Sertifikat (Mengikuti Kanvas {settings.orientasi})</p>
+          <div style={{ backgroundColor: '#fdfdfd', border: '1px solid #eee', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
+            <p style={{ marginBottom: '15px', color: '#555', fontSize: '0.9rem', fontWeight: 'bold' }}>Pratinjau Sertifikat ({settings.orientasi})</p>
             
             <div style={{ 
               position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto', 
               aspectRatio: aspectRatio, border: '1px solid #ccc', overflow: 'hidden', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', backgroundColor: 'white',
-              containerType: 'inline-size' /* MENGGUNAKAN CONTAINER QUERIES */
+              containerType: 'inline-size' 
             }}>
               {settings.templateUrl && (
                 <img src={settings.templateUrl} alt="Template" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1 }} />

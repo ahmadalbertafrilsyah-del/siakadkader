@@ -184,7 +184,7 @@ export default function KaderLayout({ children }: { children: React.ReactNode })
              <img src={profilKader.fotoUrl} alt="Foto" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #f1c40f', objectFit: 'cover' }} />
              <div>
                <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>Salam, Sahabat/i</div>
-               <div style={{ fontSize: '1.05rem', fontWeight: 'bold', color: '#f1c40f' }}>{profilKader.nama ? profilKader.nama.split(' ')[0] : 'Kader'}</div>
+               <div style={{ fontSize: '1.05rem', fontWeight: 'bold', color: '#f1c40f' }}>{profilKader.nama}</div>
              </div>
            </div>
            <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => router.push('/kader/pengumuman')}>

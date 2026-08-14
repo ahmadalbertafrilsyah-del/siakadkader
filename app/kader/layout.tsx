@@ -65,7 +65,7 @@ export default function KaderLayout({ children }: { children: React.ReactNode })
   const menuItems = [
     { id: '/kader/dashboard', icon: '🏠', label: 'Beranda' },
     { id: '/kader/profil', icon: '👤', label: 'Profil Saya' },
-    { id: '/kader/raport', icon: '🎓', label: 'Kartu Hasil Studi' },
+    { id: '/kader/raport', icon: '📊', label: 'Kartu Hasil Studi' },
     { id: '/kader/sertifikat', icon: '📜', label: 'Sertifikat Digital' },
     { id: '/kader/kalender', icon: '📅', label: 'Jadwal Kegiatan' },
     { id: '/kader/pengumuman', icon: '📢', label: 'Pengumuman' },
@@ -74,56 +74,73 @@ export default function KaderLayout({ children }: { children: React.ReactNode })
     { id: '/kader/tes', icon: '📝', label: 'Ujian & Tes' },
   ];
 
+  // Mobile Bottom Navigation Mapping (Hanya 5 Menu Utama)
+  const mobileNavItems = [
+    { id: '/kader/dashboard', icon: '🏠', label: 'Home' },
+    { id: '/kader/kalender', icon: '📅', label: 'Jadwal' },
+    { id: '/kader/raport', icon: '📊', label: 'KHS' },
+    { id: '/kader/tugas', icon: '📋', label: 'Tugas' },
+    { id: '/kader/profil', icon: '👤', label: 'Profil' }
+  ];
+
   const activeMenu = menuItems.find(m => pathname.includes(m.id)) || menuItems[0];
 
-  if (isLoading) return <div style={{display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center'}}>Memuat Sistem...</div>;
+  if (isLoading) return <div style={{display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', color: '#0000af', fontWeight: 'bold'}}>Memuat Sistem SIAKAD...</div>;
 
   return (
     <div style={{ display: 'flex', backgroundColor: '#f4f6f9', height: '100vh', overflow: 'hidden', fontFamily: 'Arial, sans-serif' }}>
       
       <style>{`
         * { box-sizing: border-box; } 
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.4); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
         input, select, textarea { max-width: 100%; outline: none; }
         
+        .mobile-only { display: none !important; }
+        .desktop-only { display: flex !important; }
+
+        /* PENGATURAN MODE HP */
+        @media (max-width: 767px) { 
+          .mobile-only { display: flex !important; }
+          .desktop-only { display: none !important; }
+          
+          /* Hilangkan Sidebar & Margin Konten di HP */
+          aside.sidebar-desktop { display: none !important; }
+          .main-content { 
+             margin-left: 0 !important; 
+             padding-bottom: 75px !important; /* Ruang untuk Bottom Nav */
+             background-color: #f4f6f9 !important;
+          } 
+          .mobile-content-wrapper { padding: 0 !important; }
+        }
+
+        /* PENGATURAN MODE LAPTOP/PC */
         @media (min-width: 768px) { 
           aside.sidebar-desktop { left: 0 !important; } 
           .main-content { margin-left: ${isSidebarCollapsed ? '80px' : '260px'} !important; } 
           .menu-burger { display: none !important; } 
           .toggle-collapse { display: block !important; }
         }
-        @media (max-width: 767px) {
-          .toggle-collapse { display: none !important; }
-          .main-content { margin-left: 0 !important; }
-        }
-        div[style*="overflowX: auto"], div[style*="overflow-x: auto"] { -webkit-overflow-scrolling: touch; }
         
-        .tabel-utama { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; min-width: 600px; }
-        .tabel-utama thead tr { border-top: 2px solid #555; border-bottom: 2px solid #555; background-color: #fff; }
-        .tabel-utama th { padding: 10px; color: #333; text-align: center; font-weight: bold; }
-        .tabel-utama td { padding: 8px 10px; border-bottom: 1px solid #ddd; color: #333; }
+        div[style*="overflowX: auto"], div[style*="overflow-x: auto"] { -webkit-overflow-scrolling: touch; }
       `}</style>
       
-      {isSidebarOpen && (<div className="no-print" onClick={() => setIsSidebarOpen(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 45 }} />)}
-
-      <aside className="no-print sidebar-desktop" style={{ width: isSidebarCollapsed ? '80px' : '260px', background: 'linear-gradient(100deg, #0000af 100%)', color: 'white', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', position: 'fixed', top: 0, bottom: 0, left: isSidebarOpen ? '0' : '-260px', zIndex: 50, transition: 'all 0.3s ease' }}>
+      {/* SIDEBAR DESKTOP */}
+      <aside className="no-print sidebar-desktop" style={{ width: isSidebarCollapsed ? '80px' : '260px', background: 'linear-gradient(100deg, #0000af 100%)', color: 'white', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 10px rgba(0,0,0,0.1)', position: 'fixed', top: 0, bottom: 0, left: 0, zIndex: 50, transition: 'all 0.3s ease' }}>
         <div style={{ padding: '15px', fontSize: '1.1rem', fontWeight: 'bold', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', justifyContent: isSidebarCollapsed ? 'center' : 'space-between' }}>
           <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
             <span style={{ fontSize: '1.5rem' }}>🎓</span>
             {!isSidebarCollapsed && <span style={{ color: 'white', whiteSpace: 'nowrap' }}>SIAKAD PMII</span>}
           </div>
-          <button className="menu-burger" onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer' }}>×</button>
         </div>
         
         {!isSidebarCollapsed && (
           <div style={{ padding: '15px', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <img src={profilKader.fotoUrl} alt="Foto" style={{ width: '45px', height: '45px', backgroundColor: '#3498db', borderRadius: '50%', objectFit: 'cover', border: '2px solid #2ecc71' }} />
+            <img src={profilKader.fotoUrl} alt="Foto" style={{ width: '45px', height: '45px', backgroundColor: '#e74c3c', borderRadius: '50%', objectFit: 'cover', border: '2px solid #f1c40f' }} />
             <div>
               <h4 style={{ fontSize: '0.8rem', margin: '0 0 3px 0', color: '#fff', lineHeight: '1.2' }}>{profilKader.nama}</h4>
-              <p style={{ fontSize: '0.7rem', color: '#2ecc71', margin: 0, fontWeight: 'bold' }}>{profilKader.nim}</p>
+              <p style={{ fontSize: '0.7rem', color: '#f1c40f', margin: 0, fontWeight: 'bold' }}>{profilKader.nim}</p>
             </div>
           </div>
         )}
@@ -133,7 +150,7 @@ export default function KaderLayout({ children }: { children: React.ReactNode })
             const isActive = pathname.includes(item.id);
             return (
               <li key={item.id}>
-                <Link href={item.id} onClick={() => setIsSidebarOpen(false)} style={{ textDecoration: 'none', width: '100%', textAlign: 'left', background: 'none', border: 'none', color: isActive ? '#2ecc71' : '#ecf0f1', padding: isSidebarCollapsed ? '15px 0' : '12px 15px', display: 'flex', alignItems: 'center', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start', gap: isSidebarCollapsed ? '0' : '10px', fontSize: '0.85rem', cursor: 'pointer', borderLeft: isActive ? '4px solid #2ecc71' : '4px solid transparent', backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent', transition: '0.2s', fontWeight: isActive ? 'bold' : 'normal' }}>
+                <Link href={item.id} style={{ textDecoration: 'none', width: '100%', textAlign: 'left', background: 'none', border: 'none', color: isActive ? '#f1c40f' : '#ecf0f1', padding: isSidebarCollapsed ? '15px 0' : '12px 15px', display: 'flex', alignItems: 'center', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start', gap: isSidebarCollapsed ? '0' : '10px', fontSize: '0.85rem', cursor: 'pointer', borderLeft: isActive ? '4px solid #f1c40f' : '4px solid transparent', backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent', transition: '0.2s', fontWeight: isActive ? 'bold' : 'normal' }}>
                   <span style={{ fontSize: '1.2rem' }} title={isSidebarCollapsed ? item.label : ''}>{item.icon}</span> 
                   {!isSidebarCollapsed && <span>{item.label}</span>}
                 </Link>
@@ -143,29 +160,66 @@ export default function KaderLayout({ children }: { children: React.ReactNode })
         </ul>
 
         <div style={{ padding: '15px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-          <button onClick={handleLogout} style={{ width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#2ecc71', border: '1px solid #2ecc71', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', transition: '0.3s', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '1.1rem' }} title={isSidebarCollapsed ? 'Keluar Sistem' : ''}>🚪</span>
+          <button onClick={handleLogout} style={{ width: '100%', padding: '10px', backgroundColor: 'transparent', color: '#f1c40f', border: '1px solid #f1c40f', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', transition: '0.3s', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '1.1rem' }} title={isSidebarCollapsed ? 'Keluar' : ''}>🚪</span>
             {!isSidebarCollapsed && <span>Keluar Sistem</span>}
           </button>
         </div>
       </aside>
 
       <main className="no-print main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', overflowX: 'hidden', transition: 'all 0.3s ease' }}>
-        <header style={{ backgroundColor: '#fff', padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
-          <button className="menu-burger" onClick={() => setIsSidebarOpen(true)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#0d1b2a' }}>☰</button>
+        
+        {/* HEADER DESKTOP ONLY */}
+        <header className="desktop-only" style={{ backgroundColor: '#fff', padding: '15px 20px', alignItems: 'center', gap: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 40 }}>
           <button className="toggle-collapse" onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#555', padding: '5px' }}>{isSidebarCollapsed ? '▶' : '◀'}</button>
-          
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <h2 style={{ fontSize: '1rem', color: '#333', margin: 0, textTransform: 'uppercase', fontWeight: 'bold' }}>{activeMenu.label}</h2>
-            <div style={{ fontSize: '0.75rem', color: '#004a87', fontWeight: 'bold', backgroundColor: '#eaf4fc', padding: '4px 10px', borderRadius: '15px' }}>🏛️ : {namaRayonInduk}</div>
+            <div style={{ fontSize: '0.75rem', color: '#0000af', fontWeight: 'bold', backgroundColor: '#eaf4fc', padding: '4px 10px', borderRadius: '15px' }}>🏛️ : {namaRayonInduk}</div>
           </div>
         </header>
 
-        <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
+        {/* HEADER MOBILE APP BAR ONLY (Warna Biru Khas PMII) */}
+        <header className="mobile-only" style={{ backgroundColor: '#0000af', padding: '20px 20px 15px 20px', justifyContent: 'space-between', alignItems: 'center', color: 'white', position: 'sticky', top: 0, zIndex: 40 }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+             <img src={profilKader.fotoUrl} alt="Foto" style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #f1c40f', objectFit: 'cover' }} />
+             <div>
+               <div style={{ fontSize: '0.75rem', opacity: 0.9 }}>Salam, Sahabat/i</div>
+               <div style={{ fontSize: '1.05rem', fontWeight: 'bold', color: '#f1c40f' }}>{profilKader.nama ? profilKader.nama.split(' ')[0] : 'Kader'}</div>
+             </div>
+           </div>
+           <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => router.push('/kader/pengumuman')}>
+              <span style={{ fontSize: '1.5rem' }}>🔔</span>
+              <span style={{ position: 'absolute', top: 0, right: 0, backgroundColor: '#e74c3c', width: '10px', height: '10px', borderRadius: '50%', border: '1px solid #0000af' }}></span>
+           </div>
+        </header>
+
+        {/* AREA KONTEN (PAGES) */}
+        <div className="mobile-content-wrapper" style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
           {children}
         </div>
+
+        {/* BOTTOM NAVIGATION MOBILE APP ONLY (Aksen Biru & Kuning) */}
+        <nav className="mobile-only no-print" style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: '#fff',
+          justifyContent: 'space-around', alignItems: 'center',
+          padding: '8px 0', borderTop: '1px solid #eaeaea', zIndex: 999,
+          boxShadow: '0 -2px 10px rgba(0,0,0,0.05)'
+        }}>
+          {mobileNavItems.map(item => {
+            const isActive = pathname.includes(item.id);
+            return (
+              <Link key={item.id} href={item.id} style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', textDecoration: 'none',
+                color: isActive ? '#0000af' : '#95a5a6', gap: '4px', flex: 1
+              }}>
+                <span style={{ fontSize: '1.3rem', filter: isActive ? 'none' : 'grayscale(100%)', opacity: isActive ? 1 : 0.7 }}>{item.icon}</span>
+                <span style={{ fontSize: '0.65rem', fontWeight: isActive ? 'bold' : 'normal' }}>{item.label}</span>
+              </Link>
+            )
+          })}
+        </nav>
+
       </main>
-      
     </div>
   );
 }

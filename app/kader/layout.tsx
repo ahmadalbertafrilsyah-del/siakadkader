@@ -65,7 +65,7 @@ export default function KaderLayout({ children }: { children: React.ReactNode })
   const menuItems = [
     { id: '/kader/dashboard', icon: '🏠', label: 'Beranda' },
     { id: '/kader/profil', icon: '👤', label: 'Profil Saya' },
-    { id: '/kader/raport', icon: '📊', label: 'Kartu Hasil Studi' },
+    { id: '/kader/raport', icon: '🎓', label: 'Kartu Hasil Studi' },
     { id: '/kader/sertifikat', icon: '📜', label: 'Sertifikat Digital' },
     { id: '/kader/kalender', icon: '📅', label: 'Jadwal Kegiatan' },
     { id: '/kader/pengumuman', icon: '📢', label: 'Pengumuman' },
@@ -78,7 +78,7 @@ export default function KaderLayout({ children }: { children: React.ReactNode })
   const mobileNavItems = [
     { id: '/kader/dashboard', icon: '🏠', label: 'Home' },
     { id: '/kader/kalender', icon: '📅', label: 'Jadwal' },
-    { id: '/kader/raport', icon: '📊', label: 'KHS' },
+    { id: '/kader/raport', icon: '🎓', label: 'KHS' },
     { id: '/kader/tugas', icon: '📋', label: 'Tugas' },
     { id: '/kader/profil', icon: '👤', label: 'Profil' }
   ];

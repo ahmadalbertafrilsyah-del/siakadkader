@@ -1,124 +1,130 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
-export default function PageKalenderRayon() {
-  const [adminRayonId, setAdminRayonId] = useState('');
-  const [namaRayonAsli, setNamaRayonAsli] = useState('');
-  
+export default function PageKalenderJadwal() {
   const [jadwalKegiatan, setJadwalKegiatan] = useState<any[]>([]);
   const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Semua' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // PERBAIKAN: Menggunakan fungsi query & where dari import di bagian paling atas
-        const qRole = query(collection(db, "users"), where("email", "==", user.email));
-        onSnapshot(qRole, (snapRole: any) => {
-          if (!snapRole.empty) {
-            const currentRayonId = snapRole.docs[0].data().username;
-            setAdminRayonId(currentRayonId);
-            setNamaRayonAsli(snapRole.docs[0].data().nama || currentRayonId);
-            
-            onSnapshot(collection(db, "jadwal_kegiatan"), (snap) => {
-              const listJadwal: any[] = [];
-              snap.forEach(doc => {
-                const d = doc.data();
-                if (d.pembuat === "Komisariat" || d.id_rayon === currentRayonId) listJadwal.push({ id: doc.id, ...d });
-              });
-              listJadwal.sort((a, b) => b.timestamp - a.timestamp); 
-              setJadwalKegiatan(listJadwal);
-            });
-          }
-        });
-      }
+    const unsubJadwal = onSnapshot(query(collection(db, "jadwal_kegiatan"), orderBy("timestamp", "desc")), (snap) => {
+      const listJadwal: any[] = []; 
+      snap.forEach(doc => listJadwal.push({ id: doc.id, ...doc.data() })); 
+      setJadwalKegiatan(listJadwal);
     });
-    return () => unsubscribeAuth();
+    return () => unsubJadwal();
   }, []);
-
-  const catatLogAktivitas = async (aksi: string) => {
-    try {
-      await addDoc(collection(db, "log_aktivitas"), {
-        id_rayon: adminRayonId, aktor: namaRayonAsli || adminRayonId, role: "rayon",
-        aksi: aksi, timestamp: Date.now(),
-        waktu_format: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
-      });
-    } catch (e) {}
-  };
 
   const handleTambahJadwal = async (e: React.FormEvent) => {
     e.preventDefault(); setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "jadwal_kegiatan"), { ...formJadwal, id_rayon: adminRayonId, pembuat: namaRayonAsli || adminRayonId, timestamp: Date.now() });
-      catatLogAktivitas(`Menambahkan jadwal kegiatan rayon (Target: ${formJadwal.target}): ${formJadwal.judul}`);
-      alert("Jadwal ditambahkan!"); 
+      await addDoc(collection(db, "jadwal_kegiatan"), { ...formJadwal, pembuat: "Komisariat", timestamp: Date.now() });
+      alert("Jadwal kegiatan berhasil ditambahkan!"); 
       setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Semua' });
-    } catch (error) { alert("Gagal."); } finally { setIsSubmitting(false); }
+    } catch (error) { alert("Gagal menyimpan jadwal."); } finally { setIsSubmitting(false); }
   };
 
-  const handleHapusJadwal = async (id: string, judul: string, pembuat: string) => {
-    if (pembuat === "Komisariat" || pembuat === "Pusat Komisariat") return alert("Anda tidak memiliki akses menghapus jadwal Komisariat.");
+  const handleHapusJadwal = async (id: string, judul: string) => {
     if (!window.confirm(`Hapus jadwal "${judul}"?`)) return;
-    try { 
-      await deleteDoc(doc(db, "jadwal_kegiatan", id)); 
-      catatLogAktivitas(`Menghapus jadwal kegiatan rayon: ${judul}`); 
-    } catch (error) {}
+    try { await deleteDoc(doc(db, "jadwal_kegiatan", id)); } catch (error) { alert("Gagal menghapus."); }
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-        <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📅 Kalender & Jadwal Kegiatan Rayon</h3>
-        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
-            <h4 style={{ marginTop: 0, color: '#333', borderBottom: '1px dashed #ccc', paddingBottom: '8px', fontSize: '0.9rem' }}>➕ Tambah Agenda Rayon</h4>
-            <form onSubmit={handleTambahJadwal} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <input type="text" placeholder="Judul Kegiatan (Cth: RTK Rayon)" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-              <input type="datetime-local" required value={formJadwal.tanggal} onChange={e => setFormJadwal({...formJadwal, tanggal: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-              <input type="text" placeholder="Lokasi / Media" required value={formJadwal.lokasi} onChange={e => setFormJadwal({...formJadwal, lokasi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-              <select required value={formJadwal.target} onChange={e => setFormJadwal({...formJadwal, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', cursor: 'pointer', outline: 'none' }}>
-                <option value="Semua">📢 Terlihat Semua Pengguna</option>
-                <option value="Rayon">🏢 Hanya Admin Rayon</option>
-                <option value="Pendamping">👤 Hanya Para Pendamping</option>
-                <option value="Kader">🎓 Hanya Seluruh Kader</option>
-              </select>
-              <textarea rows={3} placeholder="Deskripsi Singkat" value={formJadwal.deskripsi} onChange={e => setFormJadwal({...formJadwal, deskripsi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', resize: 'vertical', boxSizing: 'border-box', outline: 'none' }} />
-              <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Simpan Agenda</button>
+    <>
+      <style>{`
+        @media (max-width: 767px) {
+           .desktop-view { display: none !important; }
+           body, html, .mobile-content-wrapper, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
+           ::-webkit-scrollbar { display: none; }
+           .mobile-padded { display: flex; flex-direction: column; gap: 15px; }
+        }
+        @media (min-width: 768px) {
+           .mobile-view { display: none !important; }
+        }
+      `}</style>
+
+      {/* TAMPILAN DESKTOP UTUH */}
+      <div className="desktop-view" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ color: '#0d1b2a', margin: '0 0 20px 0', fontSize: '1.2rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>📅 Jadwal Kegiatan Terpusat</h3>
+          
+          <div style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eaeaea', borderRadius: '10px', marginBottom: '25px' }}>
+            <h4 style={{ marginTop: 0, color: '#333', fontSize: '0.9rem', marginBottom: '15px' }}>➕ Tambah Agenda Baru</h4>
+            <form onSubmit={handleTambahJadwal} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px', alignItems: 'end' }}>
+              <div><label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', display: 'block' }}>Judul Kegiatan</label><input type="text" placeholder="Cth: RTM Komisariat" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }} /></div>
+              <div><label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', display: 'block' }}>Tanggal & Waktu</label><input type="datetime-local" required value={formJadwal.tanggal} onChange={e => setFormJadwal({...formJadwal, tanggal: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }} /></div>
+              <div><label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', display: 'block' }}>Lokasi / Media</label><input type="text" placeholder="Gedung / Zoom" required value={formJadwal.lokasi} onChange={e => setFormJadwal({...formJadwal, lokasi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }} /></div>
+              <div><label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', display: 'block' }}>Target Peserta</label><select required value={formJadwal.target} onChange={e => setFormJadwal({...formJadwal, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer' }}><option value="Semua">📢 Terlihat Semua Pengguna</option><option value="Rayon">🏢 Hanya Admin Rayon</option><option value="Pendamping">👤 Hanya Para Pendamping</option><option value="Kader">🎓 Hanya Seluruh Kader</option></select></div>
+              <div style={{ gridColumn: '1 / -1' }}><label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', display: 'block' }}>Deskripsi Singkat</label><textarea rows={2} placeholder="Isi deskripsi..." value={formJadwal.deskripsi} onChange={e => setFormJadwal({...formJadwal, deskripsi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem', resize: 'vertical' }} /></div>
+              <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}><button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Simpan Agenda</button></div>
             </form>
           </div>
-          <div style={{ flex: '2 1 450px', overflowX: 'auto', boxSizing: 'border-box' }}>
-            <div style={{ display: 'grid', gap: '10px' }}>
-              {jadwalKegiatan.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999' }}>Belum ada agenda terjadwal.</div>
-              ) : (
-                jadwalKegiatan.map((jadwal: any) => (
-                  <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', borderLeft: jadwal.pembuat === 'Komisariat' ? '4px solid #f1c40f' : '4px solid #3498db', padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '5px' }}>
-                        <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
-                        {jadwal.pembuat === 'Komisariat' ? (
-                          <span style={{ backgroundColor: '#fff3cd', color: '#856404', padding: '2px 6px', borderRadius: '10px', fontSize: '0.6rem', fontWeight: 'bold', border: '1px solid #ffeeba' }}>Pusat Komisariat</span>
-                        ) : (
-                          <span style={{ backgroundColor: '#eaf4fc', color: '#0000af', padding: '2px 6px', borderRadius: '10px', fontSize: '0.6rem', fontWeight: 'bold', border: '1px solid #b8daff' }}>Agenda Rayon</span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: '#e67e22', fontWeight: 'bold', marginBottom: '5px' }}>🗓️ {jadwal.tanggal.replace('T', ' - ')} | 📍 {jadwal.lokasi}</div>
-                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#555', fontStyle: 'italic' }}>{jadwal.deskripsi}</p>
-                    </div>
-                    {jadwal.pembuat !== 'Komisariat' && (
-                      <button onClick={() => handleHapusJadwal(jadwal.id, jadwal.judul, jadwal.pembuat)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Jadwal Rayon">🗑️</button>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
+
+          <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box', border: '1px solid #eaeaea', borderRadius: '10px', padding: '10px' }}>
+             <table className="tabel-utama" style={{ minWidth: '700px' }}>
+                <thead><tr><th style={{ textAlign: 'left', width: '25%' }}>Agenda</th><th style={{ textAlign: 'left', width: '25%' }}>Waktu & Lokasi</th><th style={{ textAlign: 'left', width: '30%' }}>Deskripsi</th><th style={{ textAlign: 'center', width: '10%' }}>Target</th><th style={{ textAlign: 'center', width: '10%' }}>Aksi</th></tr></thead>
+                <tbody>
+                  {jadwalKegiatan.length === 0 ? (
+                    <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada agenda terjadwal.</td></tr>
+                  ) : (
+                    jadwalKegiatan.map(jadwal => (
+                      <tr key={jadwal.id}>
+                        <td style={{ fontWeight: 'bold', color: '#0d1b2a' }}>{jadwal.judul}</td>
+                        <td><div style={{color: '#e67e22', fontWeight: 'bold', fontSize: '0.8rem'}}>🗓️ {jadwal.tanggal.replace('T', ' - ')}</div><div style={{fontSize: '0.8rem', color: '#555', marginTop: '4px'}}>📍 {jadwal.lokasi}</div></td>
+                        <td style={{ fontSize: '0.85rem', color: '#555', fontStyle: 'italic' }}>{jadwal.deskripsi}</td>
+                        <td style={{ textAlign: 'center' }}><span style={{ backgroundColor: '#eaf4fc', color: '#0000af', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold' }}>{jadwal.target || 'Semua'}</span></td>
+                        <td style={{ textAlign: 'center' }}><button onClick={() => handleHapusJadwal(jadwal.id, jadwal.judul)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Jadwal">🗑️</button></td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+             </table>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* TAMPILAN MOBILE */}
+      <div className="mobile-view mobile-padded">
+        <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)', border: '1px solid #eaeaea' }}>
+          <h4 style={{ marginTop: 0, color: '#0000af', fontSize: '1rem', marginBottom: '15px' }}>➕ Tambah Agenda Baru</h4>
+          <form onSubmit={handleTambahJadwal} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input type="text" placeholder="Judul Kegiatan" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', outline: 'none' }} />
+            <input type="datetime-local" required value={formJadwal.tanggal} onChange={e => setFormJadwal({...formJadwal, tanggal: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', outline: 'none' }} />
+            <input type="text" placeholder="Lokasi / Media" required value={formJadwal.lokasi} onChange={e => setFormJadwal({...formJadwal, lokasi: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', outline: 'none' }} />
+            <select required value={formJadwal.target} onChange={e => setFormJadwal({...formJadwal, target: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', backgroundColor: '#fff', outline: 'none' }}>
+               <option value="Semua">📢 Terlihat Semua Pengguna</option><option value="Rayon">🏢 Hanya Admin Rayon</option><option value="Pendamping">👤 Hanya Para Pendamping</option><option value="Kader">🎓 Hanya Seluruh Kader</option>
+            </select>
+            <textarea rows={3} placeholder="Deskripsi Singkat" value={formJadwal.deskripsi} onChange={e => setFormJadwal({...formJadwal, deskripsi: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', outline: 'none' }} />
+            <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '15px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem' }}>{isSubmitting ? 'Menyimpan...' : 'Simpan Agenda'}</button>
+          </form>
+        </div>
+
+        <h4 style={{ margin: '10px 0 5px 0', color: '#555', fontSize: '0.9rem' }}>Daftar Jadwal Kegiatan</h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {jadwalKegiatan.length === 0 ? (
+            <div style={{ padding: '25px', textAlign: 'center', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', color: '#999', fontSize: '0.85rem' }}>Belum ada agenda terjadwal.</div>
+          ) : (
+            jadwalKegiatan.map(jadwal => (
+              <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eaeaea', borderLeft: `5px solid #0000af`, padding: '20px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
+                  <span style={{ backgroundColor: '#eaf4fc', color: '#0000af', padding: '4px 8px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 'bold' }}>{jadwal.target}</span>
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#e67e22', fontWeight: 'bold' }}>📍 {jadwal.lokasi}</div>
+                <div style={{ fontSize: '0.8rem', color: '#555' }}>⏰ {jadwal.tanggal.replace('T', ' - ')}</div>
+                <p style={{ margin: '5px 0 10px 0', fontSize: '0.85rem', color: '#555', lineHeight: '1.4' }}>{jadwal.deskripsi}</p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => handleHapusJadwal(jadwal.id, jadwal.judul)} style={{ color: '#e74c3c', backgroundColor: '#fff0f0', border: '1px solid #fadbd8', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold' }}>🗑️ Hapus</button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <div style={{ height: '80px' }}></div>
+      </div>
+    </>
   );
 }

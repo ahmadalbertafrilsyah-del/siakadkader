@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, addDoc, query, where, doc, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 export default function DashboardKader() {
@@ -41,22 +41,17 @@ export default function DashboardKader() {
   const [ipkPkd, setIpkPkd] = useState<string | null>(null);
   const [ipkSig, setIpkSig] = useState<string | null>(null);
   const [ipkSkp, setIpkSkp] = useState<string | null>(null);
-  const [ipKader, setIpKader] = useState('0.00');
+  const [ipKaderTampilan, setIpKaderTampilan] = useState('0.00');
 
-  // --- STATE ENTERPRISE (KALENDER, BROADCAST) ---
+  // --- STATE ENTERPRISE ---
   const [jadwalKegiatan, setJadwalKegiatan] = useState<any[]>([]);
   const [notifikasiGlobal, setNotifikasiGlobal] = useState<any[]>([]);
 
   useEffect(() => {
     const qPendamping = query(collection(db, "users"), where("role", "==", "pendamping"));
-    const unsubP = onSnapshot(qPendamping, (snap) => {
-      setSemuaPendamping(snap.docs.map(d => ({ username: d.id, ...d.data() })));
-    });
-
+    const unsubP = onSnapshot(qPendamping, (snap) => setSemuaPendamping(snap.docs.map(d => ({ username: d.id, ...d.data() }))));
     const qRayon = query(collection(db, "users"), where("role", "==", "rayon"));
-    const unsubR = onSnapshot(qRayon, (snap) => {
-      setSemuaRayon(snap.docs.map(d => ({ username: d.id, ...d.data() })));
-    });
+    const unsubR = onSnapshot(qRayon, (snap) => setSemuaRayon(snap.docs.map(d => ({ username: d.id, ...d.data() }))));
 
     return () => { unsubP(); unsubR(); };
   }, []);
@@ -68,10 +63,7 @@ export default function DashboardKader() {
         onSnapshot(q, (snap) => {
           if (!snap.empty) {
             const dataDB = snap.docs[0].data();
-            if (dataDB.role !== 'kader') {
-              router.push('/');
-              return;
-            }
+            if (dataDB.role !== 'kader') { router.push('/'); return; }
 
             setProfil({
               fotoUrl: dataDB.fotoUrl || 'https://via.placeholder.com/200x250/e74c3c/fff?text=FOTO',
@@ -93,9 +85,7 @@ export default function DashboardKader() {
                  setNamaRayonAsli('Pusat Komisariat');
               } else {
                  onSnapshot(doc(db, "users", dataDB.id_rayon), (rayonSnap) => {
-                   if (rayonSnap.exists()) {
-                      setNamaRayonAsli(rayonSnap.data().nama || dataDB.id_rayon);
-                   }
+                   if (rayonSnap.exists()) { setNamaRayonAsli(rayonSnap.data().nama || dataDB.id_rayon); }
                  });
               }
 
@@ -105,22 +95,15 @@ export default function DashboardKader() {
                 ...(Array.isArray(dataDB.pendamping_sig_id) ? dataDB.pendamping_sig_id : (dataDB.pendamping_sig_id ? [dataDB.pendamping_sig_id] : [])),
                 ...(Array.isArray(dataDB.pendampingId) ? dataDB.pendampingId : (dataDB.pendampingId ? [dataDB.pendampingId] : []))
               ];
-
               jalankanPendengarDataRayon(dataDB.nim, user.email, dataDB.id_rayon, allP, dataDB.pendamping_skp_id);
             }
           }
         });
         
         onSnapshot(doc(db, "pengaturan_sistem", "komisariat_settings"), (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            if (data.bobot_penilaian) setKategoriBobotKomisariat(data.bobot_penilaian);
-          }
+          if (docSnap.exists() && docSnap.data().bobot_penilaian) setKategoriBobotKomisariat(docSnap.data().bobot_penilaian);
         });
-
-      } else {
-        router.push('/');
-      }
+      } else { router.push('/'); }
     });
     return () => unsubscribeAuth();
   }, [router]);
@@ -139,9 +122,7 @@ export default function DashboardKader() {
     });
 
     onSnapshot(doc(db, "pengaturan_rayon", idRayon), (docSnap) => {
-      if (docSnap.exists() && docSnap.data().bobot_penilaian) {
-        setKategoriBobotRayon(docSnap.data().bobot_penilaian);
-      }
+      if (docSnap.exists() && docSnap.data().bobot_penilaian) { setKategoriBobotRayon(docSnap.data().bobot_penilaian); }
     });
 
     onSnapshot(doc(db, "nilai_khs", nimKader), (docSnap) => {
@@ -150,24 +131,17 @@ export default function DashboardKader() {
 
     const qBerkas = query(collection(db, "berkas_kader"), where("email_kader", "==", emailKader));
     onSnapshot(qBerkas, (snap) => {
-      const dataBerkas: any[] = [];
-      snap.forEach((doc) => dataBerkas.push({ id: doc.id, ...doc.data() }));
-      dataBerkas.sort((a: any, b: any) => b.timestamp - a.timestamp);
-      setRiwayatBerkas(dataBerkas);
-      setTugasSelesai(dataBerkas.filter(b => b.status === 'Selesai').length);
+      const dataBerkas: any[] = []; snap.forEach((doc) => dataBerkas.push({ id: doc.id, ...doc.data() }));
+      setRiwayatBerkas(dataBerkas); setTugasSelesai(dataBerkas.filter(b => b.status === 'Selesai').length);
     });
 
     onSnapshot(query(collection(db, "master_tugas"), where("id_rayon", "==", idRayon)), (snapRayon) => {
-      const dataTugasRayon: any[] = [];
-      snapRayon.forEach((doc) => dataTugasRayon.push({ id: doc.id, ...doc.data() }));
-
+      const dataTugasRayon: any[] = []; snapRayon.forEach((doc) => dataTugasRayon.push({ id: doc.id, ...doc.data() }));
       onSnapshot(query(collection(db, "master_tugas"), where("jenjang", "==", "SKP")), (snapSkp) => {
-        const dataTugasSkp: any[] = [];
-        snapSkp.forEach((doc) => dataTugasSkp.push({ id: doc.id, ...doc.data() }));
+        const dataTugasSkp: any[] = []; snapSkp.forEach((doc) => dataTugasSkp.push({ id: doc.id, ...doc.data() }));
         const mergedTugas = [...dataTugasRayon, ...dataTugasSkp];
         const uniqueTugas = Array.from(new Map(mergedTugas.map(item => [item.id, item])).values());
-        setListMasterTugas(uniqueTugas);
-        setTugasTotal(uniqueTugas.length);
+        setListMasterTugas(uniqueTugas); setTugasTotal(uniqueTugas.length);
       });
     });
 
@@ -186,8 +160,7 @@ export default function DashboardKader() {
           listJadwal.push({ id: doc.id, ...d });
         }
       });
-      listJadwal.sort((a, b) => b.timestamp - a.timestamp);
-      setJadwalKegiatan(listJadwal);
+      listJadwal.sort((a, b) => b.timestamp - a.timestamp); setJadwalKegiatan(listJadwal);
     });
 
     onSnapshot(collection(db, "notifikasi_global"), (snap) => {
@@ -200,19 +173,14 @@ export default function DashboardKader() {
           }
         }
       });
-      listNotif.sort((a, b) => b.timestamp - a.timestamp);
-      setNotifikasiGlobal(listNotif);
+      listNotif.sort((a, b) => b.timestamp - a.timestamp); setNotifikasiGlobal(listNotif);
     });
   };
 
   useEffect(() => {
     if (!profil.nim) return;
     const unsubscribeKeaktifan = onSnapshot(doc(db, "evaluasi_kader", profil.nim), (docSnap) => {
-      if (docSnap.exists()) {
-        setEvaluasiKaderGlobal(docSnap.data());
-      } else {
-        setEvaluasiKaderGlobal({});
-      }
+      if (docSnap.exists()) setEvaluasiKaderGlobal(docSnap.data()); else setEvaluasiKaderGlobal({});
     });
     return () => unsubscribeKeaktifan();
   }, [profil.nim]);
@@ -229,40 +197,39 @@ export default function DashboardKader() {
   const konversiHurufKeAngka = (huruf: string) => {
     if(huruf === 'A') return 4; if(huruf === 'B') return 3; if(huruf === 'C') return 2; if(huruf === 'D') return 1; return 0;
   };
-
   const getNilaiHuruf = (angka: number) => {
     if (angka >= 76) return "A"; if (angka >= 51) return "B"; if (angka >= 26) return "C"; if (angka >= 10) return "D"; if (angka > 0) return "E"; return "-";
   };
 
-  // --- PERHITUNGAN IPK PRESISI ---
-  const getNilaiHurufRealtime = (kodeMateri: string, jenjangTujuan: string) => {
-    const bobotJenjang = jenjangTujuan === 'SKP' ? (kategoriBobotKomisariat['SKP'] || []) : (kategoriBobotRayon[jenjangTujuan] || (kategoriBobotRayon['MAPABA'] || []));
-    const mentah = evaluasiKaderGlobal[jenjangTujuan]?.nilai_mentah?.[kodeMateri];
-    
-    if (!bobotJenjang || bobotJenjang.length === 0) return "-";
-    if (!mentah || Object.keys(mentah).length === 0) return nilaiKader[kodeMateri] || "-";
-
-    let angkaAkhir = 0;
-    bobotJenjang.forEach((kat: any) => {
-        const score = mentah[kat.nama] || 0;
-        angkaAkhir += (score * (kat.persen / 100));
-    });
-    return getNilaiHuruf(angkaAkhir);
-  };
-
+  // --- PERHITUNGAN IPK PRESISI (100% SINKRON DENGAN KHS) ---
   const hitungIpkPerJenjang = (jenjang: string) => {
     const materi = listKurikulum[jenjang] || [];
     if (materi.length === 0) return null;
+
     let tSks = 0; let tBobot = 0; let adaNilai = false;
-    
+    const bobotJenjang = jenjang === 'SKP' ? (kategoriBobotKomisariat['SKP'] || []) : (kategoriBobotRayon[jenjang] || (kategoriBobotRayon['MAPABA'] || []));
+    const evaluasiDiJenjang = evaluasiKaderGlobal[jenjang] || { nilai_mentah: {} };
+
     materi.forEach(m => {
-        const huruf = getNilaiHurufRealtime(m.kode, jenjang);
+        const mentah = evaluasiDiJenjang.nilai_mentah?.[m.kode];
+        let angkaAkhir = 0; let hitungPresisi = false;
+
+        if (mentah && Object.keys(mentah).length > 0 && bobotJenjang.length > 0) {
+            bobotJenjang.forEach((kat: any) => { angkaAkhir += ((mentah[kat.nama] || 0) * (kat.persen / 100)); });
+            hitungPresisi = true;
+        }
+
+        const angkaSkala4 = angkaAkhir > 0 ? (angkaAkhir / 25) : 0;
         tSks += (m.bobot || 0);
-        if (huruf !== "-") {
-            adaNilai = true;
-            tBobot += (m.bobot || 0) * konversiHurufKeAngka(huruf);
+        if (hitungPresisi && angkaAkhir > 0) {
+            adaNilai = true; tBobot += (m.bobot || 0) * angkaSkala4;
+        } else if (nilaiKader[m.kode]) {
+            adaNilai = true; const h = nilaiKader[m.kode];
+            const val = h === 'A' ? 4 : h === 'B' ? 3 : h === 'C' ? 2 : h === 'D' ? 1 : 0;
+            tBobot += (m.bobot || 0) * val;
         }
     });
+
     if (!adaNilai) return null;
     return tSks > 0 ? (tBobot / tSks).toFixed(2) : "0.00";
   };
@@ -277,8 +244,7 @@ export default function DashboardKader() {
                        profil.jenjang === 'PKD' ? hitungIpkPerJenjang('PKD') :
                        profil.jenjang === 'SIG' ? hitungIpkPerJenjang('SIG') :
                        profil.jenjang === 'SKP' ? hitungIpkPerJenjang('SKP') : '0.00';
-                       
-    setIpKader(currentIpk || '0.00');
+    setIpKaderTampilan(currentIpk || '0.00');
   }, [listKurikulum, evaluasiKaderGlobal, kategoriBobotRayon, kategoriBobotKomisariat, profil.jenjang, nilaiKader]);
 
 
@@ -297,13 +263,12 @@ export default function DashboardKader() {
     const areaD = `${pathD} L ${getX(3)} 120 L ${getX(0)} 120 Z`;
 
     return (
-        <div style={{ backgroundColor: '#fff', borderRadius: '24px', padding: '25px 20px', boxShadow: '0 8px 25px rgba(0,0,0,0.03)' }}>
+        <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <div style={{ fontSize: '0.9rem', color: '#555', fontWeight: 'bold' }}>Grafik Indeks Prestasi</div>
-              <div style={{ fontSize: '0.75rem', color: '#27ae60', fontWeight: 'bold', backgroundColor: '#eaf4fc', padding: '6px 10px', borderRadius: '12px' }}>IPK Max: 4.00</div>
+              <div style={{ fontSize: '0.85rem', color: '#555', fontWeight: 'bold' }}>Grafik Indeks Prestasi</div>
+              <div style={{ fontSize: '0.75rem', color: '#27ae60', fontWeight: 'bold', backgroundColor: '#eaf4fc', padding: '4px 8px', borderRadius: '8px' }}>IPK Max: 4.00</div>
            </div>
-           
-           <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '10px' }}>
+           <div style={{ width: '100%', overflowX: 'auto', paddingBottom: '10px' }} className="hide-scroll">
               <svg viewBox="0 0 350 140" style={{ width: '100%', minWidth: '350px', height: '140px', overflow: 'visible' }}>
                  <defs>
                    <linearGradient id="gradientIPK" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -311,25 +276,20 @@ export default function DashboardKader() {
                      <stop offset="100%" stopColor="#0000af" stopOpacity="0" />
                    </linearGradient>
                  </defs>
-                 
                  {[0, 1, 2, 3, 4].map(v => (
                     <g key={v}>
                       <text x="10" y={getY(v) + 4} fontSize="10" fill="#bbb" fontWeight="bold">{v}</text>
                       <line x1="25" y1={getY(v)} x2="350" y2={getY(v)} stroke="#f4f6f9" strokeWidth="2" strokeDasharray="4" />
                     </g>
                  ))}
-                 
                  <path d={areaD} fill="url(#gradientIPK)" />
                  <path d={pathD} fill="none" stroke="#0000af" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                 
                  {ipks.map((p, i) => (
                     <g key={i}>
-                       <circle cx={getX(i)} cy={getY(p.val)} r="6" fill="#fff" stroke="#0000af" strokeWidth="3" />
+                       <circle cx={getX(i)} cy={getY(p.val)} r="5" fill="#fff" stroke="#0000af" strokeWidth="2" />
                        <text x={getX(i)} y="135" fontSize="10" fill="#777" textAnchor="middle" fontWeight="bold">{p.label}</text>
                        {p.val > 0 && (
-                           <text x={getX(i)} y={getY(p.val) - 12} fontSize="11" fill="#0000af" textAnchor="middle" fontWeight="bold">
-                               {p.val.toFixed(2)}
-                           </text>
+                           <text x={getX(i)} y={getY(p.val) - 10} fontSize="11" fill="#0000af" textAnchor="middle" fontWeight="bold">{p.val.toFixed(2)}</text>
                        )}
                     </g>
                  ))}
@@ -341,64 +301,34 @@ export default function DashboardKader() {
 
   const MenuCardMobile = ({ icon, label, onClick }: any) => (
     <div onClick={onClick} className="hover-card-modern" style={{ 
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', 
-        cursor: 'pointer', backgroundColor: '#fff', padding: '18px 8px', 
-        borderRadius: '20px', transition: 'all 0.3s ease' 
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', 
+        cursor: 'pointer', backgroundColor: '#fff', padding: '15px 5px', 
+        borderRadius: '16px', transition: 'all 0.3s ease', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
     }}>
-       <div style={{ 
-           backgroundColor: '#f0f5ff', width: '56px', height: '56px', borderRadius: '18px', 
-           display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.6rem',
-           boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 10px rgba(0,0,175,0.08)'
-       }}>
+       <div style={{ backgroundColor: '#f4f6f9', width: '50px', height: '50px', borderRadius: '14px', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.5rem', boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.8), 0 2px 5px rgba(0,0,175,0.05)' }}>
            {icon}
        </div>
-       <div style={{ fontSize: '0.75rem', color: '#333', textAlign: 'center', fontWeight: 'bold' }}>{label}</div>
+       <div style={{ fontSize: '0.75rem', color: '#111', textAlign: 'center', fontWeight: 'bold' }}>{label}</div>
     </div>
   );
 
   return (
     <>
       <style>{`
-        /* CSS KHUSUS TOGGLE VIEW & MODERN DESIGN */
+        /* CSS KHUSUS TOGGLE VIEW */
         .desktop-view { display: flex; flex-direction: column; gap: 20px; }
         .mobile-view { display: none; }
         
         @media (max-width: 767px) {
            .desktop-view { display: none !important; }
            .mobile-view { display: block !important; }
-           
-           /* Menghilangkan scrollbar secara global pada view mobile */
-           body, html, .mobile-view {
-             overflow-x: hidden;
-             -ms-overflow-style: none;  
-             scrollbar-width: none;  
-           }
-           ::-webkit-scrollbar {
-             display: none;
-           }
+           body, html, .mobile-content-wrapper, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
+           ::-webkit-scrollbar { display: none; }
         }
 
         .hover-card-modern:active { transform: scale(0.95); opacity: 0.8; }
-        
-        .modern-gradient-card {
-            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
-            border-radius: 24px;
-            padding: 25px;
-            color: white;
-            box-shadow: 0 10px 30px rgba(46, 204, 113, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        .modern-gradient-card::after {
-            content: '';
-            position: absolute;
-            top: -40px;
-            right: -30px;
-            width: 140px;
-            height: 140px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 50%;
-        }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       {/* ========================================================== */}
@@ -406,7 +336,7 @@ export default function DashboardKader() {
       {/* ========================================================== */}
       <div className="desktop-view">
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }}>
-          <h2 style={{marginTop: 0, fontSize: '1.6rem', color: '#0000af'}}>Halo, Sahabat/i {profil.nama}! 👋</h2>
+          <h2 style={{marginTop: 0, fontSize: '1.6rem', color: '#0000af'}}>Halo, Sahabat/i {profil.nama ? profil.nama.split(' ')[0] : ''}! 👋</h2>
           <p style={{margin: '8px 0 0 0', fontSize: '0.95rem', color: '#555', opacity: 0.9}}>Selamat datang di Sistem Informasi Akademik dan Kaderisasi {namaRayonAsli}. Berikut adalah ringkasan progres kaderisasi Anda saat ini.</p>
         </div>
 
@@ -488,36 +418,33 @@ export default function DashboardKader() {
       </div>
 
       {/* ========================================================== */}
-      {/* 2. TAMPILAN MOBILE APP ONLY (MODERN & ELEGANT)             */}
+      {/* 2. TAMPILAN MOBILE APP ONLY (BERSIH, TEGAS & MENYATU)      */}
       {/* ========================================================== */}
-      <div className="mobile-view" style={{ minHeight: '100%', margin: 0, padding: 0, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <div className="mobile-view" style={{ padding: '0 15px' }}>
         
-        {/* Area Lengkungan Biru Tua Premium */}
+        {/* Area Lengkungan Biru Tua menyambung dengan Header Layout */}
         <div style={{ 
-           background: 'linear-gradient(135deg, #0000af 0%, #1a56db 100%)', 
-           padding: '40px 20px 90px 20px', 
-           borderBottomLeftRadius: '40px', 
-           borderBottomRightRadius: '40px', 
+           backgroundColor: '#0000af', 
+           padding: '15px 20px 65px 20px', 
+           margin: '-15px -15px 0 -15px', /* Menembus padding bawaan layout agar menyatu dengan header */
+           borderBottomLeftRadius: '30px', 
+           borderBottomRightRadius: '30px', 
            color: 'white',
-           marginTop: '-1px',
            position: 'relative',
-           overflow: 'hidden'
+           zIndex: 1
         }}>
-           <div style={{ position: 'absolute', top: '-30px', right: '-20px', width: '150px', height: '150px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
-           <div style={{ position: 'absolute', bottom: '20px', left: '-40px', width: '100px', height: '100px', background: 'rgba(255,255,255,0.05)', borderRadius: '50%' }} />
-           
-           <h1 style={{ margin: 0, fontSize: '1.6rem', letterSpacing: '0.5px', fontWeight: 'bold', color: '#f1c40f', position: 'relative', zIndex: 2 }}>SIAKAD PMII</h1>
-           <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem', opacity: 0.9, lineHeight: '1.5', position: 'relative', zIndex: 2 }}>
+           <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold', letterSpacing: '0.5px', color: '#f1c40f' }}>SIAKAD PMII</h1>
+           <p style={{ margin: '6px 0 0 0', fontSize: '0.85rem', opacity: 0.9, lineHeight: '1.4' }}>
              Akses seluruh data kaderisasi, tugas, raport, dan referensi bacaan {namaRayonAsli} dalam satu genggaman.
            </p>
         </div>
 
-        {/* Grid Menu Kotak Melayang */}
-        <div style={{ marginTop: '-60px', padding: '0 20px', position: 'relative', zIndex: 10 }}>
+        {/* Grid Menu Kotak */}
+        <div style={{ marginTop: '-35px', position: 'relative', zIndex: 10 }}>
           <div style={{ 
-             backgroundColor: '#ffffff', borderRadius: '24px', padding: '25px 15px', 
-             boxShadow: '0 15px 35px rgba(0,0,0,0.06)', 
-             display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px 10px' 
+             backgroundColor: '#ffffff', borderRadius: '16px', padding: '20px 10px', 
+             boxShadow: '0 8px 20px rgba(0,0,0,0.06)', 
+             display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px 10px' 
           }}>
              <MenuCardMobile icon="🎓" label="Kartu KHS" onClick={() => router.push('/kader/raport')} />
              <MenuCardMobile icon="📚" label="Perpus" onClick={() => router.push('/kader/perpustakaan')} />
@@ -528,43 +455,63 @@ export default function DashboardKader() {
           </div>
         </div>
 
-        {/* Kartu IPK Dinamis Utama (Modern Green Gradient Card) */}
-        <div style={{ padding: '25px 20px 10px 20px' }}>
-          <div className="modern-gradient-card">
+        {/* Kartu IPK Dinamis Utama (Modern Green) */}
+        <div style={{ marginTop: '20px' }}>
+          <div style={{ 
+            background: 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)', 
+            borderRadius: '16px', padding: '20px', 
+            boxShadow: '0 6px 15px rgba(46, 204, 113, 0.2)', position: 'relative', overflow: 'hidden'
+          }}>
              <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                <div>
-                 <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.9)', fontWeight: 'bold', marginBottom: '6px', letterSpacing: '0.5px' }}>Indeks Prestasi Saat Ini</div>
-                 <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#fff', textShadow: '0 2px 10px rgba(0,0,0,0.15)' }}>IPK: {ipKader}</div>
+                 <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.9)', fontWeight: 'bold', marginBottom: '6px' }}>Indeks Prestasi Saat Ini</div>
+                 <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#fff' }}>IPK: {ipKaderTampilan}</div>
                </div>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: profil.status === 'Aktif' ? '#1e824c' : '#c62828', fontWeight: 'bold', fontSize: '0.75rem', backgroundColor: '#fff', padding: '8px 14px', borderRadius: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: profil.status === 'Aktif' ? '#1e824c' : '#c62828', fontWeight: 'bold', fontSize: '0.75rem', backgroundColor: '#fff', padding: '6px 12px', borderRadius: '20px' }}>
                  Kader {profil.status || 'Aktif'} <span style={{fontSize: '0.6rem'}}>{profil.status === 'Pasif' ? '🔴' : '🟢'}</span>
                </div>
              </div>
           </div>
         </div>
 
+        {/* Kotak IPK Tiap Jenjang (Scroll Horizontal) */}
+        <div style={{ marginTop: '20px' }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#555', fontSize: '0.9rem' }}>Detail IPK per Jenjang</h4>
+          <div className="hide-scroll" style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '10px' }}>
+              {[
+                { label: 'MAPABA', val: ipkMapaba }, { label: 'PKD', val: ipkPkd },
+                { label: 'SIG', val: ipkSig }, { label: 'SKP', val: ipkSkp }
+              ].map(item => (
+                <div key={item.label} style={{ minWidth: '100px', backgroundColor: '#fff', padding: '15px', borderRadius: '12px', border: '1px solid #eaeaea', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#777', fontWeight: 'bold' }}>{item.label}</div>
+                    <div style={{ fontSize: '1.2rem', color: item.val ? '#0000af' : '#ccc', fontWeight: '900', marginTop: '6px' }}>{item.val || '-'}</div>
+                </div>
+              ))}
+          </div>
+        </div>
+
         {/* GRAFIK LINE CHART VISUAL */}
-        <div style={{ padding: '10px 20px 20px 20px' }}>
+        <div style={{ marginTop: '10px' }}>
           <LineChartIPK />
         </div>
 
         {/* Kartu Profil Warning */}
         {(!profil.nim || !profil.tempatLahir || profil.nia === '-') && (
-          <div style={{ padding: '0 20px 30px 20px' }}>
+          <div style={{ marginTop: '20px', marginBottom: '20px' }}>
             <div style={{ 
-               backgroundColor: '#fffbeb', borderRadius: '20px', padding: '25px', border: '1px solid #ffeeba',
-               boxShadow: '0 8px 20px rgba(241, 196, 15, 0.1)', display: 'flex', flexDirection: 'column', gap: '12px' 
+               backgroundColor: '#fff3cd', borderRadius: '16px', padding: '20px', border: '1px solid #f1c40f',
+               boxShadow: '0 4px 12px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: '10px' 
             }}>
-               <h4 style={{ margin: 0, color: '#856404', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}><span>⚠️</span> Profil Belum Lengkap!</h4>
-               <p style={{ margin: 0, fontSize: '0.85rem', color: '#856404', lineHeight: '1.5' }}>Mohon lengkapi NIK, TTL, dll untuk keperluan penerbitan sertifikat digital resmi Anda.</p>
-               <button onClick={() => router.push('/kader/profil')} style={{ alignSelf: 'flex-start', backgroundColor: '#f1c40f', color: '#0d1b2a', border: 'none', padding: '10px 24px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer', marginTop: '5px', boxShadow: '0 4px 10px rgba(241, 196, 15, 0.3)' }}>
-                 Lengkapi Sekarang
+               <h4 style={{ margin: 0, color: '#856404', fontSize: '0.9rem' }}>Profil Anda Belum Lengkap!</h4>
+               <p style={{ margin: 0, fontSize: '0.8rem', color: '#856404' }}>Mohon lengkapi NIK, TTL, dll untuk keperluan penerbitan sertifikat digital resmi Anda.</p>
+               <button onClick={() => router.push('/kader/profil')} style={{ alignSelf: 'flex-start', backgroundColor: '#f1c40f', color: '#0d1b2a', border: 'none', padding: '8px 20px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.8rem', cursor: 'pointer', marginTop: '5px' }}>
+                 Lengkapi Profil
                </button>
             </div>
           </div>
         )}
 
-        <div style={{ height: '90px' }}></div>
+        <div style={{ height: '80px' }}></div>
       </div>
 
     </>

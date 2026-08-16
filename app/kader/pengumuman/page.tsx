@@ -56,11 +56,14 @@ export default function PagePengumumanKader() {
       <style>{`
         .desktop-view { display: block; }
         .mobile-view { display: none; }
+        .mobile-padded { display: flex; flex-direction: column; gap: 15px; }
+
         @media (max-width: 767px) {
            .desktop-view { display: none !important; }
            .mobile-view { display: block !important; }
            body, html, .mobile-content-wrapper, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
            ::-webkit-scrollbar { display: none; }
+           .mobile-padded { padding: 15px !important; }
         }
       `}</style>
 
@@ -96,33 +99,31 @@ export default function PagePengumumanKader() {
       </div>
 
       {/* MOBILE VIEW */}
-      <div className="mobile-view">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {notifikasiGlobal.length === 0 ? (
-            <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '8px', color: '#999', fontSize: '0.85rem' }}>Belum ada informasi terbaru.</div>
-          ) : (
-            notifikasiGlobal.map(notif => {
-              const isBinaan = notif.target === 'Binaan';
-              const isKomisariat = notif.pengirim === 'Pusat Komisariat';
-              const borderColor = isKomisariat ? '#f1c40f' : isBinaan ? '#27ae60' : '#3498db';
-              
-              return (
-                <div key={notif.id} style={{ padding: '15px', backgroundColor: '#fff', border: '1px solid #eaeaea', borderLeft: `5px solid ${borderColor}`, borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <strong style={{ color: '#0d1b2a', fontSize: '1rem', flex: 1, paddingRight: '10px' }}>{notif.judul}</strong>
-                    <span style={{ fontSize: '0.65rem', color: '#888', whiteSpace: 'nowrap' }}>{notif.tanggal.split(' pukul')[0]}</span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#555', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{notif.pesan}</p>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.7rem', color: borderColor, fontWeight: 'bold' }}>{notif.pengirim}</div>
-                    {notif.batas_waktu && (<div style={{ fontSize: '0.7rem', color: '#e74c3c', fontWeight: 'bold' }}>Batas: {notif.batas_waktu}</div>)}
-                  </div>
+      <div className="mobile-view mobile-padded">
+        {notifikasiGlobal.length === 0 ? (
+          <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', color: '#999', fontSize: '0.85rem' }}>Belum ada informasi terbaru.</div>
+        ) : (
+          notifikasiGlobal.map(notif => {
+            const isBinaan = notif.target === 'Binaan';
+            const isKomisariat = notif.pengirim === 'Pusat Komisariat';
+            const borderColor = isKomisariat ? '#f1c40f' : isBinaan ? '#27ae60' : '#3498db';
+            
+            return (
+              <div key={notif.id} style={{ padding: '20px', backgroundColor: '#fff', border: '1px solid #eaeaea', borderLeft: `5px solid ${borderColor}`, borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <strong style={{ color: '#0d1b2a', fontSize: '1.05rem', flex: 1, paddingRight: '10px' }}>{notif.judul}</strong>
+                  <span style={{ fontSize: '0.7rem', color: '#888', whiteSpace: 'nowrap' }}>{notif.tanggal.split(' pukul')[0]}</span>
                 </div>
-              )
-            })
-          )}
-        </div>
-        <div style={{ height: '30px' }}></div>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: '#555', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{notif.pesan}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', alignItems: 'center' }}>
+                  <div style={{ fontSize: '0.75rem', color: borderColor, fontWeight: 'bold' }}>{notif.pengirim}</div>
+                  {notif.batas_waktu && (<div style={{ fontSize: '0.75rem', color: '#e74c3c', fontWeight: 'bold' }}>Batas: {notif.batas_waktu}</div>)}
+                </div>
+              </div>
+            )
+          })
+        )}
+        <div style={{ height: '50px' }}></div>
       </div>
     </>
   );

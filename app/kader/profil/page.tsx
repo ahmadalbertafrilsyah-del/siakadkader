@@ -46,10 +46,7 @@ export default function PageProfilKader() {
       }
     });
 
-    return () => {
-      unsubscribeAuth();
-      unsubs.forEach(unsub => unsub());
-    };
+    return () => { unsubscribeAuth(); unsubs.forEach(unsub => unsub()); };
   }, []);
 
   const uploadToCloudinary = async (file: File) => {
@@ -76,81 +73,30 @@ export default function PageProfilKader() {
   return (
     <>
       <style>{`
-        /* RESPONSIVE LAYOUT & HIDE SCROLLBAR */
+        .mobile-padded { display: flex; flex-direction: column; gap: 20px; }
         @media (max-width: 767px) {
-           body, html, .mobile-content-wrapper, .app-container {
-             overflow-x: hidden;
-             -ms-overflow-style: none;
-             scrollbar-width: none;
-           }
-           ::-webkit-scrollbar {
-             display: none;
-           }
-           /* Di HP, header profil nempel ke tepi layar tanpa lengkungan */
-           .profile-header-card {
-             margin: -20px -20px 20px -20px !important;
-             border-radius: 0 !important;
-           }
-           .profile-header-banner {
-             border-radius: 0 !important;
-           }
+           body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
+           ::-webkit-scrollbar { display: none; }
+           .mobile-padded { padding: 15px !important; }
         }
         
         @media (min-width: 768px) {
-           /* Di Laptop, kartu menjadi grid 2 kolom agar tidak sempit */
-           .profile-grid {
-             display: grid;
-             grid-template-columns: 1fr 1fr;
-             gap: 20px;
-           }
+           .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         }
 
-        .profile-grid {
-           display: flex;
-           flex-direction: column;
-           gap: 20px;
-        }
-
-        .profile-input {
-          width: 100%;
-          padding: 12px;
-          border: 1px solid #eaeaea;
-          background-color: #f8f9fa;
-          border-radius: 6px;
-          font-size: 0.9rem;
-          outline: none;
-          color: #333;
-          transition: all 0.3s;
-        }
-        .profile-input:focus {
-          border-color: #0000af;
-          background-color: #fff;
-        }
-        .info-row {
-          display: flex;
-          flex-direction: column;
-          margin-bottom: 15px;
-          border-bottom: 1px solid #f0f0f0;
-          padding-bottom: 12px;
-        }
-        .info-label {
-          font-size: 0.75rem;
-          color: #888;
-          font-weight: bold;
-          margin-bottom: 4px;
-        }
-        .info-value {
-          font-size: 0.95rem;
-          color: #333;
-          font-weight: bold;
-        }
+        .profile-grid { display: flex; flex-direction: column; gap: 20px; }
+        .profile-input { width: 100%; padding: 12px; border: 1px solid #eaeaea; background-color: #f8f9fa; border-radius: 6px; font-size: 0.9rem; outline: none; color: #333; transition: all 0.3s; }
+        .profile-input:focus { border-color: #0000af; background-color: #fff; }
+        .info-row { display: flex; flex-direction: column; margin-bottom: 15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 12px; }
+        .info-label { font-size: 0.75rem; color: #888; font-weight: bold; margin-bottom: 4px; }
+        .info-value { font-size: 0.95rem; color: #333; font-weight: bold; }
       `}</style>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="mobile-padded" style={{ maxWidth: '800px', margin: '0 auto' }}>
         
-        {/* KARTU HEADER PROFIL */}
-        <div className="profile-header-card" style={{ backgroundColor: '#fff', borderRadius: '8px', paddingBottom: '30px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
-          <div className="profile-header-banner" style={{ height: '120px', backgroundColor: '#0000af', borderRadius: '8px 8px 0 0' }} />
+        {/* KARTU HEADER PROFIL (Tanpa lengkungan berlebihan) */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', paddingBottom: '30px', border: '1px solid #eaeaea', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ height: '120px', backgroundColor: '#0000af' }} />
           
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '-60px', position: 'relative', zIndex: 2 }}>
             <div style={{ position: 'relative' }}>
@@ -160,8 +106,7 @@ export default function PageProfilKader() {
                   📷
                   <input type="file" accept="image/*" onChange={(e) => {
                      if (e.target.files && e.target.files[0]) {
-                       setFotoFile(e.target.files[0]);
-                       setProfilKader({ ...profilKader, fotoUrl: URL.createObjectURL(e.target.files[0]) });
+                       setFotoFile(e.target.files[0]); setProfilKader({ ...profilKader, fotoUrl: URL.createObjectURL(e.target.files[0]) });
                      }
                   }} style={{ display: 'none' }} />
                 </label>
@@ -169,7 +114,7 @@ export default function PageProfilKader() {
             </div>
             
             <h2 style={{ margin: '15px 0 5px 0', color: '#0d1b2a', fontSize: '1.4rem', textAlign: 'center' }}>{profilKader.nama}</h2>
-            <div style={{ backgroundColor: '#eaf4fc', color: '#0000af', padding: '6px 16px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+            <div style={{ backgroundColor: '#eaf4fc', color: '#0000af', padding: '6px 16px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold' }}>
               Kader {profilKader.jenjang}
             </div>
           </div>
@@ -177,66 +122,50 @@ export default function PageProfilKader() {
 
         <div className="profile-grid">
           {/* KARTU INFORMASI PRIBADI */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '25px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', flex: 1 }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '25px', border: '1px solid #eaeaea', flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ margin: 0, color: '#0d1b2a', fontSize: '1.1rem' }}>Data Akademik & PMII</h3>
               <button 
                 disabled={isSavingProfil}
                 onClick={() => isEditingProfil ? handleSimpanProfil() : setIsEditingProfil(true)} 
-                style={{ backgroundColor: isEditingProfil ? '#2ecc71' : '#f1c40f', color: isEditingProfil ? '#fff' : '#0d1b2a', border: 'none', padding: '8px 16px', borderRadius: '6px', fontWeight: 'bold', cursor: isSavingProfil ? 'not-allowed' : 'pointer', fontSize: '0.8rem', transition: '0.3s', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
+                style={{ backgroundColor: isEditingProfil ? '#2ecc71' : '#f1c40f', color: isEditingProfil ? '#fff' : '#0d1b2a', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: isSavingProfil ? 'not-allowed' : 'pointer', fontSize: '0.8rem', transition: '0.3s' }}>
                 {isSavingProfil ? 'Menyimpan...' : isEditingProfil ? '💾 Simpan' : '✏️ Edit Profil'}
               </button>
             </div>
 
-            <div className="info-row">
-              <span className="info-label">Nomor Induk Mahasiswa (NIM)</span>
-              <span className="info-value">{profilKader.nim}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">Nomor Induk Anggota (NIA)</span>
-              <span className="info-value">{profilKader.nia || '-'}</span>
-            </div>
-            <div className="info-row">
-              <span className="info-label">Tahun Angkatan</span>
-              <span className="info-value">{profilKader.angkatan}</span>
-            </div>
-            <div className="info-row" style={{ borderBottom: 'none', paddingBottom: 0 }}>
-              <span className="info-label">Asal Instansi</span>
-              <span className="info-value" style={{ color: '#1e824c' }}>{namaRayonInduk}</span>
-            </div>
+            <div className="info-row"><span className="info-label">Nomor Induk Mahasiswa (NIM)</span><span className="info-value">{profilKader.nim}</span></div>
+            <div className="info-row"><span className="info-label">Nomor Induk Anggota (NIA)</span><span className="info-value">{profilKader.nia || '-'}</span></div>
+            <div className="info-row"><span className="info-label">Tahun Angkatan</span><span className="info-value">{profilKader.angkatan}</span></div>
+            <div className="info-row" style={{ borderBottom: 'none', paddingBottom: 0 }}><span className="info-label">Asal Instansi</span><span className="info-value" style={{ color: '#1e824c' }}>{namaRayonInduk}</span></div>
           </div>
 
           {/* KARTU KONTAK & DOMISILI */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '8px', padding: '25px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', flex: 1 }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '25px', border: '1px solid #eaeaea', flex: 1 }}>
             <h3 style={{ margin: '0 0 20px 0', color: '#0d1b2a', fontSize: '1.1rem' }}>Kontak & Domisili</h3>
             
             <div className="info-row">
               <span className="info-label">Nomor WhatsApp</span>
               {isEditingProfil ? (
                 <input type="text" className="profile-input" value={profilKader.noHp} onChange={e => setProfilKader({...profilKader, noHp: e.target.value})} placeholder="08123456789" />
-              ) : (
-                <span className="info-value">{profilKader.noHp || '-'}</span>
-              )}
+              ) : (<span className="info-value">{profilKader.noHp || '-'}</span>)}
             </div>
             
             <div className="info-row" style={{ borderBottom: 'none', paddingBottom: 0 }}>
               <span className="info-label">Alamat Lengkap Domisili</span>
               {isEditingProfil ? (
                 <textarea className="profile-input" rows={3} value={profilKader.alamat} onChange={e => setProfilKader({...profilKader, alamat: e.target.value})} placeholder="Jl. Sunan Kalijaga..." style={{ resize: 'vertical' }} />
-              ) : (
-                <span className="info-value">{profilKader.alamat || '-'}</span>
-              )}
+              ) : (<span className="info-value">{profilKader.alamat || '-'}</span>)}
             </div>
             
             {isEditingProfil && (
-              <div style={{ backgroundColor: '#fff3cd', padding: '10px', borderRadius: '4px', borderLeft: '3px solid #f1c40f', marginTop: '15px' }}>
-                <p style={{ fontSize: '0.75rem', color: '#856404', margin: 0 }}>*NIM, Nama, dan NIA hanya bisa diubah oleh Pengurus Rayon Anda.</p>
+              <div style={{ backgroundColor: '#fff3cd', padding: '10px', borderRadius: '6px', borderLeft: '3px solid #f1c40f', marginTop: '15px' }}>
+                <p style={{ fontSize: '0.75rem', color: '#856404', margin: 0 }}>*NIM, Nama, dan NIA hanya bisa diubah oleh Pengurus Rayon/Cabang Anda.</p>
               </div>
             )}
           </div>
         </div>
 
-        <div style={{ height: '30px' }}></div>
+        <div style={{ height: '80px' }}></div>
       </div>
     </>
   );

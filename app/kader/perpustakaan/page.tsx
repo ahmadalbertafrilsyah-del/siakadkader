@@ -52,11 +52,14 @@ export default function PagePerpustakaanKader() {
       <style>{`
         .desktop-view { display: block; }
         .mobile-view { display: none; }
+        .mobile-padded { display: flex; flex-direction: column; gap: 15px; }
+
         @media (max-width: 767px) {
            .desktop-view { display: none !important; }
            .mobile-view { display: block !important; }
            body, html, .mobile-content-wrapper, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
            ::-webkit-scrollbar { display: none; }
+           .mobile-padded { padding: 15px !important; }
         }
       `}</style>
 
@@ -99,27 +102,27 @@ export default function PagePerpustakaanKader() {
       </div>
 
       {/* MOBILE */}
-      <div className="mobile-view">
+      <div className="mobile-view mobile-padded">
         {Object.keys(groupedPerpus).length === 0 ? (
-          <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '8px', color: '#999', fontSize: '0.85rem' }}>
+          <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', color: '#999', fontSize: '0.85rem' }}>
             Belum ada referensi materi.
           </div>
         ) : (
           Object.keys(groupedPerpus).sort().map(folder => (
-            <div key={folder} style={{ marginBottom: '20px' }}>
-              <div style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#1e824c', marginBottom: '10px', paddingBottom: '5px', borderBottom: '2px solid #1e824c', display: 'inline-block' }}>
+            <div key={folder} style={{ marginBottom: '10px' }}>
+              <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#1e824c', marginBottom: '12px', paddingBottom: '6px', borderBottom: '2px solid #1e824c', display: 'inline-block' }}>
                 📁 {folder}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {groupedPerpus[folder].map((item: any) => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '8px' }}>
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
                     <div style={{ overflow: 'hidden', flex: 1, paddingRight: '10px' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>{item.nama_file}</div>
-                      <span style={{ fontSize: '0.65rem', color: '#777', fontStyle: 'italic' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '6px' }}>{item.nama_file}</div>
+                      <span style={{ fontSize: '0.7rem', color: '#777', fontStyle: 'italic' }}>
                         {item.id_rayon === 'Komisariat' ? 'Sumber: Pusat Komisariat' : 'Sumber: Pengurus Rayon'}
                       </span>
                     </div>
-                    <a href={item.link_file} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#0000af', color: 'white', padding: '8px 12px', borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}>
+                    <a href={item.link_file} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#0000af', color: 'white', padding: '10px 15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.8rem', boxShadow: '0 2px 5px rgba(0,0,175,0.2)' }}>
                       Buka
                     </a>
                   </div>
@@ -128,7 +131,7 @@ export default function PagePerpustakaanKader() {
             </div>
           ))
         )}
-        <div style={{ height: '30px' }}></div>
+        <div style={{ height: '50px' }}></div>
       </div>
     </>
   );

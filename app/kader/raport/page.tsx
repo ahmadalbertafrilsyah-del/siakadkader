@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, query, where } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import * as XLSX from 'xlsx';
 
 export default function PageRaportKader() {
   const [profilKader, setProfilKader] = useState({ nama: '', nim: '', id_rayon: '', jenjang: 'MAPABA', angkatan: '' });
@@ -95,7 +94,6 @@ export default function PageRaportKader() {
               unsubs.push(unsub5);
             }
 
-            // Tarik Nilai & Evaluasi Kader
             const unsub6 = onSnapshot(doc(db, "nilai_khs", p.nim), (docSnap: any) => {
               if (docSnap.exists()) setNilaiKaderRealtime(docSnap.data()); else setNilaiKaderRealtime({});
             });
@@ -111,10 +109,7 @@ export default function PageRaportKader() {
       }
     });
 
-    return () => {
-      unsubscribeAuth();
-      unsubs.forEach(u => u());
-    };
+    return () => { unsubscribeAuth(); unsubs.forEach(u => u()); };
   }, []);
 
   const konversiHurufKeAngka = (huruf: string) => {
@@ -136,19 +131,26 @@ export default function PageRaportKader() {
   const barisRaportRender = materiAktif.map((materi, index) => {
     let nilaiHuruf = nilaiKaderRealtime[materi.kode] || "-";
     const mentahKode = nilaiMentah[materi.kode];
-    let angkaAkhir = 0;
+    let angkaAkhir = 0; let hitungPresisi = false;
     
     if (mentahKode && Object.keys(mentahKode).length > 0 && kategoriBobotAktif.length > 0) {
       kategoriBobotAktif.forEach((kat: any) => { angkaAkhir += (mentahKode[kat.nama] || 0) * (kat.persen / 100); });
       nilaiHuruf = getNilaiHuruf(angkaAkhir);
+      hitungPresisi = true;
     }
     
     // Perhitungan Presisi
     const angkaSkala4 = angkaAkhir > 0 ? (angkaAkhir / 25) : 0; 
-    const sksKaliNilai = (materi.bobot || 0) * (angkaAkhir > 0 ? angkaSkala4 : konversiHurufKeAngka(nilaiHuruf));
+    let sksKaliNilai = 0;
     
     totalSks += (materi.bobot || 0); 
-    if (nilaiHuruf !== "-") totalBobotNilai += sksKaliNilai;
+    if (hitungPresisi && angkaAkhir > 0) {
+        sksKaliNilai = (materi.bobot || 0) * angkaSkala4;
+        totalBobotNilai += sksKaliNilai;
+    } else if (nilaiKaderRealtime[materi.kode]) {
+        sksKaliNilai = (materi.bobot || 0) * konversiHurufKeAngka(nilaiHuruf);
+        totalBobotNilai += sksKaliNilai;
+    }
 
     return (
       <tr key={materi.kode} style={{ borderBottom: '1px solid #eee' }}>
@@ -164,36 +166,12 @@ export default function PageRaportKader() {
   
   const ipKader = totalSks > 0 ? (totalBobotNilai / totalSks).toFixed(2) : "0.00";
 
-  // FUNGSI EXPORT EXCEL
-  const handleExportExcel = () => {
-    if (materiAktif.length === 0) return alert("Belum ada data nilai!");
-    const dataToExport = materiAktif.map((materi, index) => {
-      let nilaiHuruf = nilaiKaderRealtime[materi.kode] || "-";
-      const mentahKode = nilaiMentah[materi.kode];
-      let angkaAkhir = 0;
-      
-      if (mentahKode && Object.keys(mentahKode).length > 0 && kategoriBobotAktif.length > 0) {
-        kategoriBobotAktif.forEach((kat: any) => { angkaAkhir += (mentahKode[kat.nama] || 0) * (kat.persen / 100); });
-        nilaiHuruf = getNilaiHuruf(angkaAkhir);
-      }
-      
-      const angkaSkala4 = angkaAkhir > 0 ? (angkaAkhir / 25) : konversiHurufKeAngka(nilaiHuruf); 
-      
-      return {
-        "No": index + 1, "Kode": materi.kode, "Nama Materi": materi.nama,
-        "SKS": materi.bobot, "Nilai Huruf": nilaiHuruf, "SKS x Nilai": ((materi.bobot || 0) * angkaSkala4).toFixed(2)
-      };
-    });
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, `Raport ${selectedJenjang}`);
-    XLSX.writeFile(workbook, `KHS_${profilKader.nama}_${selectedJenjang}.xlsx`);
-  };
-
   return (
     <>
       <style>{`
         /* RESPONSIVE LAYOUT & HIDE SCROLLBAR */
+        .mobile-padded { display: flex; flex-direction: column; gap: 20px; }
+        
         @media (max-width: 767px) {
            body, html, .mobile-content-wrapper, .app-container {
              overflow-x: hidden;
@@ -203,29 +181,29 @@ export default function PageRaportKader() {
            ::-webkit-scrollbar {
              display: none;
            }
+           .mobile-padded { padding: 15px !important; }
         }
 
-        /* HIDE SCROLL CLASS */
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* CSS TAB TEGAS (SUDUT 8PX) */
+        /* CSS TAB TEGAS (UKURAN DIPERKECIL AGAR FIT DI HP) */
         .modern-tab-container {
            display: flex;
            background-color: #f0f2f5;
-           padding: 6px;
+           padding: 4px;
            border-radius: 8px;
            width: fit-content;
-           margin-bottom: 20px;
+           margin-bottom: 15px;
         }
         .modern-tab {
-           padding: 10px 20px;
+           padding: 8px 12px;
            border-radius: 6px;
            border: none;
            background: transparent;
            color: #777;
            font-weight: bold;
-           font-size: 0.85rem;
+           font-size: 0.75rem;
            cursor: pointer;
            transition: all 0.3s;
         }
@@ -235,47 +213,74 @@ export default function PageRaportKader() {
            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
-        /* CSS PRINT PDF A4 KHS */
+        /* PERBAIKAN TOTAL UNTUK CETAK PDF AGAR TIDAK TURUN KE BAWAH */
         @media print {
           @page { size: A4 portrait; margin: 0; }
-          main.no-print { display: block !important; }
-          .main-content { margin-left: 0 !important; }
-          header { display: none !important; }
-          .web-ui-container { display: none !important; }
-          body, html { background-color: transparent !important; margin: 0; padding: 0; height: auto !important; }
-          .print-layout-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; z-index: 9999 !important; background: white;}
+          
+          /* MEMATIKAN SEMUA OVERFLOW & BATASAN LAYAR */
+          body, html, .app-container, main, .main-content, .mobile-content-wrapper, .mobile-padded { 
+            background-color: white !important; 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            height: auto !important; 
+            min-height: 0 !important;
+            overflow: visible !important; 
+            display: block !important;
+            position: static !important;
+          }
+          
+          aside, header, nav, .web-ui-container, .mobile-only, .desktop-only { 
+            display: none !important; 
+          }
+          
+          .print-layout-container { 
+            display: block !important; 
+            position: static !important; 
+            width: 100% !important; 
+            z-index: 9999 !important; 
+            background: white !important;
+          }
+          
           .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
           .bg-kertas-a4 img { width: 100% !important; height: 100% !important; object-fit: fill !important; display: block !important; }
+          
           table.master-print-table { width: 100% !important; border: none !important; margin: 0 !important; padding: 0 !important; background-color: transparent !important; page-break-inside: auto !important; position: relative !important; z-index: 10 !important; }
           table.master-print-table > thead { display: table-header-group !important; }
           table.master-print-table > tfoot { display: table-footer-group !important; }
           table.master-print-table > tbody { display: table-row-group !important; }
           table.master-print-table td { border: none !important; padding: 0 !important; background-color: transparent !important; }
-          .header-space { height: 55mm !important; }
-          .footer-space { height: 35mm !important; }
-          .print-content-area { padding: 0 25mm !important; position: relative; z-index: 10; }
-          table.tabel-utama-print { width: 100% !important; border-collapse: collapse !important; margin-bottom: 20px; }
+          
+          .header-space { height: 45mm !important; }
+          .footer-space { height: 30mm !important; }
+          .print-content-area { padding: 0 25mm !important; position: relative; z-index: 10; margin-top: 0 !important; }
+          
+          table.tabel-utama-print { width: 100% !important; border-collapse: collapse !important; margin-bottom: 20px; page-break-inside: auto !important; }
+          table.tabel-utama-print tr { page-break-inside: avoid !important; page-break-after: auto !important; }
           table.tabel-utama-print th, table.tabel-utama-print td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; color: #000 !important; }
           table.tabel-utama-print th { font-weight: bold !important; text-align: center !important; }
-          .tabel-biodata td { border: none !important; }
+          .tabel-biodata { margin-top: 0 !important; }
+          .tabel-biodata td { border: none !important; padding: 3px 0 !important; }
+          
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen { .print-layout-container { display: none !important; } }
       `}</style>
 
-      <div className="web-ui-container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* TAMPILAN WEB NORMAL */}
+      <div className="web-ui-container mobile-padded">
         
-        {/* HEADER & FILTER SEJAJAR */}
-        <div style={{ background: 'white', padding: '15px 20px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-          <div className="hide-scroll" style={{ display: 'flex', alignItems: 'center', gap: '15px', overflowX: 'auto', whiteSpace: 'nowrap', paddingBottom: '5px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#555' }}>Pilih Jenjang:</span>
-            <select value={selectedJenjang} onChange={(e) => setSelectedJenjang(e.target.value)} style={{ padding: '8px 15px', border: '1px solid #eee', borderRadius: '8px', outline: 'none', backgroundColor: '#f8f9fa', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold', color: '#0000af', minWidth: '120px' }}>
+        {/* HEADER & FILTER SEJAJAR (DIPERKECIL) */}
+        <div style={{ background: 'white', padding: '12px 15px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div className="hide-scroll" style={{ display: 'flex', alignItems: 'center', gap: '10px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555' }}>Pilih Jenjang:</span>
+            <select value={selectedJenjang} onChange={(e) => setSelectedJenjang(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #eee', borderRadius: '8px', outline: 'none', backgroundColor: '#f8f9fa', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', color: '#0000af', minWidth: '90px' }}>
               <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option><option value="SKP">SKP</option><option value="NONFORMAL">Non-Formal</option>
             </select>
             
-            {/* TOMBOL EXPORT DAN CETAK LANGSUNG SEJAJAR */}
+            {/* TOMBOL CETAK DIPERKECIL & SEJAJAR */}
             {tabAktif === 'raport' && (
-              <div style={{ display: 'flex', gap: '10px', marginLeft: 'auto' }}>
-                <button onClick={() => window.print()} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', marginLeft: 'auto' }}>
+                <button onClick={() => window.print()} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', boxShadow: '0 2px 5px rgba(0,0,175,0.1)' }}>
                   🖨️ Cetak KHS
                 </button>
               </div>
@@ -284,62 +289,53 @@ export default function PageRaportKader() {
         </div>
 
         {/* AREA KONTEN UTAMA */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', padding: '20px', minHeight: '50vh' }}>
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eaeaea', padding: '15px', minHeight: '50vh' }}>
           
+          {/* TAB MENU (DIPERKECIL AGAR MUAT DI HP) */}
           <div className="modern-tab-container hide-scroll" style={{ overflowX: 'auto', whiteSpace: 'nowrap' }}>
-             <button onClick={() => setTabAktif('raport')} className={`modern-tab ${tabAktif === 'raport' ? 'active' : ''}`}>
-               Kartu Hasil Studi (KHS)
-             </button>
-             <button onClick={() => setTabAktif('persentase')} className={`modern-tab ${tabAktif === 'persentase' ? 'active' : ''}`}>
-               Rincian Nilai Mentah
-             </button>
+             <button onClick={() => setTabAktif('raport')} className={`modern-tab ${tabAktif === 'raport' ? 'active' : ''}`}>Kartu Hasil Studi (KHS)</button>
+             <button onClick={() => setTabAktif('persentase')} className={`modern-tab ${tabAktif === 'persentase' ? 'active' : ''}`}>Rincian Nilai Mentah</button>
           </div>
 
-          {/* TAB: RAPORT KADERISASI */}
           {tabAktif === 'raport' && (
             <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px', fontSize: '0.9rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px', fontSize: '0.85rem' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f0f4f8', color: '#555' }}>
-                    <th style={{ padding: '15px 10px', borderRadius: '10px 0 0 10px', textAlign: 'center' }}>No</th>
-                    <th style={{ padding: '15px 10px', textAlign: 'center' }}>Kode</th>
-                    <th style={{ padding: '15px 10px', textAlign: 'center' }}>Materi Kurikulum</th>
-                    <th style={{ padding: '15px 10px', textAlign: 'center' }}>SKS</th>
-                    <th style={{ padding: '15px 10px', textAlign: 'center' }}>Nilai</th>
-                    <th style={{ padding: '15px 10px', borderRadius: '0 10px 10px 0', textAlign: 'center' }}>SKS x Nilai</th>
+                    <th style={{ padding: '12px 10px', borderRadius: '8px 0 0 8px', textAlign: 'center' }}>No</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'center' }}>Kode</th><th style={{ padding: '12px 10px' }}>Materi Kurikulum</th><th style={{ padding: '12px 10px', textAlign: 'center' }}>SKS</th><th style={{ padding: '12px 10px', textAlign: 'center' }}>Nilai</th>
+                    <th style={{ padding: '12px 10px', borderRadius: '0 8px 8px 0', textAlign: 'center' }}>SKS x Nilai</th>
                   </tr>
                 </thead>
                 <tbody>
                   {materiAktif.length === 0 ? (<tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#999' }}>Materi kurikulum jenjang ini belum tersedia.</td></tr>) : barisRaportRender}
                   <tr style={{ borderTop: '2px dashed #ddd' }}>
-                    <td colSpan={3} style={{ padding: '20px 15px', textAlign: 'center', fontWeight: 'bold', color: '#555' }}>Total SKS</td>
-                    <td style={{ padding: '20px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1.1rem' }}>{totalSks}</td>
-                    <td></td>
-                    <td style={{ padding: '20px 15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1.1rem' }}>{totalBobotNilai > 0 ? totalBobotNilai.toFixed(2) : 0}</td>
+                    <td colSpan={3} style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#555' }}>Total SKS</td>
+                    <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1rem' }}>{totalSks}</td><td></td>
+                    <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1rem' }}>{totalBobotNilai > 0 ? totalBobotNilai.toFixed(2) : 0}</td>
                   </tr>
                   <tr>
                     <td colSpan={6}>
-                      <div style={{ backgroundColor: '#eaf4fc', borderRadius: '12px', padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #cce5ff', marginTop: '10px' }}>
-                        <span style={{ fontWeight: 'bold', color: '#004a87', fontSize: '1.1rem' }}>Indeks Prestasi Kader (IPK)</span>
-                        <span style={{ fontWeight: '900', color: '#0000af', fontSize: '1.8rem' }}>{ipKader}</span>
+                      <div style={{ backgroundColor: '#eaf4fc', borderRadius: '8px', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #cce5ff', marginTop: '10px' }}>
+                        <span style={{ fontWeight: 'bold', color: '#004a87', fontSize: '1rem' }}>Indeks Prestasi Kader (IPK)</span>
+                        <span style={{ fontWeight: '900', color: '#0000af', fontSize: '1.5rem' }}>{ipKader}</span>
                       </div>
                     </td>
                   </tr>
                 </tbody>
               </table>
-              <p style={{ fontSize: '0.75rem', color: '#888', fontStyle: 'italic', marginTop: '15px', textAlign: 'center' }}>*IPK dihitung secara presisi berdasarkan Nilai Mentah / 25.</p>
+              <p style={{ fontSize: '0.7rem', color: '#888', fontStyle: 'italic', marginTop: '15px', textAlign: 'center' }}>*IPK dihitung secara presisi berdasarkan Nilai Mentah / 25.</p>
             </div>
           )}
 
-          {/* TAB: PERSENTASE & NILAI DETAIL */}
           {tabAktif === 'persentase' && (
             <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto' }}>
-              <div style={{ marginBottom: '20px', background: '#f8f9fa', padding: '15px', borderRadius: '12px', border: '1px solid #eee' }}>
-                <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '0.85rem' }}>📌 Komposisi Penilaian {selectedJenjang}</h4>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {kategoriBobotAktif.length === 0 ? <span style={{ fontSize: '0.8rem', color: '#e74c3c' }}>Belum ada bobot penilaian yang ditetapkan Instansi.</span> : 
+              <div style={{ marginBottom: '20px', background: '#f8f9fa', padding: '12px', borderRadius: '8px', border: '1px solid #eee' }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '0.8rem' }}>📌 Komposisi Penilaian {selectedJenjang}</h4>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {kategoriBobotAktif.length === 0 ? <span style={{ fontSize: '0.75rem', color: '#e74c3c' }}>Belum ada bobot.</span> : 
                     kategoriBobotAktif.map((kat: any) => (
-                      <div key={kat.id} style={{ backgroundColor: '#fff', padding: '6px 12px', borderRadius: '20px', border: '1px solid #ddd', fontSize: '0.75rem', fontWeight: 'bold', color: '#555', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                      <div key={kat.id} style={{ backgroundColor: '#fff', padding: '4px 10px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '0.7rem', fontWeight: 'bold', color: '#555' }}>
                         {kat.nama}: <span style={{ color: '#27ae60' }}>{kat.persen}%</span>
                       </div>
                     ))
@@ -347,20 +343,20 @@ export default function PageRaportKader() {
                 </div>
               </div>
 
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', minWidth: '900px', fontSize: '0.85rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', minWidth: '800px', fontSize: '0.8rem' }}>
                 <thead>
                   <tr>
-                    <th rowSpan={2} style={{ padding: '10px', backgroundColor: '#f0f4f8', color: '#555', borderRadius: '10px 0 0 0' }}>No</th>
-                    <th rowSpan={2} style={{ padding: '10px', backgroundColor: '#f0f4f8', color: '#555' }}>Kode</th>
-                    <th rowSpan={2} style={{ padding: '10px', backgroundColor: '#f0f4f8', color: '#555', textAlign: 'center' }}>Nama Materi</th>
-                    {kategoriBobotAktif.length > 0 && <th colSpan={kategoriBobotAktif.length} style={{ padding: '10px', backgroundColor: '#e8f5e9', color: '#27ae60', borderBottom: '1px solid #fff' }}>Nilai Mentah (0-100)</th>}
-                    <th rowSpan={2} style={{ padding: '10px', backgroundColor: '#f0f4f8', color: '#555' }}>SKS</th>
-                    <th colSpan={2} style={{ padding: '10px', backgroundColor: '#eaf4fc', color: '#004a87', borderRadius: '0 10px 0 0', borderBottom: '1px solid #fff' }}>Hasil Akhir</th>
+                    <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555', borderRadius: '8px 0 0 0' }}>No</th>
+                    <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555' }}>Kode</th>
+                    <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555', textAlign: 'left' }}>Nama Materi</th>
+                    {kategoriBobotAktif.length > 0 && <th colSpan={kategoriBobotAktif.length} style={{ padding: '8px', backgroundColor: '#e8f5e9', color: '#27ae60', borderBottom: '1px solid #fff' }}>Nilai Mentah (0-100)</th>}
+                    <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555' }}>SKS</th>
+                    <th colSpan={2} style={{ padding: '8px', backgroundColor: '#eaf4fc', color: '#004a87', borderRadius: '0 8px 0 0', borderBottom: '1px solid #fff' }}>Hasil Akhir</th>
                   </tr>
                   <tr>
-                    {kategoriBobotAktif.map((kat: any) => <th key={kat.id} style={{ padding: '8px', backgroundColor: '#e8f5e9', color: '#1e824c', fontSize: '0.75rem' }}>{kat.nama}</th>)}
-                    <th style={{ padding: '8px', backgroundColor: '#eaf4fc', color: '#004a87', fontSize: '0.75rem' }}>Angka</th>
-                    <th style={{ padding: '8px', backgroundColor: '#eaf4fc', color: '#004a87', fontSize: '0.75rem' }}>Huruf</th>
+                    {kategoriBobotAktif.map((kat: any) => <th key={kat.id} style={{ padding: '6px', backgroundColor: '#e8f5e9', color: '#1e824c', fontSize: '0.7rem' }}>{kat.nama}</th>)}
+                    <th style={{ padding: '6px', backgroundColor: '#eaf4fc', color: '#004a87', fontSize: '0.7rem' }}>Angka</th>
+                    <th style={{ padding: '6px', backgroundColor: '#eaf4fc', color: '#004a87', fontSize: '0.7rem' }}>Huruf</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -368,27 +364,15 @@ export default function PageRaportKader() {
                     <tr><td colSpan={6 + kategoriBobotAktif.length} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Belum ada rincian nilai.</td></tr>
                   ) : (
                     materiAktif.map((materi, index) => {
-                      let angkaAkhir = 0;
-                      const mentah = evaluasiMaster[selectedJenjang]?.nilai_mentah?.[materi.kode] || {};
+                      let angkaAkhir = 0; const mentah = evaluasiMaster[selectedJenjang]?.nilai_mentah?.[materi.kode] || {};
                       kategoriBobotAktif.forEach((kat: any) => { angkaAkhir += ((mentah[kat.nama] || 0) * (kat.persen / 100)); });
-                      const hurufAkhir = getNilaiHuruf(angkaAkhir);
-                      const displayAngka = angkaAkhir > 0 ? parseFloat(angkaAkhir.toFixed(2)) : '-';
+                      const hurufAkhir = getNilaiHuruf(angkaAkhir); const displayAngka = angkaAkhir > 0 ? parseFloat(angkaAkhir.toFixed(2)) : '-';
 
                       return (
                         <tr key={`rinci-${materi.kode}`} style={{ borderBottom: '1px solid #eee' }}>
-                          <td style={{ padding: '12px' }}>{index + 1}</td>
-                          <td style={{ padding: '12px' }}>{materi.kode}</td>
-                          <td style={{ padding: '12px', textAlign: 'left', fontWeight: 'bold', color: '#333' }}>{materi.nama}</td>
-                          
-                          {kategoriBobotAktif.map((kat: any) => (
-                            <td key={kat.id} style={{ backgroundColor: '#fafafa', color: '#555', fontWeight: 'bold' }}>
-                              {mentah[kat.nama] !== undefined && mentah[kat.nama] > 0 ? mentah[kat.nama] : '-'}
-                            </td>
-                          ))}
-                          
-                          <td style={{ padding: '12px' }}>{materi.bobot}</td>
-                          <td style={{ padding: '12px', fontWeight: 'bold', color: '#004a87', backgroundColor: '#fcfcfc' }}>{displayAngka}</td>
-                          <td style={{ padding: '12px', fontWeight: 'bold', color: hurufAkhir !== '-' ? '#27ae60' : '#999', backgroundColor: '#fcfcfc', fontSize: '1rem' }}>{hurufAkhir}</td>
+                          <td style={{ padding: '10px' }}>{index + 1}</td><td style={{ padding: '10px' }}>{materi.kode}</td><td style={{ padding: '10px', textAlign: 'left', fontWeight: 'bold', color: '#333' }}>{materi.nama}</td>
+                          {kategoriBobotAktif.map((kat: any) => (<td key={kat.id} style={{ backgroundColor: '#fafafa', color: '#555', fontWeight: 'bold' }}>{mentah[kat.nama] !== undefined && mentah[kat.nama] > 0 ? mentah[kat.nama] : '-'}</td>))}
+                          <td style={{ padding: '10px' }}>{materi.bobot}</td><td style={{ padding: '10px', fontWeight: 'bold', color: '#004a87', backgroundColor: '#fcfcfc' }}>{displayAngka}</td><td style={{ padding: '10px', fontWeight: 'bold', color: hurufAkhir !== '-' ? '#27ae60' : '#999', backgroundColor: '#fcfcfc', fontSize: '0.9rem' }}>{hurufAkhir}</td>
                         </tr>
                       )
                     })
@@ -397,19 +381,18 @@ export default function PageRaportKader() {
               </table>
 
               {catatanKeaktifan && (
-                <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#fffbeb', borderLeft: '4px solid #f1c40f', borderRadius: '12px' }}>
-                  <strong style={{ color: '#856404', fontSize: '0.9rem' }}>Pesan & Evaluasi Pendamping:</strong>
-                  <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', color: '#555', whiteSpace: 'pre-wrap', fontStyle: 'italic', lineHeight: '1.5' }}>"{catatanKeaktifan}"</p>
+                <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#fffbeb', borderLeft: '4px solid #f1c40f', borderRadius: '8px' }}>
+                  <strong style={{ color: '#856404', fontSize: '0.85rem' }}>Pesan & Evaluasi Pendamping:</strong>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '0.85rem', color: '#555', whiteSpace: 'pre-wrap', fontStyle: 'italic', lineHeight: '1.5' }}>"{catatanKeaktifan}"</p>
                 </div>
               )}
             </div>
           )}
         </div>
-
         <div style={{ height: '80px' }} className="mobile-only"></div>
       </div>
 
-      {/* PRINT CONTAINER KHUSUS CETAK A4 PDF */}
+      {/* PRINT CONTAINER KHUSUS CETAK A4 PDF (TIDAK AKAN KOSONG / TERDORONG KE BAWAH) */}
       <div className="print-layout-container">
         {pengaturanCetak.kopSuratUrl && <div className="bg-kertas-a4"><img src={pengaturanCetak.kopSuratUrl} alt="Background A4" /></div>}
         <table className="master-print-table">
@@ -429,7 +412,7 @@ export default function PageRaportKader() {
                     </tbody>
                   </table>
                   <table className="tabel-utama-print">
-                    <thead><tr><th style={{ width: '5%' }}>No</th><th style={{ width: '15%' }}>Kode</th><th style={{ width: '45%' }}>Nama Materi Kurikulum</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai Huruf</th><th style={{ width: '15%' }}>SKS x Nilai</th></tr></thead>
+                    <thead><tr><th style={{ width: '5%' }}>No</th><th style={{ width: '15%' }}>Kode Materi</th><th style={{ width: '45%' }}>Nama Materi Kurikulum</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai Huruf</th><th style={{ width: '15%' }}>SKS x Nilai</th></tr></thead>
                     <tbody>
                       {materiAktif.length === 0 ? (<tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center' }}>Kurikulum belum diatur.</td></tr>) : barisRaportRender}
                       <tr><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalSks}</td><td></td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalBobotNilai > 0 ? totalBobotNilai.toFixed(2) : 0}</td></tr>

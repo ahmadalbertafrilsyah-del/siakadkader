@@ -55,11 +55,14 @@ export default function PageKalenderKader() {
       <style>{`
         .desktop-view { display: block; }
         .mobile-view { display: none; }
+        .mobile-padded { display: flex; flex-direction: column; gap: 15px; }
+
         @media (max-width: 767px) {
            .desktop-view { display: none !important; }
            .mobile-view { display: block !important; }
            body, html, .mobile-content-wrapper, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
            ::-webkit-scrollbar { display: none; }
+           .mobile-padded { padding: 15px !important; }
         }
       `}</style>
 
@@ -100,34 +103,32 @@ export default function PageKalenderKader() {
       </div>
 
       {/* TAMPILAN MOBILE (KARTU TEGAS) */}
-      <div className="mobile-view">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          {jadwalKegiatan.length === 0 ? (
-            <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '8px', color: '#999', fontSize: '0.85rem' }}>
-               Belum ada agenda terjadwal di sistem.
-            </div>
-          ) : (
-            jadwalKegiatan.map(jadwal => {
-              const isKomisariat = jadwal.pembuat === 'Komisariat';
-              const isMentoring = jadwal.target === 'Binaan';
-              const borderColor = isKomisariat ? '#f1c40f' : isMentoring ? '#3498db' : '#2ecc71';
-              const labelPembuat = isKomisariat ? 'Komisariat' : isMentoring ? 'Pendamping' : 'Rayon';
+      <div className="mobile-view mobile-padded">
+        {jadwalKegiatan.length === 0 ? (
+          <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', color: '#999', fontSize: '0.85rem' }}>
+             Belum ada agenda terjadwal di sistem.
+          </div>
+        ) : (
+          jadwalKegiatan.map(jadwal => {
+            const isKomisariat = jadwal.pembuat === 'Komisariat';
+            const isMentoring = jadwal.target === 'Binaan';
+            const borderColor = isKomisariat ? '#f1c40f' : isMentoring ? '#3498db' : '#2ecc71';
+            const labelPembuat = isKomisariat ? 'Komisariat' : isMentoring ? 'Pendamping' : 'Rayon';
 
-              return (
-                <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eaeaea', borderLeft: `5px solid ${borderColor}`, padding: '15px', borderRadius: '6px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
-                    <span style={{ backgroundColor: '#f4f6f9', color: '#555', padding: '4px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>{labelPembuat}</span>
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: '#e67e22', fontWeight: 'bold' }}>📍 {jadwal.lokasi}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#555' }}>⏰ {jadwal.tanggal.replace('T', ' - ')}</div>
-                  <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: '#555', lineHeight: '1.4' }}>{jadwal.deskripsi}</p>
+            return (
+              <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eaeaea', borderLeft: `5px solid ${borderColor}`, padding: '20px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
+                  <span style={{ backgroundColor: '#f4f6f9', color: '#555', padding: '4px 8px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 'bold' }}>{labelPembuat}</span>
                 </div>
-              )
-            })
-          )}
-        </div>
-        <div style={{ height: '30px' }}></div>
+                <div style={{ fontSize: '0.85rem', color: '#e67e22', fontWeight: 'bold' }}>📍 {jadwal.lokasi}</div>
+                <div style={{ fontSize: '0.8rem', color: '#555' }}>⏰ {jadwal.tanggal.replace('T', ' - ')}</div>
+                <p style={{ margin: '5px 0 0 0', fontSize: '0.85rem', color: '#555', lineHeight: '1.4' }}>{jadwal.deskripsi}</p>
+              </div>
+            )
+          })
+        )}
+        <div style={{ height: '50px' }}></div>
       </div>
     </>
   );

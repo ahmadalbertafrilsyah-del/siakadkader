@@ -89,6 +89,8 @@ export default function PagePengumpulanTugasKader() {
       <style>{`
         .desktop-view { display: flex; flex-direction: column; gap: 20px; }
         .mobile-view { display: none; }
+        .mobile-padded { display: flex; flex-direction: column; gap: 15px; }
+
         @media (max-width: 767px) {
            .desktop-view { display: none !important; }
            .mobile-view { display: block !important; }
@@ -96,6 +98,7 @@ export default function PagePengumpulanTugasKader() {
              overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none;
            }
            ::-webkit-scrollbar { display: none; }
+           .mobile-padded { padding: 15px !important; }
         }
       `}</style>
 
@@ -162,14 +165,14 @@ export default function PagePengumpulanTugasKader() {
         </div>
       </div>
 
-      {/* TAMPILAN MOBILE APP (KARTU) */}
-      <div className="mobile-view">
-        <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', border: '1px solid #eaeaea', marginBottom: '20px' }}>
-           <h4 style={{ margin: '0 0 15px 0', color: '#1e824c', fontSize: '1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>📤 Upload Tugas Baru</h4>
+      {/* TAMPILAN MOBILE APP (KARTU) DENGAN PADDING KHUSUS */}
+      <div className="mobile-view mobile-padded">
+        <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '12px', border: '1px solid #eaeaea', marginBottom: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
+           <h4 style={{ margin: '0 0 15px 0', color: '#1e824c', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>📤 Upload Tugas Baru</h4>
            <form onSubmit={handleUploadTugas} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <div>
-                <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>Pilih Tugas</label>
-                <select required value={selectedTugasNama} onChange={e => setSelectedTugasNama(e.target.value)} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '6px', fontSize: '0.85rem', outline: 'none', backgroundColor: '#fcfcfc' }}>
+                <label style={{ fontSize: '0.85rem', color: '#555', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Pilih Tugas</label>
+                <select required value={selectedTugasNama} onChange={e => setSelectedTugasNama(e.target.value)} style={{ width: '100%', padding: '14px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.9rem', outline: 'none', backgroundColor: '#fcfcfc' }}>
                   <option value="" disabled>-- Daftar Tugas --</option>
                   {listMasterTugas.map((tugas: any) => (
                      <option key={tugas.id} value={tugas.nama_tugas}>{tugas.nama_tugas}</option>
@@ -177,41 +180,41 @@ export default function PagePengumpulanTugasKader() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold', display: 'block', marginBottom: '5px' }}>File (PDF/Word)</label>
-                <input type="file" required onChange={e => setFileTugas(e.target.files ? e.target.files[0] : null)} style={{ width: '100%', padding: '10px', border: '2px dashed #3498db', borderRadius: '6px', fontSize: '0.8rem', outline: 'none', backgroundColor: '#fff' }} />
+                <label style={{ fontSize: '0.85rem', color: '#555', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>File (PDF/Word)</label>
+                <input type="file" required onChange={e => setFileTugas(e.target.files ? e.target.files[0] : null)} style={{ width: '100%', padding: '12px', border: '2px dashed #3498db', borderRadius: '8px', fontSize: '0.85rem', outline: 'none', backgroundColor: '#fff' }} />
               </div>
-              <button disabled={isUploading} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '15px', borderRadius: '6px', fontWeight: 'bold', cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}>
+              <button disabled={isUploading} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '15px', borderRadius: '8px', fontWeight: 'bold', cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '1rem', marginTop: '5px', boxShadow: '0 4px 10px rgba(0,0,175,0.2)' }}>
                 {isUploading ? 'MENGUNGGAH...' : 'Kumpulkan Tugas'}
               </button>
            </form>
         </div>
 
-        <h4 style={{ color: '#555', fontSize: '0.9rem', marginBottom: '10px' }}>Riwayat Tugas Anda</h4>
+        <h4 style={{ color: '#555', fontSize: '0.95rem', marginBottom: '5px', marginTop: '10px' }}>Riwayat Tugas Anda</h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {riwayatBerkas.length === 0 ? (
-            <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999', fontSize: '0.85rem' }}>Belum ada histori pengumpulan.</div>
+            <div style={{ padding: '25px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '12px', color: '#999', fontSize: '0.9rem' }}>Belum ada histori pengumpulan.</div>
           ) : (
             riwayatBerkas.map((berkas) => (
-              <div key={berkas.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '8px', padding: '15px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)' }}>
+              <div key={berkas.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '0.9rem', flex: 1 }}>{berkas.jenis_berkas}</div>
-                  <div style={{ fontSize: '0.7rem', color: '#888', whiteSpace: 'nowrap', marginLeft: '10px' }}>{berkas.tanggal}</div>
+                  <div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '1rem', flex: 1, paddingRight: '10px' }}>{berkas.jenis_berkas}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#888', whiteSpace: 'nowrap' }}>{berkas.tanggal}</div>
                 </div>
-                <a href={berkas.file_link_or_id} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: '#3498db', textDecoration: 'none', fontStyle: 'italic', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <a href={berkas.file_link_or_id} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem', color: '#3498db', textDecoration: 'none', fontStyle: 'italic', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   📄 {berkas.nama_file_asli}
                 </a>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '5px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
                   {berkas.status === 'Selesai' ? (
-                    <span style={{ backgroundColor: '#eaf4fc', color: '#27ae60', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', border: '1px solid #2ecc71' }}>Diterima (ACC)</span>
+                    <span style={{ backgroundColor: '#eaf4fc', color: '#27ae60', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #2ecc71' }}>Diterima (ACC)</span>
                   ) : (
-                    <span style={{ backgroundColor: '#fff3cd', color: '#e67e22', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold', border: '1px solid #f1c40f' }}>Menunggu Cek</span>
+                    <span style={{ backgroundColor: '#fff3cd', color: '#e67e22', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #f1c40f' }}>Menunggu Cek</span>
                   )}
                 </div>
               </div>
             ))
           )}
         </div>
-        <div style={{ height: '30px' }}></div>
+        <div style={{ height: '50px' }}></div>
       </div>
     </>
   );

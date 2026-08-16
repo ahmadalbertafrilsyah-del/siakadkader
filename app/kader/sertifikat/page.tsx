@@ -46,10 +46,7 @@ export default function PageSertifikatKader() {
       }
     });
 
-    return () => {
-      unsubscribeAuth();
-      unsubs.forEach(u => u());
-    };
+    return () => { unsubscribeAuth(); unsubs.forEach(u => u()); };
   }, []);
 
   useEffect(() => {
@@ -104,63 +101,31 @@ export default function PageSertifikatKader() {
   return (
     <>
       <style>{`
+        .mobile-padded { display: flex; flex-direction: column; gap: 20px; }
         @media (max-width: 767px) {
-           body, html, .app-container {
-             overflow-x: hidden;
-             -ms-overflow-style: none;
-             scrollbar-width: none;
-           }
-           ::-webkit-scrollbar {
-             display: none;
-           }
-           .mobile-card-padding {
-             padding: 15px !important;
-           }
+           body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
+           ::-webkit-scrollbar { display: none; }
+           .mobile-padded { padding: 15px !important; }
         }
         
-        /* 
-          PERBAIKAN CSS PRINT: 
-          1. Paksa main untuk block (jangan none).
-          2. Sembunyikan khusus elemen web UI. 
-        */
         @media print {
           @page { size: A4 ${settings.orientasi}; margin: 0; }
           body, html { background-color: white !important; margin: 0; padding: 0; height: 100vh !important; width: 100vw !important; overflow: hidden !important; }
-          
           aside, header, nav, .web-ui-container { display: none !important; }
           main.no-print { display: block !important; margin: 0 !important; padding: 0 !important; }
           .mobile-content-wrapper { padding: 0 !important; margin: 0 !important; }
-
-          .print-layout-container { 
-             display: block !important; 
-             position: absolute !important; 
-             top: 0 !important; left: 0 !important; 
-             width: ${settings.orientasi === 'portrait' ? '210mm' : '297mm'} !important; 
-             height: ${settings.orientasi === 'portrait' ? '297mm' : '210mm'} !important; 
-             z-index: 9999 !important; 
-             background: white !important;
-          }
-
+          .print-layout-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: ${settings.orientasi === 'portrait' ? '210mm' : '297mm'} !important; height: ${settings.orientasi === 'portrait' ? '297mm' : '210mm'} !important; z-index: 9999 !important; background: white !important; }
           .bg-sertifikat { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
           .bg-sertifikat img { width: 100%; height: 100%; object-fit: fill; display: block; }
-          
-          .isian-data { 
-             position: absolute; 
-             z-index: 10; 
-             font-family: "Arial Narrow", Arial, sans-serif; 
-             color: black !important; 
-             white-space: nowrap; 
-             line-height: 1.2; 
-          }
-          
+          .isian-data { position: absolute; z-index: 10; font-family: "Arial Narrow", Arial, sans-serif; color: black !important; white-space: nowrap; line-height: 1.2; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen { .print-layout-container { display: none !important; } }
       `}</style>
 
       {/* WEB UI CONTAINER (Disembunyikan saat print) */}
-      <div className="web-ui-container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div className="mobile-card-padding" style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #eaeaea' }}>
+      <div className="web-ui-container mobile-padded">
+        <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #eaeaea' }}>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: '15px', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
             <div>
@@ -171,7 +136,7 @@ export default function PageSertifikatKader() {
               <select value={selectedJenjang} onChange={e => setSelectedJenjang(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '6px', outline: 'none', fontWeight: 'bold', color: '#0000af', cursor: 'pointer' }}>
                 <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option><option value="SKP">SKP</option>
               </select>
-              <button onClick={() => window.print()} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '9px 18px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', boxShadow: '0 2px 8px rgba(0,0,175,0.2)' }}>
+              <button onClick={() => window.print()} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '9px 18px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
                 🖨️ Cetak PDF
               </button>
             </div>
@@ -182,27 +147,20 @@ export default function PageSertifikatKader() {
             
             <div style={{ 
               position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto', 
-              aspectRatio: aspectRatio, border: '1px solid #ccc', overflow: 'hidden', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', backgroundColor: 'white',
-              containerType: 'inline-size' 
+              aspectRatio: aspectRatio, border: '1px solid #ccc', overflow: 'hidden', backgroundColor: 'white', containerType: 'inline-size' 
             }}>
               {settings.templateUrl && (
                 <img src={settings.templateUrl} alt="Template" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1 }} />
               )}
               
-              {/* Teks Overlay Screen Preview */}
               {Object.keys(settings.posisi).map(key => {
                 const p = (settings.posisi as any)[key];
                 return (
                   <div key={key} style={{ 
-                    position: 'absolute', zIndex: 2, 
-                    top: `${p.top}%`, left: `${p.left}%`, 
-                    transform: key === 'nomor' ? 'translate(-50%, 0)' : 'none', 
-                    fontFamily: '"Arial Narrow", Arial, sans-serif',
-                    fontSize: `${p.fontSize * fontScaleCqw}cqw`, 
-                    fontWeight: p.isBold ? 'bold' : 'normal',
-                    fontStyle: p.isItalic ? 'italic' : 'normal',
-                    color: '#000', whiteSpace: 'nowrap',
-                    lineHeight: '1.2'
+                    position: 'absolute', zIndex: 2, top: `${p.top}%`, left: `${p.left}%`, transform: key === 'nomor' ? 'translate(-50%, 0)' : 'none', 
+                    fontFamily: '"Arial Narrow", Arial, sans-serif', fontSize: `${p.fontSize * fontScaleCqw}cqw`, 
+                    fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
+                    color: '#000', whiteSpace: 'nowrap', lineHeight: '1.2'
                   }}>
                     {getDataTeks(key)}
                   </div>
@@ -211,6 +169,7 @@ export default function PageSertifikatKader() {
             </div>
           </div>
         </div>
+        <div style={{ height: '80px' }} className="mobile-only"></div>
       </div>
 
       {/* RENDER CETAK KHUSUS KERTAS A4 (PDF) */}
@@ -218,17 +177,12 @@ export default function PageSertifikatKader() {
         <div className="bg-sertifikat">
           {settings.templateUrl && <img src={settings.templateUrl} alt="Background" />}
         </div>
-        
-        {/* Teks Overlay PDF (menggunakan satuan ukuran Point yang presisi) */}
         {Object.keys(settings.posisi).map(key => {
            const p = (settings.posisi as any)[key];
            return (
              <div key={key} className="isian-data" style={{ 
-               top: `${p.top}%`, left: `${p.left}%`, 
-               transform: key === 'nomor' ? 'translate(-50%, 0)' : 'none', 
-               fontSize: `${p.fontSize}pt`,
-               fontWeight: p.isBold ? 'bold' : 'normal',
-               fontStyle: p.isItalic ? 'italic' : 'normal',
+               top: `${p.top}%`, left: `${p.left}%`, transform: key === 'nomor' ? 'translate(-50%, 0)' : 'none', 
+               fontSize: `${p.fontSize}pt`, fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
              }}>
                {getDataTeks(key)}
              </div>

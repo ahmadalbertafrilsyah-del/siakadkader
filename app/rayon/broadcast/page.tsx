@@ -76,11 +76,17 @@ export default function PageBroadcastRayon() {
   return (
     <>
       <style>{`
+        /* OVERRIDE CSS TABEL AGAR TIDAK PUCAT DI LAPTOP */
+        .tabel-utama { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+        .tabel-utama thead tr { background-color: #0d1b2a !important; color: white !important; border: none !important; }
+        .tabel-utama th { color: white !important; padding: 12px 15px !important; border: none !important; font-weight: bold; }
+        .tabel-utama td { padding: 12px 15px !important; border-bottom: 1px solid #eee !important; color: #333 !important; background-color: #fff !important; }
+
         @media (max-width: 767px) {
            .desktop-view { display: none !important; }
-           body, html, .mobile-content-wrapper, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
+           body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
            ::-webkit-scrollbar { display: none; }
-           .mobile-padded { display: flex; flex-direction: column; gap: 15px; }
+           .mobile-padded { display: flex; flex-direction: column; gap: 15px; padding: 15px !important; }
         }
         @media (min-width: 768px) {
            .mobile-view { display: none !important; }
@@ -89,45 +95,60 @@ export default function PageBroadcastRayon() {
 
       {/* DESKTOP VIEW */}
       <div className="desktop-view" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📡 Pusat Broadcast Notifikasi</h3>
+        <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.2rem' }}>📡 Pusat Broadcast Notifikasi</h3>
           <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px' }}>Kirimkan pesan mendesak atau pengumuman penting kepada pengguna di Rayon Anda.</p>
           
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 250px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px' }}>
                 <form onSubmit={handleKirimBroadcast} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div><label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Judul Pesan</label><input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }} /></div>
-                  <div><label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Isi Pesan Lengkap</label><textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem', resize: 'vertical' }} /></div>
-                  <div><label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Batas Waktu</label><input type="date" required value={formBroadcast.batas_waktu} onChange={e => setFormBroadcast({...formBroadcast, batas_waktu: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }} /></div>
-                  <div><label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Target Penerima</label><select value={formBroadcast.target} onChange={e => setFormBroadcast({...formBroadcast, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }}><option value="Semua">📢 Semua Pengguna Rayon</option><option value="Pendamping">👤 Hanya Para Pendamping</option><option value="Kader">🎓 Hanya Seluruh Kader</option></select></div>
-                  <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Siarkan Pesan</button>
+                  <div><label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Judul Pesan</label><input type="text" required value={formBroadcast.judul} onChange={e => setFormBroadcast({...formBroadcast, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }} /></div>
+                  <div><label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Isi Pesan Lengkap</label><textarea rows={4} required value={formBroadcast.pesan} onChange={e => setFormBroadcast({...formBroadcast, pesan: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem', resize: 'vertical', outline: 'none' }} /></div>
+                  <div><label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Batas Waktu</label><input type="date" required value={formBroadcast.batas_waktu} onChange={e => setFormBroadcast({...formBroadcast, batas_waktu: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }} /></div>
+                  <div><label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Target Penerima</label><select value={formBroadcast.target} onChange={e => setFormBroadcast({...formBroadcast, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }}><option value="Semua">📢 Semua Pengguna Rayon</option><option value="Pendamping">👤 Hanya Para Pendamping</option><option value="Kader">🎓 Hanya Seluruh Kader</option></select></div>
+                  <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.9rem' }}>Siarkan Pesan</button>
                 </form>
               </div>
               <div style={{ backgroundColor: '#fff3cd', padding: '15px', border: '1px solid #ffeeba', borderRadius: '8px' }}>
                  <h4 style={{ margin: '0 0 10px 0', color: '#856404', fontSize: '0.9rem' }}>📥 Kotak Masuk (Dari Komisariat)</h4>
                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                   {notifikasiInbox.map(notif => (
-                       <div key={notif.id} style={{ backgroundColor: '#fff', padding: '10px', borderRadius: '4px', marginBottom: '8px', borderLeft: '3px solid #f1c40f' }}>
-                         <div style={{ fontWeight: 'bold', color: '#333', fontSize: '0.85rem' }}>{notif.judul}</div>
-                         <div style={{ fontSize: '0.75rem', color: '#555', whiteSpace: 'pre-wrap', margin: '4px 0' }}>{notif.pesan}</div>
-                         <div style={{ fontSize: '0.65rem', color: '#999' }}>{notif.tanggal}</div>
-                       </div>
-                   ))}
+                   {notifikasiInbox.length === 0 ? (
+                     <div style={{ fontSize: '0.8rem', color: '#856404', fontStyle: 'italic' }}>Tidak ada pesan masuk.</div>
+                   ) : (
+                     notifikasiInbox.map(notif => (
+                         <div key={notif.id} style={{ backgroundColor: '#fff', padding: '10px', borderRadius: '4px', marginBottom: '8px', borderLeft: '3px solid #f1c40f' }}>
+                           <div style={{ fontWeight: 'bold', color: '#333', fontSize: '0.85rem' }}>{notif.judul}</div>
+                           <div style={{ fontSize: '0.75rem', color: '#555', whiteSpace: 'pre-wrap', margin: '4px 0' }}>{notif.pesan}</div>
+                           <div style={{ fontSize: '0.65rem', color: '#999' }}>{notif.tanggal}</div>
+                         </div>
+                     ))
+                   )}
                  </div>
               </div>
             </div>
-            <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+            
+            <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden' }}>
               <table className="tabel-utama" style={{ minWidth: '550px', width: '100%' }}>
-                <thead><tr style={{ backgroundColor: '#0d1b2a', color: 'white' }}><th style={{ padding: '10px', color: 'white', textAlign: 'left' }}>Judul & Pesan Terkirim</th><th style={{ padding: '10px', textAlign: 'center', color: 'white' }}>Batas Waktu</th><th style={{ padding: '10px', textAlign: 'center', color: 'white' }}>Aksi</th></tr></thead>
+                <thead style={{ backgroundColor: '#0d1b2a', color: 'white' }}>
+                  <tr>
+                    <th style={{ padding: '12px', color: 'white', textAlign: 'left' }}>Judul & Pesan Terkirim</th>
+                    <th style={{ padding: '12px', textAlign: 'center', color: 'white' }}>Batas Waktu</th>
+                    <th style={{ padding: '12px', textAlign: 'center', color: 'white' }}>Aksi</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  {riwayatBroadcast.map((notif) => (
-                    <tr key={notif.id} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '10px' }}><div style={{ fontWeight: 'bold', color: '#1e824c', fontSize: '0.9rem' }}>{notif.judul}</div><div style={{ fontSize: '0.8rem', color: '#555' }}>{notif.pesan}</div></td>
-                      <td style={{ padding: '10px', textAlign: 'center', fontWeight: 'bold', color: '#e74c3c' }}>{notif.batas_waktu || '-'}</td>
-                      <td style={{ padding: '10px', textAlign: 'center' }}><button onClick={() => handleHapusBroadcast(notif.id, notif.judul)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🗑️</button></td>
-                    </tr>
-                  ))}
+                  {riwayatBroadcast.length === 0 ? (
+                    <tr><td colSpan={3} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada riwayat pengumuman yang Anda buat.</td></tr>
+                  ) : (
+                    riwayatBroadcast.map((notif) => (
+                      <tr key={notif.id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '12px' }}><div style={{ fontWeight: 'bold', color: '#1e824c', fontSize: '0.9rem' }}>{notif.judul}</div><div style={{ fontSize: '0.8rem', color: '#555', marginTop: '4px', whiteSpace: 'pre-wrap' }}>{notif.pesan}</div></td>
+                        <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold', color: '#e74c3c' }}>{notif.batas_waktu || '-'}</td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}><button onClick={() => handleHapusBroadcast(notif.id, notif.judul)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.2rem' }}>🗑️</button></td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -168,7 +189,7 @@ export default function PageBroadcastRayon() {
           </div>
         )}
 
-        <h4 style={{ margin: '5px 0', color: '#555', fontSize: '0.9rem' }}>Riwayat Pesan Terkirim</h4>
+        <h4 style={{ margin: '10px 0 5px 0', color: '#555', fontSize: '0.9rem', fontWeight: 'bold' }}>Riwayat Pesan Terkirim</h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {riwayatBroadcast.length === 0 ? (
              <div style={{ padding: '25px', textAlign: 'center', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', color: '#999', fontSize: '0.85rem' }}>Belum ada pengumuman terkirim.</div>
@@ -179,10 +200,10 @@ export default function PageBroadcastRayon() {
                    <strong style={{ color: '#1e824c', fontSize: '1rem' }}>{notif.judul}</strong>
                    <span style={{ backgroundColor: '#eaf4fc', color: '#0000af', padding: '4px 8px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 'bold' }}>{notif.target}</span>
                 </div>
-                <div style={{ fontSize: '0.85rem', color: '#555', whiteSpace: 'pre-wrap' }}>{notif.pesan}</div>
+                <div style={{ fontSize: '0.85rem', color: '#555', whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>{notif.pesan}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-                   <span style={{ fontSize: '0.7rem', color: '#999' }}>{notif.tanggal.split(' pukul')[0]}</span>
-                   <button onClick={() => handleHapusBroadcast(notif.id, notif.judul)} style={{ color: '#e74c3c', backgroundColor: '#fff0f0', border: '1px solid #fadbd8', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>Tarik/Hapus</button>
+                   <span style={{ fontSize: '0.75rem', color: '#999' }}>{notif.tanggal.split(' pukul')[0]}</span>
+                   <button onClick={() => handleHapusBroadcast(notif.id, notif.judul)} style={{ color: '#e74c3c', backgroundColor: '#fff0f0', border: '1px solid #fadbd8', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>Tarik/Hapus</button>
                 </div>
               </div>
             ))

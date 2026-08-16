@@ -1,126 +1,329 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, onSnapshot, doc, setDoc, query, where, addDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
 
-export default function PageKalenderJadwal() {
-  const [jadwalKegiatan, setJadwalKegiatan] = useState<any[]>([]);
-  const [formJadwal, setFormJadwal] = useState({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Semua' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export default function PageKurikulumRayon() {
+  const [adminRayonId, setAdminRayonId] = useState('');
+  const [namaRayonAsli, setNamaRayonAsli] = useState('');
+
+  const [tabKurikulum, setTabKurikulum] = useState('MAPABA');
+  const [listKurikulum, setListKurikulum] = useState<Record<string, any[]>>({ MAPABA: [], PKD: [], SIG: [], NONFORMAL: [] });
+  const [masterKurikulumPusat, setMasterKurikulumPusat] = useState<any[]>([]); 
+  
+  const [formMateri, setFormMateri] = useState({ kode: '', nama: '', muatan: '', bobot: 3 });
+  const [isSavingKurikulum, setIsSavingKurikulum] = useState(false);
+  const [editingMateriId, setEditingMateriId] = useState<string | null>(null);
+  const [editMateriForm, setEditMateriForm] = useState({ kode: '', nama: '', muatan: '', bobot: 0 });
 
   useEffect(() => {
-    const unsubJadwal = onSnapshot(query(collection(db, "jadwal_kegiatan"), orderBy("timestamp", "desc")), (snap) => {
-      const listJadwal: any[] = []; 
-      snap.forEach(doc => listJadwal.push({ id: doc.id, ...doc.data() })); 
-      setJadwalKegiatan(listJadwal);
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const qRole = query(collection(db, "users"), where("email", "==", user.email));
+        onSnapshot(qRole, (snapRole: any) => {
+          if (!snapRole.empty) {
+            const currentRayonId = snapRole.docs[0].data().username;
+            setAdminRayonId(currentRayonId);
+            setNamaRayonAsli(snapRole.docs[0].data().nama || currentRayonId);
+
+            onSnapshot(doc(db, "kurikulum_rayon", currentRayonId), (docSnap: any) => {
+              if (docSnap.exists()) setListKurikulum(docSnap.data() as Record<string, any[]>);
+            });
+          }
+        });
+      }
     });
-    return () => unsubJadwal();
+
+    const unsubPusat = onSnapshot(collection(db, "master_kurikulum_pusat"), (snap: any) => {
+      setMasterKurikulumPusat(snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => { unsubscribeAuth(); unsubPusat(); };
   }, []);
 
-  const handleTambahJadwal = async (e: React.FormEvent) => {
-    e.preventDefault(); setIsSubmitting(true);
+  const catatLogAktivitas = async (aksi: string) => {
     try {
-      await addDoc(collection(db, "jadwal_kegiatan"), { ...formJadwal, pembuat: "Komisariat", timestamp: Date.now() });
-      alert("Jadwal kegiatan berhasil ditambahkan!"); 
-      setFormJadwal({ judul: '', tanggal: '', lokasi: '', deskripsi: '', target: 'Semua' });
-    } catch (error) { alert("Gagal menyimpan jadwal."); } finally { setIsSubmitting(false); }
+      await addDoc(collection(db, "log_aktivitas"), {
+        id_rayon: adminRayonId, aktor: namaRayonAsli || adminRayonId, role: "rayon",
+        aksi: aksi, timestamp: Date.now(),
+        waktu_format: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
+      });
+    } catch (e) {}
   };
 
-  const handleHapusJadwal = async (id: string, judul: string) => {
-    if (!window.confirm(`Hapus jadwal "${judul}"?`)) return;
-    try { await deleteDoc(doc(db, "jadwal_kegiatan", id)); } catch (error) { alert("Gagal menghapus."); }
+  const handleTarikMateriPusat = async (materiPusat: any) => {
+    setIsSavingKurikulum(true);
+    try {
+      const currentList = listKurikulum[tabKurikulum] || [];
+      const newMateri = { id: Date.now().toString(), kode: materiPusat.kode, nama: materiPusat.nama, muatan: materiPusat.muatan || '', bobot: Number(materiPusat.bobot), isLokal: false };
+      await setDoc(doc(db, "kurikulum_rayon", adminRayonId), { [tabKurikulum]: [...currentList, newMateri] }, { merge: true });
+      catatLogAktivitas(`Menarik Materi Pusat: ${materiPusat.nama}`);
+    } catch (error) {} finally { setIsSavingKurikulum(false); }
+  };
+
+  const handleTambahMateriLokal = async (e: React.FormEvent) => {
+    e.preventDefault(); setIsSavingKurikulum(true);
+    try {
+      const currentList = listKurikulum[tabKurikulum] || [];
+      const newMateri = { id: Date.now().toString(), kode: formMateri.kode, nama: formMateri.nama, muatan: formMateri.muatan, bobot: Number(formMateri.bobot), isLokal: true };
+      await setDoc(doc(db, "kurikulum_rayon", adminRayonId), { [tabKurikulum]: [...currentList, newMateri] }, { merge: true });
+      catatLogAktivitas(`Menambahkan materi lokal: ${formMateri.nama}`);
+      setFormMateri({ kode: '', nama: '', muatan: '', bobot: 3 }); 
+    } catch (error) {} finally { setIsSavingKurikulum(false); }
+  };
+
+  const handleHapusMateri = async (materiId: string) => {
+    if (!window.confirm("Yakin menghapus materi ini dari kurikulum rayon?")) return;
+    try {
+      const currentList = listKurikulum[tabKurikulum] || []; 
+      const filteredList = currentList.filter((m: any) => m.id !== materiId);
+      await setDoc(doc(db, "kurikulum_rayon", adminRayonId), { [tabKurikulum]: filteredList }, { merge: true });
+    } catch (error) {}
+  };
+
+  const handleSimpanEditMateri = async (materiId: string) => {
+    if (!editMateriForm.kode || !editMateriForm.nama) return alert("Kode dan Nama materi tidak boleh kosong!"); 
+    setIsSavingKurikulum(true);
+    try {
+      const currentList = listKurikulum[tabKurikulum] || [];
+      const updatedList = currentList.map((m: any) => m.id === materiId ? { ...m, ...editMateriForm } : m);
+      await setDoc(doc(db, "kurikulum_rayon", adminRayonId), { [tabKurikulum]: updatedList }, { merge: true });
+      setEditingMateriId(null); 
+    } catch(err) {} finally { setIsSavingKurikulum(false); }
   };
 
   return (
     <>
       <style>{`
+        /* CSS TABEL ELEGAN UNTUK DESKTOP (Warna Biru Khas) */
+        .tabel-utama { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+        .tabel-utama thead tr { background-color: #0000af !important; color: white !important; }
+        .tabel-utama th { color: white !important; padding: 12px 15px !important; border: none !important; font-weight: bold; }
+        .tabel-utama td { padding: 12px 15px !important; border-bottom: 1px solid #eee !important; color: #333 !important; background-color: #fff !important; }
+
+        .desktop-view { display: block; }
+        .mobile-view { display: none; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
         @media (max-width: 767px) {
            .desktop-view { display: none !important; }
-           body, html, .mobile-content-wrapper, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
+           .mobile-view { display: block !important; }
+           body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
            ::-webkit-scrollbar { display: none; }
-           .mobile-padded { display: flex; flex-direction: column; gap: 15px; }
-        }
-        @media (min-width: 768px) {
-           .mobile-view { display: none !important; }
+           /* Kunci Margin 15px di Mobile */
+           .mobile-padded { padding: 15px !important; display: flex; flex-direction: column; gap: 15px; }
         }
       `}</style>
 
-      {/* TAMPILAN DESKTOP UTUH */}
+      {/* TAMPILAN DESKTOP VIEW */}
       <div className="desktop-view" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ color: '#0d1b2a', margin: '0 0 20px 0', fontSize: '1.2rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>📅 Jadwal Kegiatan Terpusat</h3>
-          
-          <div style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eaeaea', borderRadius: '10px', marginBottom: '25px' }}>
-            <h4 style={{ marginTop: 0, color: '#333', fontSize: '0.9rem', marginBottom: '15px' }}>➕ Tambah Agenda Baru</h4>
-            <form onSubmit={handleTambahJadwal} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px', alignItems: 'end' }}>
-              <div><label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', display: 'block' }}>Judul Kegiatan</label><input type="text" placeholder="Cth: RTM Komisariat" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }} /></div>
-              <div><label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', display: 'block' }}>Tanggal & Waktu</label><input type="datetime-local" required value={formJadwal.tanggal} onChange={e => setFormJadwal({...formJadwal, tanggal: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }} /></div>
-              <div><label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', display: 'block' }}>Lokasi / Media</label><input type="text" placeholder="Gedung / Zoom" required value={formJadwal.lokasi} onChange={e => setFormJadwal({...formJadwal, lokasi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }} /></div>
-              <div><label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', display: 'block' }}>Target Peserta</label><select required value={formJadwal.target} onChange={e => setFormJadwal({...formJadwal, target: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer' }}><option value="Semua">📢 Terlihat Semua Pengguna</option><option value="Rayon">🏢 Hanya Admin Rayon</option><option value="Pendamping">👤 Hanya Para Pendamping</option><option value="Kader">🎓 Hanya Seluruh Kader</option></select></div>
-              <div style={{ gridColumn: '1 / -1' }}><label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', display: 'block' }}>Deskripsi Singkat</label><textarea rows={2} placeholder="Isi deskripsi..." value={formJadwal.deskripsi} onChange={e => setFormJadwal({...formJadwal, deskripsi: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem', resize: 'vertical' }} /></div>
-              <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}><button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Simpan Agenda</button></div>
-            </form>
+          <div style={{ borderBottom: '2px solid #eee', paddingBottom: '15px', marginBottom: '20px' }}>
+            <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.2rem' }}>📚 Kurikulum Kaderisasi Rayon</h3>
+            <p style={{ fontSize: '0.85rem', color: '#777', margin: '5px 0 0 0' }}>Tarik materi wajib dari Komisariat atau tambahkan muatan lokal khusus Rayon.</p>
           </div>
 
-          <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box', border: '1px solid #eaeaea', borderRadius: '10px', padding: '10px' }}>
-             <table className="tabel-utama" style={{ minWidth: '700px' }}>
-                <thead><tr><th style={{ textAlign: 'left', width: '25%' }}>Agenda</th><th style={{ textAlign: 'left', width: '25%' }}>Waktu & Lokasi</th><th style={{ textAlign: 'left', width: '30%' }}>Deskripsi</th><th style={{ textAlign: 'center', width: '10%' }}>Target</th><th style={{ textAlign: 'center', width: '10%' }}>Aksi</th></tr></thead>
-                <tbody>
-                  {jadwalKegiatan.length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada agenda terjadwal.</td></tr>
-                  ) : (
-                    jadwalKegiatan.map(jadwal => (
-                      <tr key={jadwal.id}>
-                        <td style={{ fontWeight: 'bold', color: '#0d1b2a' }}>{jadwal.judul}</td>
-                        <td><div style={{color: '#e67e22', fontWeight: 'bold', fontSize: '0.8rem'}}>🗓️ {jadwal.tanggal.replace('T', ' - ')}</div><div style={{fontSize: '0.8rem', color: '#555', marginTop: '4px'}}>📍 {jadwal.lokasi}</div></td>
-                        <td style={{ fontSize: '0.85rem', color: '#555', fontStyle: 'italic' }}>{jadwal.deskripsi}</td>
-                        <td style={{ textAlign: 'center' }}><span style={{ backgroundColor: '#eaf4fc', color: '#0000af', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold' }}>{jadwal.target || 'Semua'}</span></td>
-                        <td style={{ textAlign: 'center' }}><button onClick={() => handleHapusJadwal(jadwal.id, jadwal.judul)} style={{ color: '#e74c3c', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1rem' }} title="Hapus Jadwal">🗑️</button></td>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px', overflowX: 'auto' }}>
+            {['MAPABA', 'PKD', 'SIG', 'NONFORMAL'].map(tab => (
+              <button key={tab} onClick={() => setTabKurikulum(tab)} style={{ padding: '8px 15px', border: 'none', background: tabKurikulum === tab ? '#0000af' : '#f4f6f9', color: tabKurikulum === tab ? 'white' : '#555', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', transition: '0.2s' }}>
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '20px' }}>
+            <div style={{ flex: '1 1 300px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eaeaea', borderRadius: '8px' }}>
+              <h4 style={{ margin: '0 0 15px 0', color: '#1e824c', fontSize: '0.9rem' }}>📥 Tarik Materi Wajib (Dari Komisariat)</h4>
+              <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #ddd', padding: '10px', borderRadius: '4px', backgroundColor: '#fff' }}>
+                {masterKurikulumPusat.filter(m => m.jenjang === tabKurikulum).length === 0 ? (
+                   <div style={{ fontSize: '0.8rem', color: '#999', textAlign: 'center' }}>Pusat belum menetapkan materi wajib.</div>
+                ) : (
+                  masterKurikulumPusat.filter(m => m.jenjang === tabKurikulum).map((mPusat: any) => {
+                    const isSudahDitarik = (listKurikulum[tabKurikulum] || []).some((m: any) => m.kode === mPusat.kode);
+                    return (
+                      <div key={mPusat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #eee' }}>
+                        <div><strong style={{ fontSize: '0.85rem', color: '#0d1b2a' }}>{mPusat.kode}</strong><br/><span style={{ fontSize: '0.75rem', color: '#555' }}>{mPusat.nama} ({mPusat.bobot} SKS)</span></div>
+                        {isSudahDitarik ? (
+                          <span style={{ fontSize: '0.7rem', color: '#27ae60', fontWeight: 'bold', backgroundColor: '#e8f5e9', padding: '4px 8px', borderRadius: '4px' }}>Sudah Ditarik</span>
+                        ) : (
+                          <button onClick={() => handleTarikMateriPusat(mPusat)} disabled={isSavingKurikulum} style={{ backgroundColor: '#f1c40f', color: '#333', border: 'none', padding: '6px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>Tarik</button>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+
+            <div style={{ flex: '1 1 300px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eaeaea', borderRadius: '8px' }}>
+              <h4 style={{ margin: '0 0 15px 0', color: '#0d1b2a', fontSize: '0.9rem' }}>➕ Tambah Muatan Lokal Rayon</h4>
+              <form onSubmit={handleTambahMateriLokal} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <input type="text" placeholder="Kode (Cth: ML-01)" required value={formMateri.kode} onChange={e => setFormMateri({...formMateri, kode: e.target.value})} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', outline: 'none' }} />
+                <input type="number" placeholder="Bobot SKS" required value={formMateri.bobot} onChange={e => setFormMateri({...formMateri, bobot: Number(e.target.value)})} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', outline: 'none' }} />
+                <input type="text" placeholder="Nama Materi Lokal" required value={formMateri.nama} onChange={e => setFormMateri({...formMateri, nama: e.target.value})} style={{ gridColumn: '1 / -1', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', outline: 'none' }} />
+                <textarea placeholder="Deskripsi silabus..." required value={formMateri.muatan} onChange={e => setFormMateri({...formMateri, muatan: e.target.value})} style={{ gridColumn: '1 / -1', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.8rem', resize: 'vertical', outline: 'none' }} rows={2} />
+                <button type="submit" disabled={isSavingKurikulum} style={{ gridColumn: '1 / -1', backgroundColor: '#2ecc71', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>+ Simpan Materi Lokal</button>
+              </form>
+            </div>
+          </div>
+
+          <div style={{ width: '100%', overflowX: 'auto', border: '1px solid #eaeaea', borderRadius: '8px', overflow: 'hidden' }}>
+            <table className="tabel-utama" style={{ minWidth: '700px' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '10%', textAlign: 'center' }}>Kode</th>
+                  <th style={{ width: '35%' }}>Nama Materi</th>
+                  <th style={{ width: '10%', textAlign: 'center' }}>SKS</th>
+                  <th style={{ width: '15%', textAlign: 'center' }}>Status/Asal</th>
+                  <th style={{ width: '30%', textAlign: 'center' }}>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(listKurikulum[tabKurikulum] || []).length === 0 ? (
+                  <tr><td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada susunan kurikulum.</td></tr>
+                ) : (
+                  (listKurikulum[tabKurikulum] || []).map((materi: any) => {
+                    if (editingMateriId === materi.id) {
+                      return (
+                        <tr key={materi.id} style={{ backgroundColor: '#fff9e6' }}>
+                          <td><input type="text" value={editMateriForm.kode} onChange={(e) => setEditMateriForm({...editMateriForm, kode: e.target.value})} style={{ width: '100%', padding: '6px', border: '1px solid #ccc', borderRadius: '4px', outline: 'none' }}/></td>
+                          <td>
+                            <input type="text" value={editMateriForm.nama} onChange={(e) => setEditMateriForm({...editMateriForm, nama: e.target.value})} style={{ width: '100%', padding: '6px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '6px', outline: 'none' }}/>
+                            <textarea value={editMateriForm.muatan} onChange={(e) => setEditMateriForm({...editMateriForm, muatan: e.target.value})} style={{ width: '100%', padding: '6px', border: '1px solid #ccc', borderRadius: '4px', outline: 'none' }} rows={2}/>
+                          </td>
+                          <td style={{ textAlign: 'center' }}><input type="number" value={editMateriForm.bobot} onChange={(e) => setEditMateriForm({...editMateriForm, bobot: Number(e.target.value)})} style={{ width: '60px', padding: '6px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center', outline: 'none' }}/></td>
+                          <td style={{ textAlign: 'center', fontSize: '0.75rem', color: '#777' }}>{materi.isLokal ? 'Lokal Rayon' : 'Pusat Komisariat'}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <div style={{display: 'flex', gap: '8px', justifyContent: 'center'}}>
+                              <button onClick={() => handleSimpanEditMateri(materi.id)} style={{ color: 'white', backgroundColor: '#2ecc71', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Simpan</button>
+                              <button onClick={() => setEditingMateriId(null)} style={{ color: 'white', backgroundColor: '#e74c3c', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Batal</button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    }
+                    return (
+                      <tr key={materi.id}>
+                        <td style={{ fontWeight: 'bold', textAlign: 'center', color: '#333' }}>{materi.kode}</td>
+                        <td><div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '0.9rem' }}>{materi.nama}</div><div style={{ fontSize: '0.75rem', color: '#777', whiteSpace: 'pre-wrap' }}>{materi.muatan}</div></td>
+                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#1e824c' }}>{materi.bobot}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{ backgroundColor: materi.isLokal ? '#eaf4fc' : '#fff3cd', color: materi.isLokal ? '#0000af' : '#856404', padding: '4px 10px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                            {materi.isLokal ? 'Lokal Rayon' : 'Pusat Komisariat'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <button onClick={() => { setEditingMateriId(materi.id); setEditMateriForm({ kode: materi.kode, nama: materi.nama, muatan: materi.muatan || '', bobot: materi.bobot }); }} style={{ color: '#0d1b2a', backgroundColor: '#f1c40f', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem', marginRight: '8px' }} title="Edit Materi">Edit</button>
+                          <button onClick={() => handleHapusMateri(materi.id)} style={{ color: 'white', backgroundColor: '#e74c3c', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }} title="Hapus">Hapus</button>
+                        </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-             </table>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      {/* TAMPILAN MOBILE */}
+      {/* TAMPILAN MOBILE VIEW (CARD) */}
       <div className="mobile-view mobile-padded">
-        <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)', border: '1px solid #eaeaea' }}>
-          <h4 style={{ marginTop: 0, color: '#0000af', fontSize: '1rem', marginBottom: '15px' }}>➕ Tambah Agenda Baru</h4>
-          <form onSubmit={handleTambahJadwal} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input type="text" placeholder="Judul Kegiatan" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', outline: 'none' }} />
-            <input type="datetime-local" required value={formJadwal.tanggal} onChange={e => setFormJadwal({...formJadwal, tanggal: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', outline: 'none' }} />
-            <input type="text" placeholder="Lokasi / Media" required value={formJadwal.lokasi} onChange={e => setFormJadwal({...formJadwal, lokasi: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', outline: 'none' }} />
-            <select required value={formJadwal.target} onChange={e => setFormJadwal({...formJadwal, target: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', backgroundColor: '#fff', outline: 'none' }}>
-               <option value="Semua">📢 Terlihat Semua Pengguna</option><option value="Rayon">🏢 Hanya Admin Rayon</option><option value="Pendamping">👤 Hanya Para Pendamping</option><option value="Kader">🎓 Hanya Seluruh Kader</option>
-            </select>
-            <textarea rows={3} placeholder="Deskripsi Singkat" value={formJadwal.deskripsi} onChange={e => setFormJadwal({...formJadwal, deskripsi: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', outline: 'none' }} />
-            <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '15px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem' }}>{isSubmitting ? 'Menyimpan...' : 'Simpan Agenda'}</button>
+        
+        {/* TABS HORIZONTAL SCROLL */}
+        <div className="hide-scroll" style={{ display: 'flex', gap: '8px', overflowX: 'auto', whiteSpace: 'nowrap', paddingBottom: '5px' }}>
+          {['MAPABA', 'PKD', 'SIG', 'NONFORMAL'].map(tab => (
+            <button key={tab} onClick={() => setTabKurikulum(tab)} style={{ padding: '8px 16px', border: 'none', background: tabKurikulum === tab ? '#0000af' : '#fff', color: tabKurikulum === tab ? 'white' : '#555', fontWeight: 'bold', borderRadius: '20px', cursor: 'pointer', fontSize: '0.85rem', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: '0.2s' }}>
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* FORM TARIK MATERI PUSAT */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #eaeaea', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+          <h4 style={{ margin: '0 0 10px 0', color: '#1e824c', fontSize: '0.9rem' }}>📥 Tarik Kurikulum Pusat</h4>
+          <div className="hide-scroll" style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #ddd', padding: '10px', borderRadius: '8px', backgroundColor: '#fafafa' }}>
+            {masterKurikulumPusat.filter(m => m.jenjang === tabKurikulum).length === 0 ? (
+               <div style={{ fontSize: '0.8rem', color: '#999', textAlign: 'center' }}>Kosong.</div>
+            ) : (
+              masterKurikulumPusat.filter(m => m.jenjang === tabKurikulum).map((mPusat: any) => {
+                const isSudahDitarik = (listKurikulum[tabKurikulum] || []).some((m: any) => m.kode === mPusat.kode);
+                return (
+                  <div key={mPusat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px dashed #eee' }}>
+                    <div style={{ flex: 1, paddingRight: '10px' }}><strong style={{ fontSize: '0.8rem', color: '#0d1b2a' }}>{mPusat.kode}</strong><br/><span style={{ fontSize: '0.75rem', color: '#555' }}>{mPusat.nama} ({mPusat.bobot} SKS)</span></div>
+                    {isSudahDitarik ? (
+                      <span style={{ fontSize: '0.65rem', color: '#27ae60', fontWeight: 'bold', backgroundColor: '#e8f5e9', padding: '4px 6px', borderRadius: '4px' }}>Ditarik</span>
+                    ) : (
+                      <button onClick={() => handleTarikMateriPusat(mPusat)} disabled={isSavingKurikulum} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>Tarik</button>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+
+        {/* FORM TAMBAH LOKAL */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '20px', border: '1px solid #eaeaea', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+          <h4 style={{ margin: '0 0 15px 0', color: '#0d1b2a', fontSize: '0.9rem' }}>➕ Tambah Materi Lokal</h4>
+          <form onSubmit={handleTambahMateriLokal} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <input type="text" placeholder="Kode (ML-01)" required value={formMateri.kode} onChange={e => setFormMateri({...formMateri, kode: e.target.value})} style={{ flex: 1, padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.8rem', outline: 'none' }} />
+              <input type="number" placeholder="SKS" required value={formMateri.bobot} onChange={e => setFormMateri({...formMateri, bobot: Number(e.target.value)})} style={{ width: '80px', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.8rem', outline: 'none' }} />
+            </div>
+            <input type="text" placeholder="Nama Materi Lokal" required value={formMateri.nama} onChange={e => setFormMateri({...formMateri, nama: e.target.value})} style={{ padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.8rem', outline: 'none' }} />
+            <textarea placeholder="Deskripsi silabus..." required value={formMateri.muatan} onChange={e => setFormMateri({...formMateri, muatan: e.target.value})} style={{ padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.8rem', resize: 'vertical', outline: 'none' }} rows={2} />
+            <button type="submit" disabled={isSavingKurikulum} style={{ backgroundColor: '#2ecc71', color: 'white', border: 'none', padding: '15px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.85rem' }}>Simpan Materi Lokal</button>
           </form>
         </div>
 
-        <h4 style={{ margin: '10px 0 5px 0', color: '#555', fontSize: '0.9rem' }}>Daftar Jadwal Kegiatan</h4>
+        {/* DAFTAR KURIKULUM CARD */}
+        <h4 style={{ margin: '5px 0 0 0', color: '#555', fontSize: '0.9rem', fontWeight: 'bold' }}>Daftar Kurikulum Terpilih</h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {jadwalKegiatan.length === 0 ? (
-            <div style={{ padding: '25px', textAlign: 'center', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', color: '#999', fontSize: '0.85rem' }}>Belum ada agenda terjadwal.</div>
+          {(listKurikulum[tabKurikulum] || []).length === 0 ? (
+             <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', color: '#999', fontSize: '0.85rem' }}>Belum ada materi ditarik/dibuat.</div>
           ) : (
-            jadwalKegiatan.map(jadwal => (
-              <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eaeaea', borderLeft: `5px solid #0000af`, padding: '20px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
-                  <span style={{ backgroundColor: '#eaf4fc', color: '#0000af', padding: '4px 8px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 'bold' }}>{jadwal.target}</span>
-                </div>
-                <div style={{ fontSize: '0.85rem', color: '#e67e22', fontWeight: 'bold' }}>📍 {jadwal.lokasi}</div>
-                <div style={{ fontSize: '0.8rem', color: '#555' }}>⏰ {jadwal.tanggal.replace('T', ' - ')}</div>
-                <p style={{ margin: '5px 0 10px 0', fontSize: '0.85rem', color: '#555', lineHeight: '1.4' }}>{jadwal.deskripsi}</p>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button onClick={() => handleHapusJadwal(jadwal.id, jadwal.judul)} style={{ color: '#e74c3c', backgroundColor: '#fff0f0', border: '1px solid #fadbd8', padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold' }}>🗑️ Hapus</button>
-                </div>
-              </div>
-            ))
+            (listKurikulum[tabKurikulum] || []).map((materi: any) => {
+               
+               // CARD SAAT DI-EDIT
+               if (editingMateriId === materi.id) {
+                  return (
+                    <div key={materi.id} style={{ backgroundColor: '#fff9e6', padding: '20px', borderRadius: '12px', border: '1px solid #f1c40f', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                       <div style={{ display: 'flex', gap: '10px' }}>
+                         <input type="text" value={editMateriForm.kode} onChange={(e) => setEditMateriForm({...editMateriForm, kode: e.target.value})} style={{ flex: 1, padding: '10px', border: '1px solid #ccc', borderRadius: '8px', outline: 'none', fontSize: '0.85rem' }}/>
+                         <input type="number" value={editMateriForm.bobot} onChange={(e) => setEditMateriForm({...editMateriForm, bobot: Number(e.target.value)})} style={{ width: '70px', padding: '10px', border: '1px solid #ccc', borderRadius: '8px', textAlign: 'center', outline: 'none', fontSize: '0.85rem' }}/>
+                       </div>
+                       <input type="text" value={editMateriForm.nama} onChange={(e) => setEditMateriForm({...editMateriForm, nama: e.target.value})} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '8px', outline: 'none', fontSize: '0.85rem' }}/>
+                       <textarea value={editMateriForm.muatan} onChange={(e) => setEditMateriForm({...editMateriForm, muatan: e.target.value})} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '8px', outline: 'none', fontSize: '0.85rem' }} rows={2}/>
+                       <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
+                          <button onClick={() => handleSimpanEditMateri(materi.id)} style={{ flex: 1, padding: '12px', backgroundColor: '#2ecc71', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.85rem' }}>Simpan</button>
+                          <button onClick={() => setEditingMateriId(null)} style={{ flex: 1, padding: '12px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.85rem' }}>Batal</button>
+                       </div>
+                    </div>
+                  );
+               }
+
+               // CARD TAMPILAN NORMAL (Bukan Edit)
+               return (
+                 <div key={materi.id} style={{ backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <span style={{ fontWeight: 'bold', color: '#0000af', fontSize: '0.9rem', marginRight: '8px' }}>{materi.kode}</span>
+                        <span style={{ backgroundColor: materi.isLokal ? '#eaf4fc' : '#fff3cd', color: materi.isLokal ? '#0000af' : '#856404', padding: '4px 8px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 'bold' }}>{materi.isLokal ? 'Lokal' : 'Pusat'}</span>
+                      </div>
+                      <span style={{ fontWeight: 'bold', color: '#1e824c', fontSize: '0.85rem', backgroundColor: '#e8f5e9', padding: '4px 8px', borderRadius: '6px' }}>{materi.bobot} SKS</span>
+                    </div>
+                    <div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '1rem', marginTop: '4px' }}>{materi.nama}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#777', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{materi.muatan || '-'}</div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                       <button onClick={() => { setEditingMateriId(materi.id); setEditMateriForm({ kode: materi.kode, nama: materi.nama, muatan: materi.muatan || '', bobot: materi.bobot }); }} style={{ color: '#0d1b2a', backgroundColor: '#f1c40f', border: 'none', padding: '6px 15px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold' }}>Edit</button>
+                       <button onClick={() => handleHapusMateri(materi.id)} style={{ color: '#e74c3c', backgroundColor: '#fff0f0', border: '1px solid #fadbd8', padding: '6px 15px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold' }}>Hapus</button>
+                    </div>
+                 </div>
+               )
+            })
           )}
         </div>
         <div style={{ height: '80px' }}></div>

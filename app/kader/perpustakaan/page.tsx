@@ -50,88 +50,139 @@ export default function PagePerpustakaanKader() {
   return (
     <>
       <style>{`
-        .desktop-view { display: block; }
-        .mobile-view { display: none; }
-        .mobile-padded { display: flex; flex-direction: column; gap: 15px; }
+        /* COLOR PALETTE (Modern Slate/Gray & Clean) */
+        :root {
+          --text-main: #111827;
+          --text-body: #374151;
+          --text-muted: #6b7280;
+          --border-color: #e5e7eb;
+          --bg-card: #ffffff;
+        }
 
+        .page-wrapper { display: flex; flex-direction: column; gap: 24px; }
+        
+        .header-card { 
+          background: var(--bg-card); padding: 24px; border-radius: 8px; 
+          border: 1px solid var(--border-color); box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+        }
+        
+        .header-title-container { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        .header-icon { color: #2563eb; display: flex; align-items: center; justify-content: center; }
+
+        /* KARTU FOLDER & FILE */
+        .folder-section { 
+          background: var(--bg-card); border: 1px solid var(--border-color); 
+          border-radius: 8px; overflow: hidden; margin-bottom: 24px;
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); 
+        }
+        
+        .folder-header { 
+          background-color: #f8fafc; padding: 16px 20px; font-weight: 600; 
+          color: var(--text-main); border-bottom: 1px solid var(--border-color); 
+          display: flex; align-items: center; gap: 10px; font-size: 1rem;
+        }
+        
+        .folder-grid { 
+          padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+          gap: 16px; background-color: #ffffff; 
+        }
+
+        .file-item-card { 
+          display: flex; align-items: center; justify-content: space-between; 
+          padding: 16px; background-color: #ffffff; border: 1px solid var(--border-color); 
+          border-radius: 6px; transition: all 0.2s ease; gap: 12px;
+        }
+        .file-item-card:hover { border-color: #cbd5e1; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); }
+
+        .btn-buka { 
+          background-color: #2563eb; color: white; padding: 8px 14px; border-radius: 6px; 
+          text-decoration: none; font-weight: 600; font-size: 0.8rem; flex-shrink: 0; 
+          text-align: center; transition: background-color 0.2s; white-space: nowrap;
+        }
+        .btn-buka:hover { background-color: #1d4ed8; }
+
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* RESPONSIVE MOBILE */
         @media (max-width: 767px) {
-           .desktop-view { display: none !important; }
-           .mobile-view { display: block !important; }
-           body, html, .mobile-content-wrapper, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
+           body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
            ::-webkit-scrollbar { display: none; }
-           .mobile-padded { padding: 15px !important; }
+           .page-wrapper { padding: 16px; }
+           .header-card { padding: 20px; }
+           .folder-grid { padding: 16px; grid-template-columns: 1fr; }
         }
       `}</style>
 
-      {/* DESKTOP */}
-      <div className="desktop-view" style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', minHeight: '80vh' }}>
-        <div style={{ borderBottom: '2px solid #eee', paddingBottom: '15px', marginBottom: '20px' }}>
-          <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.2rem' }}>📚 Perpustakaan Digital & Modul</h3>
-          <p style={{ fontSize: '0.85rem', color: '#777', margin: '5px 0 0 0' }}>Akses E-Book, modul kaderisasi, dan referensi bacaan untuk menunjang wawasan Anda.</p>
+      <div className="page-wrapper">
+        
+        {/* HEADER */}
+        <div className="header-card">
+          <div className="header-title-container">
+            <div className="header-icon">
+              {/* SVG Ikon Buku / Perpustakaan */}
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+              </svg>
+            </div>
+            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-main)' }}>Perpustakaan Digital & Modul</h3>
+          </div>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Akses E-Book, modul kaderisasi, dan referensi bacaan untuk menunjang wawasan Anda.</p>
         </div>
+
+        {/* KONTEN UTAMA */}
         <div>
           {Object.keys(groupedPerpus).length === 0 ? (
-            <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999' }}>
-              Belum ada file di Perpustakaan Digital.
+            <div style={{ padding: '60px 20px', textAlign: 'center', backgroundColor: '#fff', border: '1px dashed #d1d5db', borderRadius: '8px', color: 'var(--text-muted)' }}>
+              <svg style={{ margin: '0 auto 12px auto', color: '#9ca3af' }} width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                <line x1="12" y1="11" x2="12" y2="17"></line>
+                <line x1="9" y1="14" x2="15" y2="14"></line>
+              </svg>
+              <span style={{ fontSize: '0.95rem' }}>Belum ada file di Perpustakaan Digital saat ini.</span>
             </div>
           ) : (
             Object.keys(groupedPerpus).sort().map(folder => (
-              <div key={folder} style={{ marginBottom: '25px', border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: '#2c3e50', padding: '12px 15px', fontWeight: 'bold', color: 'white', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  📁 Folder: {folder}
+              <div key={folder} className="folder-section">
+                
+                {/* Judul Folder */}
+                <div className="folder-header">
+                  {/* Ikon Folder SVG */}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#d97706' }}>
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                  <span>Folder: {folder}</span>
                 </div>
-                <div style={{ padding: '15px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px', backgroundColor: '#fdfdfd' }}>
+
+                {/* Grid Daftar File */}
+                <div className="folder-grid">
                   {groupedPerpus[folder].map((item: any) => (
-                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-                      <div style={{ overflow: 'hidden', flex: 1, paddingRight: '10px' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '5px' }}>{item.nama_file}</div>
-                        <span style={{ fontSize: '0.65rem', color: '#777', backgroundColor: '#eee', padding: '2px 6px', borderRadius: '4px' }}>
+                    <div key={item.id} className="file-item-card">
+                      
+                      <div style={{ overflow: 'hidden', flex: 1, paddingRight: '8px' }}>
+                        <div style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '6px' }}>
+                          {item.nama_file}
+                        </div>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', backgroundColor: '#f3f4f6', padding: '2px 8px', borderRadius: '4px', fontWeight: '500', display: 'inline-block' }}>
                           {item.id_rayon === 'Komisariat' ? 'Pusat Komisariat' : 'Modul Rayon'}
                         </span>
                       </div>
-                      <a href={item.link_file} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#2ecc71', color: 'white', padding: '8px 12px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.75rem', flexShrink: 0, textAlign: 'center' }}>
-                        👁️ Buka / Unduh
+
+                      <a href={item.link_file} target="_blank" rel="noopener noreferrer" className="btn-buka">
+                        Buka Dokumen
                       </a>
+
                     </div>
                   ))}
                 </div>
+
               </div>
             ))
           )}
         </div>
-      </div>
 
-      {/* MOBILE */}
-      <div className="mobile-view mobile-padded">
-        {Object.keys(groupedPerpus).length === 0 ? (
-          <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', color: '#999', fontSize: '0.85rem' }}>
-            Belum ada referensi materi.
-          </div>
-        ) : (
-          Object.keys(groupedPerpus).sort().map(folder => (
-            <div key={folder} style={{ marginBottom: '10px' }}>
-              <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#1e824c', marginBottom: '12px', paddingBottom: '6px', borderBottom: '2px solid #1e824c', display: 'inline-block' }}>
-                📁 {folder}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {groupedPerpus[folder].map((item: any) => (
-                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
-                    <div style={{ overflow: 'hidden', flex: 1, paddingRight: '10px' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '6px' }}>{item.nama_file}</div>
-                      <span style={{ fontSize: '0.7rem', color: '#777', fontStyle: 'italic' }}>
-                        {item.id_rayon === 'Komisariat' ? 'Sumber: Pusat Komisariat' : 'Sumber: Pengurus Rayon'}
-                      </span>
-                    </div>
-                    <a href={item.link_file} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#0000af', color: 'white', padding: '10px 15px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.8rem', boxShadow: '0 2px 5px rgba(0,0,175,0.2)' }}>
-                      Buka
-                    </a>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))
-        )}
-        <div style={{ height: '50px' }}></div>
+        <div style={{ height: '50px' }} className="mobile-only"></div>
       </div>
     </>
   );

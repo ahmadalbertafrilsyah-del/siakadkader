@@ -110,13 +110,19 @@ export default function PageDashboardBerandaRayon() {
   return (
     <>
       <style>{`
-        /* OVERRIDE CSS TABEL AGAR TIDAK PUCAT DI LAPTOP */
-        .tabel-utama { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
-        .tabel-utama thead tr { background-color: #0d1b2a !important; color: white !important; border: none !important; }
-        .tabel-utama th { color: white !important; padding: 12px 15px !important; border: none !important; font-weight: bold; }
-        .tabel-utama td { padding: 12px 15px !important; border-bottom: 1px solid #eee !important; color: #333 !important; background-color: #fff !important; }
+        /* COLOR PALETTE & DESKTOP ENTERPRISE STYLING */
+        :root {
+          --text-main: #111827;
+          --text-body: #374151;
+          --text-muted: #6b7280;
+          --border-color: #e5e7eb;
+          --bg-card: #ffffff;
+        }
 
-        /* CSS KHUSUS TOGGLE VIEW & MODERN DESIGN */
+        .desktop-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+        .desktop-table th { background-color: #f8fafc; color: var(--text-main); padding: 12px 16px; font-weight: 600; border-bottom: 1px solid var(--border-color); }
+        .desktop-table td { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; color: var(--text-body); background-color: #fff; }
+
         .desktop-view { display: block; }
         .mobile-view { display: none; }
         
@@ -133,49 +139,58 @@ export default function PageDashboardBerandaRayon() {
       `}</style>
 
       {/* ========================================================== */}
-      {/* 1. TAMPILAN LAPTOP / DESKTOP UTUH                          */}
+      {/* 1. TAMPILAN LAPTOP / DESKTOP (PROFESSIONAL CLEAN UI)       */}
       {/* ========================================================== */}
-      <div className="desktop-view">
-        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
-          <h2 style={{color: '#0d1b2a', marginTop: 0, fontSize: '1.5rem'}}>Dashboard {namaRayonAsli}!</h2>
-          <p style={{color: '#555', lineHeight: '1.6', margin: 0, fontSize: '0.9rem'}}>Kelola data kaderisasi, master tugas, surat, akun kader, dan perpustakaan secara real-time melalui panel ini.</p>
+      <div className="desktop-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        
+        {/* Banner Selamat Datang */}
+        <div style={{ backgroundColor: 'var(--bg-card)', padding: '32px', borderRadius: '8px', border: '1px solid var(--border-color)', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
+          <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', color: 'var(--text-main)' }}>Dashboard {namaRayonAsli}</h2>
+          <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+            Kelola data kaderisasi, master tugas, surat, akun kader, dan perpustakaan secara real-time melalui panel ini.
+          </p>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
-          <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>📊 Overview Kaderisasi Rayon</h3>
+        {/* Baris Filter & Judul Overview */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <h3 style={{ color: 'var(--text-main)', margin: 0, fontSize: '1.1rem', fontWeight: '600' }}>Overview Kaderisasi Rayon</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#555' }}>Filter Angkatan:</label>
-            <select value={filterTahunBeranda} onChange={(e) => setFilterTahunBeranda(e.target.value)} style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #0000af', fontWeight: 'bold', color: '#0000af', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-muted)' }}>Filter Angkatan:</label>
+            <select value={filterTahunBeranda} onChange={(e) => setFilterTahunBeranda(e.target.value)} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', fontWeight: '600', color: 'var(--text-main)', outline: 'none', cursor: 'pointer', fontSize: '0.85rem', backgroundColor: '#fff' }}>
               {daftarTahunUnik.map(thn => <option key={thn} value={thn}>{thn === 'Semua' ? 'Tampilkan Semua Data' : `Angkatan ${thn}`}</option>)}
             </select>
           </div>
         </div>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '30px' }}>
-          <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderLeft: '4px solid #3498db' }}>
-            <div style={{ color: '#7f8c8d', fontSize: '0.85rem', fontWeight: 'bold' }}>Total Kader Terdata</div>
-            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2c3e50', marginTop: '5px' }}>{dataKaderDifilterTahun.length}</div>
+        {/* Kartu Statistik Utama (4 Kolom) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)', border: '1px solid var(--border-color)' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Kader Terdata</div>
+            <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--text-main)', marginTop: '8px' }}>{dataKaderDifilterTahun.length}</div>
           </div>
-          <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderLeft: '4px solid #e74c3c' }}>
-            <div style={{ color: '#7f8c8d', fontSize: '0.85rem', fontWeight: 'bold' }}>Delegasi SKP Aktif</div>
-            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2c3e50', marginTop: '5px' }}>{skpKaderTerdata.length}</div>
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)', border: '1px solid var(--border-color)' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Delegasi SKP Aktif</div>
+            <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--text-main)', marginTop: '8px' }}>{skpKaderTerdata.length}</div>
           </div>
-          <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderLeft: '4px solid #2ecc71' }}>
-            <div style={{ color: '#7f8c8d', fontSize: '0.85rem', fontWeight: 'bold' }}>Total Pendamping Aktif</div>
-            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2c3e50', marginTop: '5px' }}>{dataPendamping.length}</div>
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)', border: '1px solid var(--border-color)' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Pendamping Aktif</div>
+            <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--text-main)', marginTop: '8px' }}>{dataPendamping.length}</div>
           </div>
-          <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderLeft: '4px solid #f1c40f' }}>
-            <div style={{ color: '#7f8c8d', fontSize: '0.85rem', fontWeight: 'bold' }}>Tugas Rayon Aktif</div>
-            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#2c3e50', marginTop: '5px' }}>{listMasterTugas.length}</div>
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)', border: '1px solid var(--border-color)' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tugas Rayon Aktif</div>
+            <div style={{ fontSize: '2rem', fontWeight: '700', color: 'var(--text-main)', marginTop: '8px' }}>{listMasterTugas.length}</div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 300px', backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '30px' }}>
-            <h4 style={{ marginTop: 0, color: '#0d1b2a', marginBottom: '15px' }}>Distribusi Jenjang Kader</h4>
-            <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
-              <table className="tabel-utama" style={{ minWidth: '300px' }}>
-                <thead><tr><th style={{ textAlign: 'left' }}>Jenjang Kaderisasi</th><th style={{ textAlign: 'center' }}>Jumlah Kader</th></tr></thead>
+        {/* Bagian Bawah: Distribusi Jenjang & Kader SKP */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
+          
+          {/* Distribusi Jenjang */}
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)', border: '1px solid var(--border-color)' }}>
+            <h4 style={{ margin: '0 0 16px 0', color: 'var(--text-main)', fontSize: '1rem', fontWeight: '600' }}>Distribusi Jenjang Kader</h4>
+            <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+              <table className="desktop-table">
+                <thead><tr><th>Jenjang</th><th style={{ textAlign: 'center' }}>Jumlah</th></tr></thead>
                 <tbody>
                   {['MAPABA', 'PKD', 'SIG', 'SKP'].map((jenjang) => {
                     let count = 0;
@@ -184,7 +199,10 @@ export default function PageDashboardBerandaRayon() {
                     else if (jenjang === 'SIG') count = dataKaderDifilterTahun.filter((k: any) => ['SIG'].includes(k.jenjang)).length;
                     else if (jenjang === 'SKP') count = skpKaderTerdata.length;
                     return (
-                      <tr key={jenjang}><td style={{ fontWeight: 'bold', color: '#0d1b2a' }}>{jenjang}</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#3498db' }}>{count} Kader</td></tr>
+                      <tr key={jenjang}>
+                        <td style={{ fontWeight: '600', color: 'var(--text-main)' }}>{jenjang}</td>
+                        <td style={{ textAlign: 'center', fontWeight: '600', color: '#2563eb' }}>{count} Kader</td>
+                      </tr>
                     )
                   })}
                 </tbody>
@@ -192,27 +210,28 @@ export default function PageDashboardBerandaRayon() {
             </div>
           </div>
 
-          <div style={{ flex: '2 1 400px', backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '30px' }}>
-            <h4 style={{ marginTop: 0, color: '#e74c3c', marginBottom: '5px' }}>🎓 Kader Delegasi SKP</h4>
-            <p style={{fontSize: '0.8rem', color: '#777', marginBottom: '15px'}}>Daftar kader yang di-plotting ke dalam program SKP oleh Pusat Komisariat yang memiliki asal Rayon ini.</p>
-            <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
-              <table className="tabel-utama" style={{ minWidth: '500px' }}>
+          {/* Tabel Kader Delegasi SKP */}
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)', border: '1px solid var(--border-color)' }}>
+            <h4 style={{ margin: '0 0 4px 0', color: 'var(--text-main)', fontSize: '1rem', fontWeight: '600' }}>Kader Delegasi SKP</h4>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>Daftar kader yang di-plotting ke dalam program SKP oleh Pusat Komisariat.</p>
+            <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+              <table className="desktop-table">
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'center' }}>NIM</th>
-                    <th style={{ textAlign: 'left' }}>Nama Delegasi SKP</th>
-                    <th style={{ textAlign: 'center' }}>Pendamping SKP</th>
+                    <th style={{ textAlign: 'center', width: '25%' }}>NIM</th>
+                    <th style={{ textAlign: 'left', width: '45%' }}>Nama Delegasi SKP</th>
+                    <th style={{ textAlign: 'center', width: '30%' }}>Pendamping SKP</th>
                   </tr>
                 </thead>
                 <tbody>
                   {skpKaderTerdata.length === 0 ? (
-                    <tr><td colSpan={3} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Belum ada delegasi SKP dari rayon ini.</td></tr>
+                    <tr><td colSpan={3} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Belum ada delegasi SKP dari rayon ini.</td></tr>
                   ) : (
                     skpKaderTerdata.map((k: any) => (
                       <tr key={k.nim}>
-                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#555' }}>{k.nim}</td>
-                        <td style={{ fontWeight: 'bold', color: '#0d1b2a' }}>{k.nama}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#0000af', fontSize: '0.75rem' }}>{getNamaPendamping(k.pendamping_skp_id)}</td>
+                        <td style={{ textAlign: 'center', fontWeight: '500', color: 'var(--text-muted)' }}>{k.nim}</td>
+                        <td style={{ fontWeight: '600', color: 'var(--text-main)' }}>{k.nama}</td>
+                        <td style={{ textAlign: 'center', fontWeight: '600', color: '#2563eb', fontSize: '0.8rem' }}>{getNamaPendamping(k.pendamping_skp_id)}</td>
                       </tr>
                     ))
                   )}
@@ -220,6 +239,7 @@ export default function PageDashboardBerandaRayon() {
               </table>
             </div>
           </div>
+
         </div>
       </div>
 

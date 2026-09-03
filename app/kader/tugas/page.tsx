@@ -10,9 +10,10 @@ export default function PagePengumpulanTugasKader() {
   const [listMasterTugas, setListMasterTugas] = useState<any[]>([]);
   const [riwayatBerkas, setRiwayatBerkas] = useState<any[]>([]);
   
-  const [selectedTugasNama, setSelectedTugasNama] = useState('');
-  const [fileTugas, setFileTugas] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  // State untuk menyimpan file per tugas (key: nama_tugas)
+  const [filesToUpload, setFilesToUpload] = useState<Record<string, File>>({});
+  // State untuk melacak tugas mana yang sedang loading upload
+  const [uploadingTask, setUploadingTask] = useState<string | null>(null);
 
   useEffect(() => {
     let unsubs: (() => void)[] = [];
@@ -25,6 +26,7 @@ export default function PagePengumpulanTugasKader() {
             const p = snapRole.docs[0].data();
             setProfilKader({ nama: p.nama, email: p.email, id_rayon: p.id_rayon });
 
+            // Ambil daftar master tugas
             const unsubTugas = onSnapshot(collection(db, "master_tugas"), (snap) => {
               const list: any[] = [];
               snap.forEach(doc => {
@@ -35,6 +37,7 @@ export default function PagePengumpulanTugasKader() {
             });
             unsubs.push(unsubTugas);
 
+            // Ambil riwayat tugas yang sudah dikumpulkan kader
             const qBerkas = query(collection(db, "berkas_kader"), where("email_kader", "==", p.email));
             const unsubBerkas = onSnapshot(qBerkas, (snap) => {
               const riwayat: any[] = [];
@@ -57,164 +60,205 @@ export default function PagePengumpulanTugasKader() {
 
   const uploadToCloudinary = async (file: File) => {
     const formData = new FormData();
-    formData.append("file", file); formData.append("upload_preset", "siakad_upload"); 
+    formData.append("file", file); 
+    formData.append("upload_preset", "siakad_upload"); 
     const res = await fetch(`https://api.cloudinary.com/v1_1/dcmdaghbq/raw/upload`, { method: "POST", body: formData });
     const data = await res.json();
     if (!data.secure_url) throw new Error("Gagal upload");
     return data.secure_url.replace("http://", "https://");
   };
 
-  const handleUploadTugas = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fileTugas || !selectedTugasNama) return alert("Pilih judul tugas dan file terlebih dahulu!");
-    
-    const isAlreadyUpload = riwayatBerkas.find(r => r.jenis_berkas === selectedTugasNama && r.status === 'Selesai');
-    if(isAlreadyUpload) return alert("Anda sudah menyelesaikan tugas ini!");
+  const handleFileChange = (namaTugas: string, file: File | null) => {
+    setFilesToUpload(prev => {
+      const newFiles = { ...prev };
+      if (file) {
+        newFiles[namaTugas] = file;
+      } else {
+        delete newFiles[namaTugas];
+      }
+      return newFiles;
+    });
+  };
 
-    setIsUploading(true);
+  const handleUploadTugas = async (namaTugas: string) => {
+    const file = filesToUpload[namaTugas];
+    if (!file) return alert("Pilih file (PDF/Word) terlebih dahulu untuk tugas ini!");
+    
+    setUploadingTask(namaTugas);
     try {
-      const fileUrl = await uploadToCloudinary(fileTugas);
+      const fileUrl = await uploadToCloudinary(file);
       await addDoc(collection(db, "berkas_kader"), {
-        id_rayon: profilKader.id_rayon, email_kader: profilKader.email, jenis_berkas: selectedTugasNama,
-        file_link_or_id: fileUrl, nama_file_asli: fileTugas.name, status: "Menunggu Verifikasi",
-        tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()), timestamp: Date.now()
+        id_rayon: profilKader.id_rayon, 
+        email_kader: profilKader.email, 
+        jenis_berkas: namaTugas,
+        file_link_or_id: fileUrl, 
+        nama_file_asli: file.name, 
+        status: "Menunggu Verifikasi",
+        tanggal: new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date()), 
+        timestamp: Date.now()
       });
-      alert("Tugas berhasil dikumpulkan!");
-      setFileTugas(null); setSelectedTugasNama('');
-    } catch (error) { alert("Gagal mengunggah file. Pastikan ukuran file tidak terlalu besar."); } finally { setIsUploading(false); }
+      alert(`Tugas "${namaTugas}" berhasil dikumpulkan!`);
+      
+      // Bersihkan file dari state setelah sukses
+      setFilesToUpload(prev => {
+        const newFiles = { ...prev };
+        delete newFiles[namaTugas];
+        return newFiles;
+      });
+    } catch (error) { 
+      alert("Gagal mengunggah file. Pastikan koneksi stabil."); 
+    } finally { 
+      setUploadingTask(null); 
+    }
   };
 
   return (
     <>
       <style>{`
-        .desktop-view { display: flex; flex-direction: column; gap: 20px; }
-        .mobile-view { display: none; }
-        .mobile-padded { display: flex; flex-direction: column; gap: 15px; }
-
+        /* RESPONSIVE LAYOUT & HIDE SCROLLBAR */
+        .mobile-padded { display: flex; flex-direction: column; gap: 20px; }
+        
         @media (max-width: 767px) {
-           .desktop-view { display: none !important; }
-           .mobile-view { display: block !important; }
            body, html, .mobile-content-wrapper, .app-container {
-             overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none;
+             overflow-x: hidden;
+             -ms-overflow-style: none;
+             scrollbar-width: none;
            }
-           ::-webkit-scrollbar { display: none; }
+           ::-webkit-scrollbar {
+             display: none;
+           }
            .mobile-padded { padding: 15px !important; }
         }
+
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .file-input-custom { 
+           padding: 8px; border: 1px dashed #ccc; border-radius: 6px; 
+           background-color: #fafafa; font-size: 0.75rem; width: 100%; 
+           max-width: 200px; cursor: pointer; outline: none; transition: 0.2s;
+        }
+        .file-input-custom:hover { border-color: #3498db; background-color: #f4f9fd; }
       `}</style>
 
-      {/* TAMPILAN DESKTOP UTUH */}
-      <div className="desktop-view">
-        <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ color: '#0d1b2a', margin: '0 0 10px 0', fontSize: '1.2rem' }}>📋 Pengumpulan Berkas & Tugas</h3>
-          <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>Unggah file tugas/makalah sesuai judul yang diinstruksikan oleh Pendamping atau Pengurus.</p>
-          
-          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 300px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
-              <h4 style={{ margin: '0 0 15px 0', color: '#1e824c', fontSize: '0.9rem' }}>📤 Form Upload Tugas</h4>
-              <form onSubmit={handleUploadTugas} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div>
-                  <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Pilih Judul Tugas</label>
-                  <select required value={selectedTugasNama} onChange={e => setSelectedTugasNama(e.target.value)} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', outline: 'none', cursor: 'pointer', marginTop: '5px' }}>
-                    <option value="" disabled>-- Pilih Tugas yang Tersedia --</option>
-                    {listMasterTugas.length === 0 && <option disabled>Tidak ada tugas aktif</option>}
-                    {listMasterTugas.map((tugas: any) => (
-                       <option key={tugas.id} value={tugas.nama_tugas}>{tugas.nama_tugas} (DL: {tugas.deadline})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold' }}>Pilih Dokumen (PDF/Word)</label>
-                  <input type="file" required onChange={e => setFileTugas(e.target.files ? e.target.files[0] : null)} style={{ width: '100%', padding: '10px', border: '2px dashed #3498db', borderRadius: '4px', fontSize: '0.8rem', outline: 'none', marginTop: '5px', backgroundColor: '#fff' }} />
-                </div>
-                <button disabled={isUploading} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '0.9rem', marginTop: '10px' }}>
-                  {isUploading ? 'MENGUNGGAH FILE...' : 'Kumpulkan Tugas'}
-                </button>
-              </form>
-            </div>
+      <div className="web-ui-container mobile-padded">
+        
+        {/* HEADER */}
+        <div style={{ background: 'white', padding: '20px 25px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <h3 style={{ color: '#0d1b2a', margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>Pengumpulan Berkas & Tugas</h3>
+          <p style={{ fontSize: '0.85rem', color: '#777', margin: 0 }}>Unggah file tugas atau makalah Anda langsung pada kolom dokumen di bawah ini.</p>
+        </div>
 
-            <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eee', borderRadius: '8px', boxSizing: 'border-box' }}>
-              <table className="tabel-utama" style={{ minWidth: '550px', width: '100%' }}>
-                <thead style={{ backgroundColor: '#0d1b2a', color: 'white' }}>
-                  <tr><th style={{ padding: '12px', textAlign: 'left', color: '#fff' }}>Nama Tugas / File</th><th style={{ padding: '12px', textAlign: 'center', color: '#fff' }}>Waktu Kumpul</th><th style={{ padding: '12px', textAlign: 'center', color: '#fff' }}>Status Verifikasi</th></tr>
-                </thead>
-                <tbody>
-                  {riwayatBerkas.length === 0 ? (
-                    <tr><td colSpan={3} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Anda belum mengumpulkan tugas apapun.</td></tr>
-                  ) : (
-                    riwayatBerkas.map((berkas) => (
-                      <tr key={berkas.id} style={{ borderBottom: '1px solid #eee' }}>
+        {/* AREA KONTEN UTAMA - TABEL TUGAS */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eaeaea', padding: '15px', minHeight: '50vh', boxShadow: '0 4px 10px rgba(0,0,0,0.01)' }}>
+          <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '950px', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f0f4f8', color: '#555' }}>
+                  <th style={{ padding: '12px 10px', borderRadius: '8px 0 0 8px', textAlign: 'center', width: '5%' }}>No</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'left', width: '25%' }}>Nama Tugas</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'center', width: '15%' }}>Tenggat Waktu</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'center', width: '15%' }}>Status</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'center', width: '25%' }}>Dokumen / File</th>
+                  <th style={{ padding: '12px 10px', borderRadius: '0 8px 8px 0', textAlign: 'center', width: '15%' }}>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {listMasterTugas.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#999', fontSize: '0.9rem' }}>
+                      Belum ada tugas yang diinstruksikan oleh pengurus.
+                    </td>
+                  </tr>
+                ) : (
+                  listMasterTugas.map((tugas, index) => {
+                    // Cek apakah kader sudah mengumpulkan tugas ini
+                    const submittedBerkas = riwayatBerkas.find(r => r.jenis_berkas === tugas.nama_tugas);
+                    const isUploadingThis = uploadingTask === tugas.nama_tugas;
+                    const hasFileSelected = !!filesToUpload[tugas.nama_tugas];
+
+                    return (
+                      <tr key={tugas.id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '15px 10px', textAlign: 'center', color: '#777', fontWeight: 'bold' }}>{index + 1}</td>
+                        
+                        {/* KOLOM NAMA TUGAS */}
                         <td style={{ padding: '15px 10px' }}>
-                          <div style={{ fontWeight: 'bold', color: '#004a87', fontSize: '0.9rem', marginBottom: '4px' }}>{berkas.jenis_berkas}</div>
-                          <a href={berkas.file_link_or_id} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: '#3498db', textDecoration: 'none', fontStyle: 'italic' }}>📄 {berkas.nama_file_asli}</a>
+                          <div style={{ fontWeight: 'bold', color: '#333', fontSize: '0.95rem' }}>
+                            {tugas.nama_tugas}
+                          </div>
                         </td>
-                        <td style={{ padding: '15px 10px', textAlign: 'center', fontSize: '0.8rem', color: '#555' }}>{berkas.tanggal}</td>
+
+                        {/* KOLOM TENGGAT WAKTU */}
                         <td style={{ padding: '15px 10px', textAlign: 'center' }}>
-                          {berkas.status === 'Selesai' ? (
-                            <span style={{ backgroundColor: '#eaf4fc', color: '#27ae60', padding: '6px 12px', borderRadius: '15px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #2ecc71' }}>✅ Diterima (ACC)</span>
+                          <div style={{ color: '#e67e22', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                            {tugas.deadline || '-'}
+                          </div>
+                        </td>
+
+                        {/* KOLOM STATUS */}
+                        <td style={{ padding: '15px 10px', textAlign: 'center' }}>
+                          {submittedBerkas ? (
+                            submittedBerkas.status === 'Selesai' ? (
+                              <span style={{ backgroundColor: '#eaf4fc', color: '#27ae60', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold', border: '1px solid #2ecc71', whiteSpace: 'nowrap' }}>✅ Diterima (ACC)</span>
+                            ) : (
+                              <span style={{ backgroundColor: '#fff3cd', color: '#e67e22', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold', border: '1px solid #f1c40f', whiteSpace: 'nowrap' }}>⏳ Menunggu Cek</span>
+                            )
                           ) : (
-                            <span style={{ backgroundColor: '#fff3cd', color: '#e67e22', padding: '6px 12px', borderRadius: '15px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #f1c40f' }}>⏳ Menunggu Cek</span>
+                            <span style={{ backgroundColor: '#f4f6f9', color: '#7f8c8d', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold', border: '1px solid #bdc3c7', whiteSpace: 'nowrap' }}>Belum Dikerjakan</span>
+                          )}
+                        </td>
+
+                        {/* KOLOM FILE DOKUMEN */}
+                        <td style={{ padding: '15px 10px', textAlign: 'center' }}>
+                          {submittedBerkas ? (
+                            // Tampilkan link file jika sudah mengumpulkan
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                              <a href={submittedBerkas.file_link_or_id} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: '#004a87', textDecoration: 'none', fontWeight: 'bold', padding: '6px 12px', backgroundColor: '#eaf4fc', borderRadius: '6px', border: '1px solid #d6eaf8', display: 'inline-block', maxWidth: '180px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                📄 {submittedBerkas.nama_file_asli}
+                              </a>
+                              <span style={{ fontSize: '0.7rem', color: '#888' }}>Dikumpul: {submittedBerkas.tanggal}</span>
+                            </div>
+                          ) : (
+                            // Tampilkan input form file jika belum mengumpulkan
+                            <input 
+                              type="file" 
+                              accept=".pdf,.doc,.docx"
+                              className="file-input-custom"
+                              onChange={(e) => handleFileChange(tugas.nama_tugas, e.target.files ? e.target.files[0] : null)}
+                            />
+                          )}
+                        </td>
+
+                        {/* KOLOM AKSI (TOMBOL KUMPULKAN) */}
+                        <td style={{ padding: '15px 10px', textAlign: 'center' }}>
+                          {submittedBerkas ? (
+                            <span style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.8rem' }}>Tugas Selesai 🎉</span>
+                          ) : (
+                            <button 
+                              disabled={isUploadingThis || !hasFileSelected} 
+                              onClick={() => handleUploadTugas(tugas.nama_tugas)}
+                              style={{ 
+                                backgroundColor: hasFileSelected ? '#0000af' : '#95a5a6', 
+                                color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', 
+                                fontWeight: 'bold', cursor: hasFileSelected ? 'pointer' : 'not-allowed', 
+                                fontSize: '0.8rem', transition: '0.3s', whiteSpace: 'nowrap',
+                                boxShadow: hasFileSelected ? '0 2px 6px rgba(0,0,175,0.2)' : 'none'
+                              }}
+                            >
+                              {isUploadingThis ? 'Mengunggah...' : '📤 Kumpulkan'}
+                            </button>
                           )}
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
 
-      {/* TAMPILAN MOBILE APP (KARTU) DENGAN PADDING KHUSUS */}
-      <div className="mobile-view mobile-padded">
-        <div style={{ backgroundColor: '#fff', padding: '25px', borderRadius: '12px', border: '1px solid #eaeaea', marginBottom: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-           <h4 style={{ margin: '0 0 15px 0', color: '#1e824c', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>📤 Upload Tugas Baru</h4>
-           <form onSubmit={handleUploadTugas} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div>
-                <label style={{ fontSize: '0.85rem', color: '#555', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>Pilih Tugas</label>
-                <select required value={selectedTugasNama} onChange={e => setSelectedTugasNama(e.target.value)} style={{ width: '100%', padding: '14px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.9rem', outline: 'none', backgroundColor: '#fcfcfc' }}>
-                  <option value="" disabled>-- Daftar Tugas --</option>
-                  {listMasterTugas.map((tugas: any) => (
-                     <option key={tugas.id} value={tugas.nama_tugas}>{tugas.nama_tugas}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: '0.85rem', color: '#555', fontWeight: 'bold', display: 'block', marginBottom: '8px' }}>File (PDF/Word)</label>
-                <input type="file" required onChange={e => setFileTugas(e.target.files ? e.target.files[0] : null)} style={{ width: '100%', padding: '12px', border: '2px dashed #3498db', borderRadius: '8px', fontSize: '0.85rem', outline: 'none', backgroundColor: '#fff' }} />
-              </div>
-              <button disabled={isUploading} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '15px', borderRadius: '8px', fontWeight: 'bold', cursor: isUploading ? 'not-allowed' : 'pointer', fontSize: '1rem', marginTop: '5px', boxShadow: '0 4px 10px rgba(0,0,175,0.2)' }}>
-                {isUploading ? 'MENGUNGGAH...' : 'Kumpulkan Tugas'}
-              </button>
-           </form>
-        </div>
-
-        <h4 style={{ color: '#555', fontSize: '0.95rem', marginBottom: '5px', marginTop: '10px' }}>Riwayat Tugas Anda</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {riwayatBerkas.length === 0 ? (
-            <div style={{ padding: '25px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '12px', color: '#999', fontSize: '0.9rem' }}>Belum ada histori pengumpulan.</div>
-          ) : (
-            riwayatBerkas.map((berkas) => (
-              <div key={berkas.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '1rem', flex: 1, paddingRight: '10px' }}>{berkas.jenis_berkas}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#888', whiteSpace: 'nowrap' }}>{berkas.tanggal}</div>
-                </div>
-                <a href={berkas.file_link_or_id} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem', color: '#3498db', textDecoration: 'none', fontStyle: 'italic', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  📄 {berkas.nama_file_asli}
-                </a>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
-                  {berkas.status === 'Selesai' ? (
-                    <span style={{ backgroundColor: '#eaf4fc', color: '#27ae60', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #2ecc71' }}>Diterima (ACC)</span>
-                  ) : (
-                    <span style={{ backgroundColor: '#fff3cd', color: '#e67e22', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 'bold', border: '1px solid #f1c40f' }}>Menunggu Cek</span>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-        <div style={{ height: '50px' }}></div>
+        <div style={{ height: '50px' }} className="mobile-only"></div>
       </div>
     </>
   );

@@ -1,39 +1,80 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 
-export default function PageMasterTugas() {
+export default function PageMasterTugasRayon() {
   const [adminRayonId, setAdminRayonId] = useState('');
   const [namaRayonAsli, setNamaRayonAsli] = useState('');
   
   const [listMasterTugas, setListMasterTugas] = useState<any[]>([]);
+  const [berkasKaderRayon, setBerkasKaderRayon] = useState<any[]>([]);
+  const [tabAktif, setTabAktif] = useState<'tugas' | 'verifikasi'>('tugas');
+
   const [formTugas, setFormTugas] = useState({ nama_tugas: '', deadline: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    let unsubs: (() => void)[] = [];
+
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (user) {
         const qRole = query(collection(db, "users"), where("email", "==", user.email));
-        onSnapshot(qRole, (snapRole: any) => {
+        onSnapshot(qRole, async (snapRole: any) => {
           if (!snapRole.empty) {
-            const currentRayonId = snapRole.docs[0].data().username;
+            const rayonData = snapRole.docs[0].data();
+            const currentRayonId = rayonData.username;
             setAdminRayonId(currentRayonId);
-            setNamaRayonAsli(snapRole.docs[0].data().nama || currentRayonId);
+            setNamaRayonAsli(rayonData.nama || currentRayonId);
             
-            onSnapshot(query(collection(db, "master_tugas"), where("id_rayon", "==", currentRayonId)), (snap: any) => {
+            // 1. Ambil Master Tugas Rayon
+            const unsubTugas = onSnapshot(query(collection(db, "master_tugas"), where("id_rayon", "==", currentRayonId)), (snap: any) => {
               const list: any[] = [];
               snap.forEach((doc: any) => list.push({ id: doc.id, ...doc.data() }));
               list.sort((a, b) => b.timestamp - a.timestamp);
               setListMasterTugas(list);
             });
+            unsubs.push(unsubTugas);
+
+            // 2. Ambil data kader yang terdaftar di Rayon ini untuk verifikasi tugas
+            const qKader = query(collection(db, "users"), where("role", "==", "kader"));
+            const snapKader = await getDocs(qKader);
+            const emailKaderRayon: string[] = [];
+            
+            snapKader.forEach(d => {
+              const data = d.data();
+              const terdaftarDi = data.terdaftar_di || [data.id_rayon];
+              if (terdaftarDi.includes(currentRayonId)) {
+                emailKaderRayon.push(data.email);
+              }
+            });
+
+            // 3. Ambil Berkas Tugas Kader Berdasarkan Email
+            if (emailKaderRayon.length > 0) {
+              const unsubBerkas = onSnapshot(collection(db, "berkas_kader"), (snap) => {
+                const listBerkas: any[] = [];
+                snap.forEach(doc => {
+                  const d = doc.id ? { id: doc.id, ...doc.data() } : doc.data();
+                  if (emailKaderRayon.includes((d as any).email_kader)) {
+                    listBerkas.push(d);
+                  }
+                });
+                listBerkas.sort((a, b) => b.timestamp - a.timestamp);
+                setBerkasKaderRayon(listBerkas);
+              });
+              unsubs.push(unsubBerkas);
+            }
           }
         });
       }
     });
-    return () => unsubscribeAuth();
+
+    return () => {
+      unsubscribeAuth();
+      unsubs.forEach(u => u());
+    };
   }, []);
 
   const catatLogAktivitas = async (aksi: string) => {
@@ -49,10 +90,20 @@ export default function PageMasterTugas() {
   const handleTambahTugas = async (e: React.FormEvent) => { 
     e.preventDefault(); setIsSubmitting(true);
     try { 
-      await addDoc(collection(db, "master_tugas"), { id_rayon: adminRayonId, nama_tugas: formTugas.nama_tugas, deadline: formTugas.deadline, timestamp: Date.now() }); 
+      await addDoc(collection(db, "master_tugas"), { 
+        id_rayon: adminRayonId, 
+        nama_tugas: formTugas.nama_tugas, 
+        deadline: formTugas.deadline, 
+        timestamp: Date.now() 
+      }); 
       catatLogAktivitas(`Membuat tugas baru: ${formTugas.nama_tugas}`); 
+      alert("Tugas berhasil dibuat!");
       setFormTugas({ nama_tugas: '', deadline: '' }); 
-    } catch (error) { alert("Gagal menyimpan tugas."); } finally { setIsSubmitting(false); }
+    } catch (error) { 
+      alert("Gagal menyimpan tugas."); 
+    } finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   const handleHapusTugas = async (idTugas: string, namaTugas: string) => { 
@@ -62,130 +113,161 @@ export default function PageMasterTugas() {
     }
   };
 
+  const handleVerifikasiTugas = async (idBerkas: string, namaKader: string) => {
+    try {
+      await updateDoc(doc(db, "berkas_kader", idBerkas), { status: 'Selesai' });
+      catatLogAktivitas(`Memverifikasi (ACC) tugas kader: ${namaKader}`);
+      alert("Tugas berhasil diverifikasi (ACC)!");
+    } catch (error) {
+      alert("Gagal memverifikasi tugas.");
+    }
+  };
+
   return (
     <>
       <style>{`
-        /* TOGGLE DESKTOP & MOBILE */
-        .desktop-view { display: block; }
-        .mobile-view { display: none; }
+        .page-wrapper { display: flex; flex-direction: column; gap: 20px; }
+        .header-card { background: white; padding: 25px; border-radius: 12px; border: 1px solid #eaeaea; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        .form-card { background: #fdfdfd; padding: 20px; border: 1px solid #eaeaea; border-radius: 10px; margin-bottom: 25px; }
         
+        .modern-tab-container { display: flex; background-color: #f0f2f5; padding: 6px; border-radius: 8px; width: fit-content; margin-bottom: 20px; }
+        .modern-tab { padding: 10px 20px; border-radius: 6px; border: none; background: transparent; color: #777; font-weight: bold; font-size: 0.85rem; cursor: pointer; transition: all 0.3s; white-space: nowrap; }
+        .modern-tab.active { background-color: #0000af; color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 
         @media (max-width: 767px) {
-           .desktop-view { display: none !important; }
-           .mobile-view { display: flex !important; flex-direction: column; gap: 15px; padding: 15px !important; }
-           body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
-           ::-webkit-scrollbar { display: none; }
+           .page-wrapper { padding: 15px; }
+           .header-card, .form-card { padding: 20px; }
+           .modern-tab-container { width: 100%; overflow-x: auto; background-color: #fff; border: 1px solid #eaeaea; border-radius: 12px; padding: 6px; }
         }
       `}</style>
 
-      {/* ============================================== */}
-      {/* 1. DESKTOP VIEW                                */}
-      {/* ============================================== */}
-      <div className="desktop-view">
-        <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', boxSizing: 'border-box' }}>
-          <div style={{ borderBottom: '1px solid #eee', paddingBottom: '15px', marginBottom: '20px' }}>
-            <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.2rem', fontWeight: 'bold' }}>📋 Manajemen Tugas Rayon</h3>
-            <p style={{ fontSize: '0.85rem', color: '#777', margin: '5px 0 0 0' }}>Daftarkan judul tugas dan deadline agar Kader dapat mengupload file tugas mereka.</p>
-          </div>
-
-          <div style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eaeaea', borderRadius: '8px', marginBottom: '25px' }}>
-            <form onSubmit={handleTambahTugas} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 200px' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', marginBottom: '5px', display: 'block' }}>Judul Tugas / Berkas</label>
-                <input type="text" placeholder="Misal: Makalah Sejarah PMII" required value={formTugas.nama_tugas} onChange={e => setFormTugas({...formTugas, nama_tugas: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }} />
-              </div>
-              <div style={{ flex: '1 1 150px' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', marginBottom: '5px', display: 'block' }}>Batas Waktu (Deadline)</label>
-                <input type="date" required value={formTugas.deadline} onChange={e => setFormTugas({...formTugas, deadline: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }} />
-              </div>
-              <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '10px 25px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', height: '40px', fontSize: '0.85rem' }}>+ Buat Tugas</button>
-            </form>
-          </div>
-
-          <div style={{ width: '100%', overflowX: 'auto', border: '1px solid #eaeaea', borderRadius: '8px', overflow: 'hidden' }}>
-            <table className="tabel-utama" style={{ minWidth: '600px', width: '100%' }}>
-              <thead>
-                <tr>
-                  <th style={{ width: '5%', textAlign: 'center' }}>No</th>
-                  <th style={{ width: '50%', textAlign: 'left' }}>Nama Tugas Tersedia</th>
-                  <th style={{ width: '25%', textAlign: 'center' }}>Deadline</th>
-                  <th style={{ width: '20%', textAlign: 'center' }}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {listMasterTugas.length === 0 ? (
-                  <tr><td colSpan={4} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada tugas yang dibuat.</td></tr>
-                ) : (
-                  listMasterTugas.map((tugas, idx) => (
-                    <tr key={tugas.id}>
-                      <td style={{ textAlign: 'center', color: '#555' }}>{idx + 1}</td>
-                      <td style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '0.9rem' }}>{tugas.nama_tugas}</td>
-                      <td style={{ textAlign: 'center', color: '#e74c3c', fontWeight: 'bold', fontSize: '0.85rem' }}>{tugas.deadline}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button onClick={() => handleHapusTugas(tugas.id, tugas.nama_tugas)} style={{ color: 'white', backgroundColor: '#e74c3c', border: 'none', padding: '6px 15px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }} title="Hapus Tugas">Hapus</button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* ============================================== */}
-      {/* 2. MOBILE VIEW                                 */}
-      {/* ============================================== */}
-      <div className="mobile-view">
-        <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
-          <h4 style={{ margin: '0 0 15px 0', color: '#0000af', fontSize: '1rem' }}>➕ Tambah Tugas Baru</h4>
-          <form onSubmit={handleTambahTugas} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input type="text" placeholder="Judul Tugas (Misal: Makalah Sejarah)" required value={formTugas.nama_tugas} onChange={e => setFormTugas({...formTugas, nama_tugas: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', outline: 'none' }} />
-            <input type="date" required value={formTugas.deadline} onChange={e => setFormTugas({...formTugas, deadline: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', outline: 'none', backgroundColor: '#fff' }} />
-            <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '15px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem', marginTop: '5px' }}>
-              {isSubmitting ? 'Menyimpan...' : 'Simpan Tugas'}
-            </button>
-          </form>
-        </div>
-
-        <h4 style={{ margin: '5px 0 0 0', color: '#555', fontSize: '0.9rem', fontWeight: 'bold' }}>Daftar Tugas Aktif</h4>
+      <div className="page-wrapper">
         
-        {/* TABEL DATA TUGAS MOBILE */}
-        <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
-          <table className="tabel-utama" style={{ minWidth: '450px', width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: 'left' }}>Nama Tugas</th>
-                <th style={{ textAlign: 'center', width: '25%' }}>Deadline</th>
-                <th style={{ textAlign: 'center', width: '20%' }}>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {listMasterTugas.length === 0 ? (
-                <tr><td colSpan={3} style={{ textAlign: 'center', padding: '30px', color: '#999' }}>Belum ada tugas yang dibuat.</td></tr>
-              ) : (
-                listMasterTugas.map((tugas) => (
-                  <tr key={tugas.id}>
-                    <td>
-                      <div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '0.85rem' }}>{tugas.nama_tugas}</div>
-                    </td>
-                    <td style={{ textAlign: 'center', color: '#e74c3c', fontWeight: 'bold', fontSize: '0.8rem' }}>
-                      {tugas.deadline}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button onClick={() => handleHapusTugas(tugas.id, tugas.nama_tugas)} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.75rem' }}>
-                        Hapus
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        {/* HEADER */}
+        <div className="header-card">
+          <h3 style={{ color: '#0d1b2a', margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>📋 Manajemen & Verifikasi Tugas Rayon</h3>
+          <p style={{ fontSize: '0.85rem', color: '#777', margin: 0 }}>Buat instruksi tugas baru atau periksa dan verifikasi tugas yang telah dikumpulkan oleh kader.</p>
         </div>
-        <div style={{ height: '80px' }}></div>
+
+        {/* TAB NAVIGASI */}
+        <div className="modern-tab-container hide-scroll">
+           <button onClick={() => setTabAktif('tugas')} className={`modern-tab ${tabAktif === 'tugas' ? 'active' : ''}`}>Daftar Master Tugas</button>
+           <button onClick={() => setTabAktif('verifikasi')} className={`modern-tab ${tabAktif === 'verifikasi' ? 'active' : ''}`}>
+             Verifikasi Tugas Kader {berkasKaderRayon.filter(b => b.status === 'Menunggu Verifikasi').length > 0 && `(${berkasKaderRayon.filter(b => b.status === 'Menunggu Verifikasi').length})`}
+           </button>
+        </div>
+
+        {/* TAB 1: MASTER TUGAS */}
+        {tabAktif === 'tugas' && (
+          <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+            
+            <div className="form-card">
+              <form onSubmit={handleTambahTugas} style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 250px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#555', marginBottom: '5px', display: 'block' }}>Judul Tugas / Berkas</label>
+                  <input type="text" placeholder="Misal: Makalah Sejarah PMII" required value={formTugas.nama_tugas} onChange={e => setFormTugas({...formTugas, nama_tugas: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }} />
+                </div>
+                <div style={{ flex: '1 1 180px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#555', marginBottom: '5px', display: 'block' }}>Batas Waktu (Deadline)</label>
+                  <input type="date" required value={formTugas.deadline} onChange={e => setFormTugas({...formTugas, deadline: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }} />
+                </div>
+                <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '11px 25px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', transition: '0.2s' }}>
+                  {isSubmitting ? 'Menyimpan...' : '+ Buat Tugas'}
+                </button>
+              </form>
+            </div>
+
+            <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto', border: '1px solid #eaeaea', borderRadius: '10px', backgroundColor: '#fff' }}>
+              <table style={{ minWidth: '600px', width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                <thead style={{ backgroundColor: '#f0f4f8', color: '#555' }}>
+                  <tr>
+                    <th style={{ padding: '12px 15px', borderRadius: '10px 0 0 0', width: '5%', textAlign: 'center' }}>No</th>
+                    <th style={{ padding: '12px 15px', width: '55%' }}>Nama Tugas Tersedia</th>
+                    <th style={{ padding: '12px 15px', width: '25%', textAlign: 'center' }}>Deadline</th>
+                    <th style={{ padding: '12px 15px', borderRadius: '0 10px 0 0', width: '15%', textAlign: 'center' }}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listMasterTugas.length === 0 ? (
+                    <tr><td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: '#999' }}>Belum ada tugas yang dibuat.</td></tr>
+                  ) : (
+                    listMasterTugas.map((tugas, idx) => (
+                      <tr key={tugas.id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ textAlign: 'center', color: '#777', fontWeight: 'bold' }}>{idx + 1}</td>
+                        <td style={{ fontWeight: 'bold', color: '#0d1b2a', padding: '15px' }}>{tugas.nama_tugas}</td>
+                        <td style={{ textAlign: 'center', color: '#e67e22', fontWeight: 'bold', padding: '15px' }}>{tugas.deadline}</td>
+                        <td style={{ textAlign: 'center', padding: '15px' }}>
+                          <button onClick={() => handleHapusTugas(tugas.id, tugas.nama_tugas)} style={{ color: '#e74c3c', background: '#fff0f0', border: '1px solid #fadbd8', padding: '6px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem', transition: '0.2s' }}>
+                            Hapus
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 2: VERIFIKASI TUGAS KADER */}
+        {tabAktif === 'verifikasi' && (
+          <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+            <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto', border: '1px solid #eaeaea', borderRadius: '10px', backgroundColor: '#fff' }}>
+              <table style={{ minWidth: '750px', width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                <thead style={{ backgroundColor: '#f0f4f8', color: '#555' }}>
+                  <tr>
+                    <th style={{ padding: '12px 15px', borderRadius: '10px 0 0 0', width: '25%' }}>Kader / Waktu Kumpul</th>
+                    <th style={{ padding: '12px 15px', width: '30%' }}>Jenis Tugas / File</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'center', width: '20%' }}>Dokumen</th>
+                    <th style={{ padding: '12px 15px', textAlign: 'center', borderRadius: '0 10px 0 0', width: '25%' }}>Status & Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {berkasKaderRayon.length === 0 ? (
+                    <tr><td colSpan={4} style={{ padding: '40px', textAlign: 'center', color: '#999' }}>Belum ada berkas tugas yang dikumpulkan oleh kader.</td></tr>
+                  ) : (
+                    berkasKaderRayon.map((berkas) => (
+                      <tr key={berkas.id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '15px' }}>
+                          <div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '0.9rem', marginBottom: '4px' }}>{berkas.email_kader.split('@')[0]}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#888' }}>{berkas.tanggal}</div>
+                        </td>
+                        <td style={{ padding: '15px' }}>
+                          <div style={{ fontWeight: 'bold', color: '#1e824c', fontSize: '0.9rem' }}>{berkas.jenis_berkas}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#666', fontStyle: 'italic' }}>{berkas.nama_file_asli}</div>
+                        </td>
+                        <td style={{ padding: '15px', textAlign: 'center' }}>
+                          <a href={berkas.file_link_or_id} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 12px', backgroundColor: '#eaf4fc', borderRadius: '6px', textDecoration: 'none', color: '#004a87', fontWeight: 'bold', fontSize: '0.8rem', border: '1px solid #d6eaf8', display: 'inline-block' }}>
+                            👁️ Lihat File
+                          </a>
+                        </td>
+                        <td style={{ padding: '15px', textAlign: 'center' }}>
+                          {berkas.status === 'Selesai' ? (
+                            <span style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.8rem', backgroundColor: '#eaf4fc', padding: '6px 12px', borderRadius: '20px', border: '1px solid #2ecc71', display: 'inline-block' }}>✅ Selesai (ACC)</span>
+                          ) : (
+                            <button 
+                              onClick={() => handleVerifikasiTugas(berkas.id, berkas.email_kader)} 
+                              style={{ backgroundColor: '#2ecc71', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', boxShadow: '0 2px 5px rgba(46,204,113,0.2)' }}
+                            >
+                              Verifikasi Selesai (ACC)
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <div style={{ height: '50px' }}></div>
       </div>
     </>
   );

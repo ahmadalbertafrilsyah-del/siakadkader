@@ -66,12 +66,13 @@ export default function KaderLayout({ children }: { children: React.ReactNode })
     { id: '/kader/dashboard', icon: '🏠', label: 'Beranda' },
     { id: '/kader/profil', icon: '👤', label: 'Profil Saya' },
     { id: '/kader/raport', icon: '🎓', label: 'Kartu Hasil Studi' },
+    { id: '/kader/tugas', icon: '📋', label: 'Pengumpulan Tugas' },
+    { id: '/kader/tes', icon: '📝', label: 'Ujian & Tes' },
     { id: '/kader/sertifikat', icon: '📜', label: 'Sertifikat Digital' },
     { id: '/kader/kalender', icon: '📅', label: 'Jadwal Kegiatan' },
     { id: '/kader/pengumuman', icon: '📢', label: 'Pengumuman' },
     { id: '/kader/perpustakaan', icon: '📚', label: 'Perpustakaan' },
-    { id: '/kader/tugas', icon: '📋', label: 'Pengumpulan Tugas' },
-    { id: '/kader/tes', icon: '📝', label: 'Ujian & Tes' },
+
   ];
 
   // Mobile Bottom Navigation Mapping (Hanya 5 Menu Utama)

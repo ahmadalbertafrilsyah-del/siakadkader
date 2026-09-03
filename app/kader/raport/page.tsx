@@ -61,6 +61,7 @@ export default function PageRaportKader() {
               });
               unsubs.push(unsub2);
             } else {
+              // Ambil KOP dari dokumen users Rayon
               const unsub3 = onSnapshot(doc(db, "users", p.id_rayon), (rayonSnap: any) => {
                 if (rayonSnap.exists()) {
                   const rData = rayonSnap.data();
@@ -139,7 +140,6 @@ export default function PageRaportKader() {
       hitungPresisi = true;
     }
     
-    // Perhitungan Presisi
     const angkaSkala4 = angkaAkhir > 0 ? (angkaAkhir / 25) : 0; 
     let sksKaliNilai = 0;
     
@@ -169,80 +169,40 @@ export default function PageRaportKader() {
   return (
     <>
       <style>{`
-        /* RESPONSIVE LAYOUT & HIDE SCROLLBAR */
         .mobile-padded { display: flex; flex-direction: column; gap: 20px; }
         
         @media (max-width: 767px) {
-           body, html, .mobile-content-wrapper, .app-container {
-             overflow-x: hidden;
-             -ms-overflow-style: none;
-             scrollbar-width: none;
-           }
-           ::-webkit-scrollbar {
-             display: none;
-           }
+           body, html, .mobile-content-wrapper, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
+           ::-webkit-scrollbar { display: none; }
            .mobile-padded { padding: 15px !important; }
         }
 
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* CSS TAB TEGAS (UKURAN DIPERKECIL AGAR FIT DI HP) */
         .modern-tab-container {
-           display: flex;
-           background-color: #f0f2f5;
-           padding: 4px;
-           border-radius: 8px;
-           width: fit-content;
-           margin-bottom: 15px;
+           display: flex; background-color: #f0f2f5; padding: 4px; border-radius: 8px; width: fit-content; margin-bottom: 15px;
         }
         .modern-tab {
-           padding: 8px 12px;
-           border-radius: 6px;
-           border: none;
-           background: transparent;
-           color: #777;
-           font-weight: bold;
-           font-size: 0.75rem;
-           cursor: pointer;
-           transition: all 0.3s;
+           padding: 8px 12px; border-radius: 6px; border: none; background: transparent; color: #777; font-weight: bold; font-size: 0.75rem; cursor: pointer; transition: all 0.3s;
         }
         .modern-tab.active {
-           background-color: #fff;
-           color: #0000af;
-           box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+           background-color: #fff; color: #0000af; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
-        /* PERBAIKAN TOTAL UNTUK CETAK PDF AGAR TIDAK TURUN KE BAWAH */
+        /* CETAK PDF DENGAN BACKGROUND KOP */
         @media print {
           @page { size: A4 portrait; margin: 0; }
-          
-          /* MEMATIKAN SEMUA OVERFLOW & BATASAN LAYAR */
           body, html, .app-container, main, .main-content, .mobile-content-wrapper, .mobile-padded { 
-            background-color: white !important; 
-            margin: 0 !important; 
-            padding: 0 !important; 
-            height: auto !important; 
-            min-height: 0 !important;
-            overflow: visible !important; 
-            display: block !important;
-            position: static !important;
+            background-color: white !important; margin: 0 !important; padding: 0 !important; height: auto !important; min-height: 0 !important; overflow: visible !important; display: block !important; position: static !important;
+            -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
           }
+          aside, header, nav, .web-ui-container, .mobile-only, .desktop-only { display: none !important; }
           
-          aside, header, nav, .web-ui-container, .mobile-only, .desktop-only { 
-            display: none !important; 
-          }
+          .print-layout-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; z-index: 9999 !important; background: white !important;}
           
-          .print-layout-container { 
-            display: block !important; 
-            position: static !important; 
-            width: 100% !important; 
-            z-index: 9999 !important; 
-            background: white !important;
-          }
-          
-          .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
-          .bg-kertas-a4 img { width: 100% !important; height: 100% !important; object-fit: fill !important; display: block !important; }
+          .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .bg-kertas-a4 img { width: 100% !important; height: 100% !important; object-fit: fill !important; display: block !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           
           table.master-print-table { width: 100% !important; border: none !important; margin: 0 !important; padding: 0 !important; background-color: transparent !important; page-break-inside: auto !important; position: relative !important; z-index: 10 !important; }
           table.master-print-table > thead { display: table-header-group !important; }
@@ -250,8 +210,8 @@ export default function PageRaportKader() {
           table.master-print-table > tbody { display: table-row-group !important; }
           table.master-print-table td { border: none !important; padding: 0 !important; background-color: transparent !important; }
           
-          .header-space { height: 45mm !important; }
-          .footer-space { height: 30mm !important; }
+          .header-space { height: 55mm !important; }
+          .footer-space { height: 35mm !important; }
           .print-content-area { padding: 0 25mm !important; position: relative; z-index: 10; margin-top: 0 !important; }
           
           table.tabel-utama-print { width: 100% !important; border-collapse: collapse !important; margin-bottom: 20px; page-break-inside: auto !important; }
@@ -259,8 +219,7 @@ export default function PageRaportKader() {
           table.tabel-utama-print th, table.tabel-utama-print td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; color: #000 !important; }
           table.tabel-utama-print th { font-weight: bold !important; text-align: center !important; }
           .tabel-biodata { margin-top: 0 !important; }
-          .tabel-biodata td { border: none !important; padding: 3px 0 !important; }
-          
+          .tabel-biodata td { border: none !important; padding: 3px 0 !important; font-size: 11pt !important; color: #000 !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen { .print-layout-container { display: none !important; } }
@@ -269,7 +228,6 @@ export default function PageRaportKader() {
       {/* TAMPILAN WEB NORMAL */}
       <div className="web-ui-container mobile-padded">
         
-        {/* HEADER & FILTER SEJAJAR (DIPERKECIL) */}
         <div style={{ background: 'white', padding: '12px 15px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
           <div className="hide-scroll" style={{ display: 'flex', alignItems: 'center', gap: '10px', overflowX: 'auto', whiteSpace: 'nowrap' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555' }}>Pilih Jenjang:</span>
@@ -277,7 +235,6 @@ export default function PageRaportKader() {
               <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option><option value="SKP">SKP</option><option value="NONFORMAL">Non-Formal</option>
             </select>
             
-            {/* TOMBOL CETAK DIPERKECIL & SEJAJAR */}
             {tabAktif === 'raport' && (
               <div style={{ display: 'flex', marginLeft: 'auto' }}>
                 <button onClick={() => window.print()} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', boxShadow: '0 2px 5px rgba(0,0,175,0.1)' }}>
@@ -288,10 +245,8 @@ export default function PageRaportKader() {
           </div>
         </div>
 
-        {/* AREA KONTEN UTAMA */}
         <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eaeaea', padding: '15px', minHeight: '50vh' }}>
           
-          {/* TAB MENU (DIPERKECIL AGAR MUAT DI HP) */}
           <div className="modern-tab-container hide-scroll" style={{ overflowX: 'auto', whiteSpace: 'nowrap' }}>
              <button onClick={() => setTabAktif('raport')} className={`modern-tab ${tabAktif === 'raport' ? 'active' : ''}`}>Kartu Hasil Studi (KHS)</button>
              <button onClick={() => setTabAktif('persentase')} className={`modern-tab ${tabAktif === 'persentase' ? 'active' : ''}`}>Rincian Nilai Mentah</button>
@@ -324,7 +279,6 @@ export default function PageRaportKader() {
                   </tr>
                 </tbody>
               </table>
-              <p style={{ fontSize: '0.7rem', color: '#888', fontStyle: 'italic', marginTop: '15px', textAlign: 'center' }}>*IPK dihitung secara presisi berdasarkan Nilai Mentah / 25.</p>
             </div>
           )}
 
@@ -392,7 +346,7 @@ export default function PageRaportKader() {
         <div style={{ height: '80px' }} className="mobile-only"></div>
       </div>
 
-      {/* PRINT CONTAINER KHUSUS CETAK A4 PDF (TIDAK AKAN KOSONG / TERDORONG KE BAWAH) */}
+      {/* PRINT CONTAINER KHUSUS CETAK A4 PDF DENGAN BACKGROUND KOP */}
       <div className="print-layout-container">
         {pengaturanCetak.kopSuratUrl && <div className="bg-kertas-a4"><img src={pengaturanCetak.kopSuratUrl} alt="Background A4" /></div>}
         <table className="master-print-table">

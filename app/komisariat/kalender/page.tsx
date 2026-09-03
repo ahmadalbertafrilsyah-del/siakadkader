@@ -44,7 +44,7 @@ export default function PageKalenderJadwal() {
              {/* Copy exact inputs from your original Kalender block here */}
              <div>
               <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', marginBottom: '5px', display: 'block' }}>Judul Kegiatan</label>
-              <input type="text" placeholder="Cth: RTM Komisariat" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }} />
+              <input type="text" placeholder="Cth: RTK Komisariat" required value={formJadwal.judul} onChange={e => setFormJadwal({...formJadwal, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem' }} />
             </div>
             <div>
               <label style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', marginBottom: '5px', display: 'block' }}>Tanggal & Waktu</label>

@@ -101,11 +101,49 @@ export default function PageSertifikatKader() {
   return (
     <>
       <style>{`
-        .mobile-padded { display: flex; flex-direction: column; gap: 20px; }
+        /* COLOR PALETTE & LAYOUT */
+        :root {
+          --text-main: #111827;
+          --text-muted: #6b7280;
+          --border-color: #e5e7eb;
+          --bg-card: #ffffff;
+        }
+
+        .page-wrapper { display: flex; flex-direction: column; gap: 24px; }
+        
+        .header-card { 
+          background: var(--bg-card); padding: 24px; border-radius: 8px; 
+          border: 1px solid var(--border-color); box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+        }
+        
+        .header-title-container { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        .header-icon { color: #2563eb; display: flex; align-items: center; justify-content: center; }
+
+        .preview-card {
+          background: var(--bg-card); border: 1px solid var(--border-color);
+          border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+          display: flex; flex-direction: column; gap: 20px; text-align: center;
+        }
+
+        .select-jenjang {
+          padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;
+          outline: none; font-weight: 600; color: var(--text-main); background-color: #fff;
+          cursor: pointer; font-size: 0.85rem; transition: border-color 0.2s;
+        }
+        .select-jenjang:focus { border-color: #2563eb; }
+
+        .btn-print {
+          background-color: #2563eb; color: white; border: none; padding: 9px 18px;
+          border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem;
+          display: inline-flex; align-items: center; gap: 6px; transition: background-color 0.2s;
+        }
+        .btn-print:hover { background-color: #1d4ed8; }
+
         @media (max-width: 767px) {
            body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
            ::-webkit-scrollbar { display: none; }
-           .mobile-padded { padding: 15px !important; }
+           .page-wrapper { padding: 16px; }
+           .header-card, .preview-card { padding: 16px; }
         }
         
         @media print {
@@ -113,7 +151,6 @@ export default function PageSertifikatKader() {
           body, html { background-color: white !important; margin: 0; padding: 0; height: 100vh !important; width: 100vw !important; overflow: hidden !important; }
           aside, header, nav, .web-ui-container { display: none !important; }
           main.no-print { display: block !important; margin: 0 !important; padding: 0 !important; }
-          .mobile-content-wrapper { padding: 0 !important; margin: 0 !important; }
           .print-layout-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: ${settings.orientasi === 'portrait' ? '210mm' : '297mm'} !important; height: ${settings.orientasi === 'portrait' ? '297mm' : '210mm'} !important; z-index: 9999 !important; background: white !important; }
           .bg-sertifikat { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
           .bg-sertifikat img { width: 100%; height: 100%; object-fit: fill; display: block; }
@@ -123,53 +160,79 @@ export default function PageSertifikatKader() {
         @media screen { .print-layout-container { display: none !important; } }
       `}</style>
 
-      {/* WEB UI CONTAINER (Disembunyikan saat print) */}
-      <div className="web-ui-container mobile-padded">
-        <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #eaeaea' }}>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #eee', paddingBottom: '15px', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+      {/* WEB UI CONTAINER */}
+      <div className="web-ui-container page-wrapper">
+        
+        {/* HEADER */}
+        <div className="header-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.2rem' }}>🎓 Cetak Piagam / Sertifikat Digital</h3>
-              <p style={{ fontSize: '0.85rem', color: '#777', margin: '5px 0 0 0' }}>Sertifikat resmi PMII yang tata letaknya telah diatur oleh Pengurus.</p>
+              <div className="header-title-container">
+                <div className="header-icon">
+                  {/* SVG Ikon Sertifikat / Penghargaan */}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="8" r="6"></circle>
+                    <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>
+                  </svg>
+                </div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-main)' }}>Cetak Piagam & Sertifikat Digital</h3>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Sertifikat resmi PMII yang tata letaknya telah diatur oleh Pengurus.</p>
             </div>
+            
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <select value={selectedJenjang} onChange={e => setSelectedJenjang(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #ccc', borderRadius: '6px', outline: 'none', fontWeight: 'bold', color: '#0000af', cursor: 'pointer' }}>
-                <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option><option value="SKP">SKP</option>
+              <select value={selectedJenjang} onChange={e => setSelectedJenjang(e.target.value)} className="select-jenjang">
+                <option value="MAPABA">MAPABA</option>
+                <option value="PKD">PKD</option>
+                <option value="SIG">SIG</option>
+                <option value="SKP">SKP</option>
               </select>
-              <button onClick={() => window.print()} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '9px 18px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
-                🖨️ Cetak PDF
+              <button onClick={() => window.print()} className="btn-print">
+                {/* SVG Ikon Cetak */}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                  <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+                Cetak PDF
               </button>
             </div>
           </div>
+        </div>
 
-          <div style={{ backgroundColor: '#fdfdfd', border: '1px solid #eee', borderRadius: '10px', padding: '20px', textAlign: 'center' }}>
-            <p style={{ marginBottom: '15px', color: '#555', fontSize: '0.9rem', fontWeight: 'bold' }}>Pratinjau Sertifikat ({settings.orientasi})</p>
+        {/* PRATINJAU SERTIFIKAT */}
+        <div className="preview-card">
+          <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)', textAlign: 'left', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+            Pratinjau Sertifikat ({settings.orientasi})
+          </div>
+          
+          <div style={{ 
+            position: 'relative', width: '100%', maxWidth: '850px', margin: '0 auto', 
+            aspectRatio: aspectRatio, border: '1px solid var(--border-color)', borderRadius: '6px', 
+            overflow: 'hidden', backgroundColor: '#fdfdfd', containerType: 'inline-size',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+          }}>
+            {settings.templateUrl && (
+              <img src={settings.templateUrl} alt="Template Sertifikat" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1 }} />
+            )}
             
-            <div style={{ 
-              position: 'relative', width: '100%', maxWidth: '800px', margin: '0 auto', 
-              aspectRatio: aspectRatio, border: '1px solid #ccc', overflow: 'hidden', backgroundColor: 'white', containerType: 'inline-size' 
-            }}>
-              {settings.templateUrl && (
-                <img src={settings.templateUrl} alt="Template" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1 }} />
-              )}
-              
-              {Object.keys(settings.posisi).map(key => {
-                const p = (settings.posisi as any)[key];
-                return (
-                  <div key={key} style={{ 
-                    position: 'absolute', zIndex: 2, top: `${p.top}%`, left: `${p.left}%`, transform: key === 'nomor' ? 'translate(-50%, 0)' : 'none', 
-                    fontFamily: '"Arial Narrow", Arial, sans-serif', fontSize: `${p.fontSize * fontScaleCqw}cqw`, 
-                    fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
-                    color: '#000', whiteSpace: 'nowrap', lineHeight: '1.2'
-                  }}>
-                    {getDataTeks(key)}
-                  </div>
-                );
-              })}
-            </div>
+            {Object.keys(settings.posisi).map(key => {
+              const p = (settings.posisi as any)[key];
+              return (
+                <div key={key} style={{ 
+                  position: 'absolute', zIndex: 2, top: `${p.top}%`, left: `${p.left}%`, transform: key === 'nomor' ? 'translate(-50%, 0)' : 'none', 
+                  fontFamily: '"Arial Narrow", Arial, sans-serif', fontSize: `${p.fontSize * fontScaleCqw}cqw`, 
+                  fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
+                  color: '#000', whiteSpace: 'nowrap', lineHeight: '1.2'
+                }}>
+                  {getDataTeks(key)}
+                </div>
+              );
+            })}
           </div>
         </div>
-        <div style={{ height: '80px' }} className="mobile-only"></div>
+
+        <div style={{ height: '50px' }} className="mobile-only"></div>
       </div>
 
       {/* RENDER CETAK KHUSUS KERTAS A4 (PDF) */}

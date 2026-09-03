@@ -217,16 +217,52 @@ export default function PageDatabaseKader() {
             <form onSubmit={async (e) => {
                e.preventDefault(); setIsSubmitting(true);
                try {
-                 const newNim = editKaderModal.nim.trim(); const docRef = doc(db, "users", editKaderModal.id);
+                 const newNim = editKaderModal.nim.trim(); 
+                 const docRef = doc(db, "users", editKaderModal.id);
+                 
                  if (newNim !== editKaderModal.oldNim) {
-                    const oldKaderData = (await getDocs(query(collection(db, "users"), where("nim", "==", editKaderModal.oldNim)))).docs[0]?.data() || {};
-                    await setDoc(doc(db, "users", newNim), { ...oldKaderData, nim: newNim, nama: editKaderModal.nama, id_rayon: editKaderModal.id_rayon, jenjang: editKaderModal.jenjang });
-                    await deleteDoc(docRef); alert("Data & NIM diperbarui!");
+                    const oldNim = editKaderModal.oldNim;
+                    const newEmail = `${newNim}@pmii-uinmalang.or.id`.toLowerCase();
+                    const oldEmail = `${oldNim}@pmii-uinmalang.or.id`.toLowerCase();
+                    
+                    // 1. Pindahkan Data Profil Users
+                    const oldKaderData = (await getDocs(query(collection(db, "users"), where("nim", "==", oldNim)))).docs[0]?.data() || {};
+                    await setDoc(doc(db, "users", newNim), { ...oldKaderData, nim: newNim, nama: editKaderModal.nama, id_rayon: editKaderModal.id_rayon, jenjang: editKaderModal.jenjang, email: newEmail });
+                    await deleteDoc(docRef); 
+
+                    // 2. Migrasi nilai_khs (Salin ke NIM baru, hapus NIM lama)
+                    const oldNilaiSnap = await getDocs(query(collection(db, "nilai_khs"), where("__name__", "==", oldNim)));
+                    if (!oldNilaiSnap.empty) {
+                        await setDoc(doc(db, "nilai_khs", newNim), oldNilaiSnap.docs[0].data());
+                        await deleteDoc(doc(db, "nilai_khs", oldNim));
+                    }
+
+                    // 3. Migrasi evaluasi_kader
+                    const oldEvaluasiSnap = await getDocs(query(collection(db, "evaluasi_kader"), where("__name__", "==", oldNim)));
+                    if (!oldEvaluasiSnap.empty) {
+                        await setDoc(doc(db, "evaluasi_kader", newNim), oldEvaluasiSnap.docs[0].data());
+                        await deleteDoc(doc(db, "evaluasi_kader", oldNim));
+                    }
+
+                    // 4. Update relasi di jawaban_tes
+                    const tesSnap = await getDocs(query(collection(db, "jawaban_tes"), where("nim", "==", oldNim)));
+                    tesSnap.forEach(async (d) => await updateDoc(doc(db, "jawaban_tes", d.id), { nim: newNim }));
+
+                    // 5. Update relasi email di berkas_kader
+                    const berkasSnap = await getDocs(query(collection(db, "berkas_kader"), where("email_kader", "==", oldEmail)));
+                    berkasSnap.forEach(async (d) => await updateDoc(doc(db, "berkas_kader", d.id), { email_kader: newEmail }));
+
+                    alert("Data, NIM, dan seluruh riwayat kader berhasil diperbarui!");
                  } else {
-                    await updateDoc(docRef, { nama: editKaderModal.nama, id_rayon: editKaderModal.id_rayon, jenjang: editKaderModal.jenjang }); alert("Data diperbarui!");
+                    await updateDoc(docRef, { nama: editKaderModal.nama, id_rayon: editKaderModal.id_rayon, jenjang: editKaderModal.jenjang }); 
+                    alert("Data diperbarui!");
                  }
                  setEditKaderModal(null);
-               } catch (error) {} finally { setIsSubmitting(false); }
+               } catch (error) { 
+                 alert("Gagal memperbarui data. Cek koneksi Anda."); 
+               } finally { 
+                 setIsSubmitting(false); 
+               }
             }} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               <input type="text" required placeholder="Nama Lengkap" value={editKaderModal.nama} onChange={e => setEditKaderModal({...editKaderModal, nama: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px' }} />
               <input type="text" required placeholder="NIM" value={editKaderModal.nim} onChange={e => setEditKaderModal({...editKaderModal, nim: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '6px' }} />

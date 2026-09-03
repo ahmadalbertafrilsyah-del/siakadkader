@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, getDocs, query, where, doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 
 export default function DashboardKader() {
@@ -194,13 +194,6 @@ export default function DashboardKader() {
     return semuaPendamping.find(p => p.username === idData || p.id === idData)?.nama || idData;
   };
 
-  const konversiHurufKeAngka = (huruf: string) => {
-    if(huruf === 'A') return 4; if(huruf === 'B') return 3; if(huruf === 'C') return 2; if(huruf === 'D') return 1; return 0;
-  };
-  const getNilaiHuruf = (angka: number) => {
-    if (angka >= 76) return "A"; if (angka >= 51) return "B"; if (angka >= 26) return "C"; if (angka >= 10) return "D"; if (angka > 0) return "E"; return "-";
-  };
-
   // --- PERHITUNGAN IPK PRESISI (100% SINKRON DENGAN KHS) ---
   const hitungIpkPerJenjang = (jenjang: string) => {
     const materi = listKurikulum[jenjang] || [];
@@ -316,7 +309,7 @@ export default function DashboardKader() {
     <>
       <style>{`
         /* CSS KHUSUS TOGGLE VIEW */
-        .desktop-view { display: flex; flex-direction: column; gap: 20px; }
+        .desktop-view { display: block; }
         .mobile-view { display: none; }
         
         @media (max-width: 767px) {
@@ -332,81 +325,103 @@ export default function DashboardKader() {
       `}</style>
 
       {/* ========================================================== */}
-      {/* 1. TAMPILAN LAPTOP / DESKTOP UTUH                          */}
+      {/* 1. TAMPILAN LAPTOP / DESKTOP (ENTERPRISE CLEAN UI)         */}
       {/* ========================================================== */}
-      <div className="desktop-view">
-        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }}>
-          <h2 style={{marginTop: 0, fontSize: '1.6rem', color: '#0000af'}}>Halo, Sahabat/i {profil.nama ? profil.nama.split(' ')[0] : ''}! 👋</h2>
-          <p style={{margin: '8px 0 0 0', fontSize: '0.95rem', color: '#555', opacity: 0.9}}>Selamat datang di Sistem Informasi Akademik dan Kaderisasi {namaRayonAsli}. Berikut adalah ringkasan progres kaderisasi Anda saat ini.</p>
+      <div className="desktop-view" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        
+        {/* Banner Selamat Datang */}
+        <div style={{ backgroundColor: '#ffffff', padding: '32px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
+          <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', color: '#111827' }}>Halo, Sahabat/i {profil.nama || ''}</h2>
+          <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', color: '#6b7280', lineHeight: '1.5' }}>
+            Selamat datang di Sistem Informasi Akademik dan Kaderisasi {namaRayonAsli}. Berikut adalah ringkasan progres kaderisasi Anda saat ini.
+          </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '10px' }}>
-          <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '16px', borderLeft: '5px solid #2ecc71', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-            <div style={{ fontSize: '0.8rem', color: '#777', fontWeight: 'bold' }}>Pendamping Instansi</div>
-            <div style={{ fontSize: '1.1rem', color: '#333', fontWeight: 'bold', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {getNamaPendamping(profil.pendamping_mapaba_id?.length ? profil.pendamping_mapaba_id : profil.pendampingId)}
+        {/* Kartu Ringkasan (Pendamping & Tugas) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+          <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pendamping Instansi</div>
+              <div style={{ fontSize: '1.05rem', color: '#111827', fontWeight: '600', marginTop: '6px' }}>
+                {getNamaPendamping(profil.pendamping_mapaba_id?.length ? profil.pendamping_mapaba_id : profil.pendampingId)}
+              </div>
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#777', fontWeight: 'bold', marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '10px' }}>Pendamping SKP (Komisariat)</div>
-            <div style={{ fontSize: '1.1rem', color: '#0000af', fontWeight: 'bold', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {getNamaPendamping(profil.pendamping_skp_id)}
-            </div>
-          </div>
-          <div style={{ backgroundColor: '#fff', padding: '25px 20px', borderRadius: '16px', borderLeft: '5px solid #e74c3c', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-            <div style={{ fontSize: '0.85rem', color: '#777', fontWeight: 'bold' }}>Tugas Diselesaikan</div>
-            <div style={{ fontSize: '2rem', color: '#333', fontWeight: 'bold', marginTop: '5px' }}>{tugasSelesai} <span style={{fontSize: '1rem', color: '#888'}}>/ {tugasTotal}</span></div>
-          </div>
-        </div>
-
-        <h4 style={{ margin: '5px 0', color: '#0000af', fontSize: '1.1rem' }}>📊 Indeks Prestasi Kader (IPK)</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '20px', marginBottom: '10px' }}>
-            {[{label: 'MAPABA', val: ipkMapaba}, {label: 'PKD', val: ipkPkd}, {label: 'SIG', val: ipkSig}, {label: 'SKP', val: ipkSkp}].map(item => (
-                <div key={item.label} style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
-                    <div style={{ fontSize: '0.85rem', color: '#555', fontWeight: 'bold' }}>IPK {item.label}</div>
-                    <div style={{ fontSize: '1.6rem', color: item.val ? '#0000af' : '#ccc', fontWeight: 'bold', marginTop: '8px' }}>{item.val || '-'}</div>
+            <div style={{ marginTop: '20px', borderTop: '1px solid #f3f4f6', paddingTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Pendamping SKP (Komisariat)</div>
+                <div style={{ fontSize: '1rem', color: '#2563eb', fontWeight: '600', marginTop: '4px' }}>
+                  {getNamaPendamping(profil.pendamping_skp_id)}
                 </div>
-            ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tugas Diselesaikan</div>
+            <div style={{ fontSize: '2rem', color: '#111827', fontWeight: '700', marginTop: '8px', display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+              {tugasSelesai} <span style={{fontSize: '1rem', color: '#9ca3af', fontWeight: '500'}}>/ {tugasTotal}</span>
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '25px', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 350px', background: 'white', padding: '25px', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
-              <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '12px' }}>🔔 Pusat Informasi</h3>
-              <div style={{ display: 'grid', gap: '15px', maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
+        {/* IPK per Jenjang */}
+        <div>
+          <h4 style={{ margin: '0 0 12px 0', color: '#111827', fontSize: '1rem', fontWeight: '600' }}>Indeks Prestasi Kader (IPK)</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+              {[{label: 'MAPABA', val: ipkMapaba}, {label: 'PKD', val: ipkPkd}, {label: 'SIG', val: ipkSig}, {label: 'SKP', val: ipkSkp}].map(item => (
+                  <div key={item.label} style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '8px', border: '1px solid #e5e7eb', textAlign: 'center', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: '600', textTransform: 'uppercase' }}>IPK {item.label}</div>
+                      <div style={{ fontSize: '1.5rem', color: item.val ? '#111827' : '#9ca3af', fontWeight: '700', marginTop: '8px' }}>{item.val || '-'}</div>
+                  </div>
+              ))}
+          </div>
+        </div>
+
+        {/* Informasi & Jadwal (2 Kolom Bawah) */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            
+            {/* Pusat Informasi */}
+            <div style={{ background: 'white', padding: '24px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
+              <h3 style={{ color: '#111827', margin: '0 0 16px 0', fontSize: '1rem', fontWeight: '600', borderBottom: '1px solid #f3f4f6', paddingBottom: '12px' }}>Pusat Informasi</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }} className="hide-scroll">
                 {notifikasiGlobal.length === 0 ? (
-                  <div style={{ padding: '25px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '12px', color: '#999', fontSize: '0.85rem' }}>Kotak masuk informasi kosong.</div>
+                  <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: '6px', color: '#6b7280', fontSize: '0.85rem' }}>Kotak masuk informasi kosong.</div>
                 ) : (
                   notifikasiGlobal.map(notif => (
-                    <div key={notif.id} style={{ padding: '20px', backgroundColor: '#fdfdfd', border: '1px solid #eee', borderLeft: '4px solid #1e824c', borderRadius: '12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <strong style={{ color: '#333', fontSize: '0.95rem' }}>{notif.judul}</strong><span style={{ fontSize: '0.75rem', color: '#888' }}>{notif.tanggal}</span>
+                    <div key={notif.id} style={{ padding: '16px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', alignItems: 'center' }}>
+                        <strong style={{ color: '#111827', fontSize: '0.9rem', fontWeight: '600' }}>{notif.judul}</strong>
+                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{notif.tanggal}</span>
                       </div>
-                      <p style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#555', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{notif.pesan}</p>
-                      <div style={{ fontSize: '0.75rem', color: '#3498db', fontWeight: 'bold' }}>Dari: {notif.pengirim}</div>
+                      <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#374151', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{notif.pesan}</p>
+                      <div style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: '600' }}>Dari: {notif.pengirim}</div>
                     </div>
                   ))
                 )}
               </div>
             </div>
-            <div style={{ flex: '1 1 350px', background: 'white', padding: '25px', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
-              <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem', borderBottom: '1px solid #eee', paddingBottom: '12px' }}>📅 Jadwal Kegiatan</h3>
-              <div style={{ display: 'grid', gap: '15px', maxHeight: '400px', overflowY: 'auto', paddingRight: '5px' }}>
+
+            {/* Jadwal Kegiatan */}
+            <div style={{ background: 'white', padding: '24px', borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)' }}>
+              <h3 style={{ color: '#111827', margin: '0 0 16px 0', fontSize: '1rem', fontWeight: '600', borderBottom: '1px solid #f3f4f6', paddingBottom: '12px' }}>Jadwal Kegiatan</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }} className="hide-scroll">
                 {jadwalKegiatan.length === 0 ? (
-                  <div style={{ padding: '25px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '12px', color: '#999', fontSize: '0.85rem' }}>Belum ada agenda kegiatan dalam waktu dekat.</div>
+                  <div style={{ padding: '30px', textAlign: 'center', backgroundColor: '#f9fafb', border: '1px dashed #d1d5db', borderRadius: '6px', color: '#6b7280', fontSize: '0.85rem' }}>Belum ada agenda kegiatan dalam waktu dekat.</div>
                 ) : (
                   jadwalKegiatan.map(jadwal => {
                     const isKomisariat = jadwal.pembuat === 'Komisariat' || jadwal.pembuat === 'Pusat Komisariat';
                     const isPendamping = jadwal.pembuat?.includes('Pendamping');
-                    const borderColor = isKomisariat ? '#f1c40f' : isPendamping ? '#3498db' : '#e74c3c';
                     const labelPembuat = isKomisariat ? 'Pusat Komisariat' : isPendamping ? 'Jadwal Mentoring' : 'Pengurus Rayon';
 
                     return (
-                      <div key={jadwal.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', borderLeft: `4px solid ${borderColor}`, padding: '20px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div key={jadwal.id} style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                            <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '1rem' }}>{jadwal.judul}</h4>
-                            <span style={{ backgroundColor: '#f8f9fa', color: '#555', padding: '4px 8px', borderRadius: '12px', fontSize: '0.7rem', border: '1px solid #ddd', fontWeight: 'bold' }}>{labelPembuat}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <h4 style={{ margin: 0, color: '#111827', fontSize: '0.9rem', fontWeight: '600' }}>{jadwal.judul}</h4>
+                            <span style={{ backgroundColor: '#e5e7eb', color: '#374151', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: '600' }}>{labelPembuat}</span>
                           </div>
-                          <div style={{ fontSize: '0.8rem', color: '#e67e22', fontWeight: 'bold', marginBottom: '8px' }}>🗓️ {jadwal.tanggal.replace('T', ' - ')} | 📍 {jadwal.lokasi}</div>
-                          <p style={{ margin: 0, fontSize: '0.85rem', color: '#555', fontStyle: 'italic', lineHeight: '1.5' }}>{jadwal.deskripsi}</p>
+                          <div style={{ fontSize: '0.8rem', color: '#d97706', fontWeight: '600', marginBottom: '6px' }}>🗓️ {jadwal.tanggal.replace('T', ' - ')} | 📍 {jadwal.lokasi}</div>
+                          <p style={{ margin: 0, fontSize: '0.85rem', color: '#4b5563', fontStyle: 'italic', lineHeight: '1.4' }}>{jadwal.deskripsi}</p>
                         </div>
                       </div>
                     )
@@ -414,11 +429,12 @@ export default function DashboardKader() {
                 )}
               </div>
             </div>
+
         </div>
       </div>
 
       {/* ========================================================== */}
-      {/* 2. TAMPILAN MOBILE APP ONLY (BERSIH, TEGAS & MENYATU)      */}
+      {/* 2. TAMPILAN MOBILE APP ONLY (TETAP SEPERTI SEMULA)        */}
       {/* ========================================================== */}
       <div className="mobile-view" style={{ padding: '0 15px' }}>
         
@@ -426,7 +442,7 @@ export default function DashboardKader() {
         <div style={{ 
            backgroundColor: '#0000af', 
            padding: '15px 20px 65px 20px', 
-           margin: '-15px -15px 0 -15px', /* Menembus padding bawaan layout agar menyatu dengan header */
+           margin: '-15px -15px 0 -15px', 
            borderBottomLeftRadius: '30px', 
            borderBottomRightRadius: '30px', 
            color: 'white',

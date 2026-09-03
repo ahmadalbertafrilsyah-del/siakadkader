@@ -73,36 +73,78 @@ export default function PageProfilKader() {
   return (
     <>
       <style>{`
-        .mobile-padded { display: flex; flex-direction: column; gap: 20px; }
+        /* COLOR PALETTE (Modern Slate/Gray) */
+        :root {
+          --text-main: #111827;
+          --text-body: #374151;
+          --text-muted: #6b7280;
+          --border-color: #e5e7eb;
+          --bg-card: #ffffff;
+        }
+
+        .page-wrapper { display: flex; flex-direction: column; gap: 24px; }
+        
+        .profile-hero { 
+          background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color); 
+          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); overflow: hidden; position: relative; padding-bottom: 32px;
+        }
+        
+        .profile-banner { height: 120px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+        
+        .profile-grid { display: flex; flex-direction: column; gap: 24px; }
+        
+        .profile-card { 
+          background: var(--bg-card); border-radius: 8px; padding: 24px; 
+          border: 1px solid var(--border-color); box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .profile-input { 
+          width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); 
+          background-color: #ffffff; border-radius: 6px; font-size: 0.9rem; outline: none; 
+          color: var(--text-main); transition: border-color 0.2s; box-sizing: border-box;
+        }
+        .profile-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+
+        .info-row { display: flex; flex-direction: column; margin-bottom: 16px; border-bottom: 1px solid #f3f4f6; padding-bottom: 12px; }
+        .info-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+        .info-value { font-size: 0.95rem; color: var(--text-main); font-weight: 600; }
+
+        .btn-edit {
+          background-color: #f3f4f6; color: var(--text-main); border: 1px solid var(--border-color); 
+          padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.8rem; 
+          transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-edit:hover { background-color: #e5e7eb; }
+        .btn-edit.saving { background-color: #2563eb; color: white; border-color: #2563eb; }
+
+        .badge-jenjang {
+          background-color: #eff6ff; color: #1d4ed8; padding: 4px 12px; 
+          border-radius: 6px; font-size: 0.75rem; font-weight: 600; border: 1px solid #dbeafe;
+        }
+
         @media (max-width: 767px) {
            body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
            ::-webkit-scrollbar { display: none; }
-           .mobile-padded { padding: 15px !important; }
+           .page-wrapper { padding: 16px; }
+           .profile-card { padding: 16px; }
         }
         
         @media (min-width: 768px) {
-           .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+           .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
         }
-
-        .profile-grid { display: flex; flex-direction: column; gap: 20px; }
-        .profile-input { width: 100%; padding: 12px; border: 1px solid #eaeaea; background-color: #f8f9fa; border-radius: 6px; font-size: 0.9rem; outline: none; color: #333; transition: all 0.3s; }
-        .profile-input:focus { border-color: #0000af; background-color: #fff; }
-        .info-row { display: flex; flex-direction: column; margin-bottom: 15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 12px; }
-        .info-label { font-size: 0.75rem; color: #888; font-weight: bold; margin-bottom: 4px; }
-        .info-value { font-size: 0.95rem; color: #333; font-weight: bold; }
       `}</style>
 
-      <div className="mobile-padded" style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div className="web-ui-container page-wrapper">
         
-        {/* KARTU HEADER PROFIL (Tanpa lengkungan berlebihan) */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '12px', paddingBottom: '30px', border: '1px solid #eaeaea', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ height: '120px', backgroundColor: '#0000af' }} />
+        {/* KARTU HEADER PROFIL */}
+        <div className="profile-hero">
+          <div className="profile-banner" />
           
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '-60px', position: 'relative', zIndex: 2 }}>
             <div style={{ position: 'relative' }}>
-              <img src={profilKader.fotoUrl} alt="Foto Kader" style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '50%', border: '4px solid #fff', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} />
+              <img src={profilKader.fotoUrl} alt="Foto Kader" style={{ width: '110px', height: '110px', objectFit: 'cover', borderRadius: '50%', border: '4px solid #fff', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
               {isEditingProfil && (
-                <label style={{ position: 'absolute', bottom: '0', right: '0', backgroundColor: '#f1c40f', color: '#0d1b2a', width: '35px', height: '35px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
+                <label style={{ position: 'absolute', bottom: '0', right: '0', backgroundColor: '#2563eb', color: '#fff', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
                   📷
                   <input type="file" accept="image/*" onChange={(e) => {
                      if (e.target.files && e.target.files[0]) {
@@ -113,35 +155,37 @@ export default function PageProfilKader() {
               )}
             </div>
             
-            <h2 style={{ margin: '15px 0 5px 0', color: '#0d1b2a', fontSize: '1.4rem', textAlign: 'center' }}>{profilKader.nama}</h2>
-            <div style={{ backgroundColor: '#eaf4fc', color: '#0000af', padding: '6px 16px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+            <h2 style={{ margin: '12px 0 6px 0', color: 'var(--text-main)', fontSize: '1.25rem', textAlign: 'center', fontWeight: '700' }}>{profilKader.nama}</h2>
+            <span className="badge-jenjang">
               Kader {profilKader.jenjang}
-            </div>
+            </span>
           </div>
         </div>
 
         <div className="profile-grid">
+          
           {/* KARTU INFORMASI PRIBADI */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '25px', border: '1px solid #eaeaea', flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, color: '#0d1b2a', fontSize: '1.1rem' }}>Data Akademik & PMII</h3>
+          <div className="profile-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1rem', fontWeight: '600' }}>Data Akademik & PMII</h3>
               <button 
                 disabled={isSavingProfil}
                 onClick={() => isEditingProfil ? handleSimpanProfil() : setIsEditingProfil(true)} 
-                style={{ backgroundColor: isEditingProfil ? '#2ecc71' : '#f1c40f', color: isEditingProfil ? '#fff' : '#0d1b2a', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: isSavingProfil ? 'not-allowed' : 'pointer', fontSize: '0.8rem', transition: '0.3s' }}>
-                {isSavingProfil ? 'Menyimpan...' : isEditingProfil ? '💾 Simpan' : '✏️ Edit Profil'}
+                className={`btn-edit ${isEditingProfil ? 'saving' : ''}`}
+              >
+                {isSavingProfil ? 'Menyimpan...' : isEditingProfil ? '💾 Simpan Perubahan' : '✏️ Edit Profil'}
               </button>
             </div>
 
             <div className="info-row"><span className="info-label">Nomor Induk Mahasiswa (NIM)</span><span className="info-value">{profilKader.nim}</span></div>
             <div className="info-row"><span className="info-label">Nomor Induk Anggota (NIA)</span><span className="info-value">{profilKader.nia || '-'}</span></div>
             <div className="info-row"><span className="info-label">Tahun Angkatan</span><span className="info-value">{profilKader.angkatan}</span></div>
-            <div className="info-row" style={{ borderBottom: 'none', paddingBottom: 0 }}><span className="info-label">Asal Instansi</span><span className="info-value" style={{ color: '#1e824c' }}>{namaRayonInduk}</span></div>
+            <div className="info-row" style={{ borderBottom: 'none', paddingBottom: 0 }}><span className="info-label">Asal Instansi</span><span className="info-value" style={{ color: '#15803d' }}>{namaRayonInduk}</span></div>
           </div>
 
           {/* KARTU KONTAK & DOMISILI */}
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '25px', border: '1px solid #eaeaea', flex: 1 }}>
-            <h3 style={{ margin: '0 0 20px 0', color: '#0d1b2a', fontSize: '1.1rem' }}>Kontak & Domisili</h3>
+          <div className="profile-card">
+            <h3 style={{ margin: '0 0 20px 0', color: 'var(--text-main)', fontSize: '1rem', fontWeight: '600', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>Kontak & Domisili</h3>
             
             <div className="info-row">
               <span className="info-label">Nomor WhatsApp</span>
@@ -158,14 +202,15 @@ export default function PageProfilKader() {
             </div>
             
             {isEditingProfil && (
-              <div style={{ backgroundColor: '#fff3cd', padding: '10px', borderRadius: '6px', borderLeft: '3px solid #f1c40f', marginTop: '15px' }}>
-                <p style={{ fontSize: '0.75rem', color: '#856404', margin: 0 }}>*NIM, Nama, dan NIA hanya bisa diubah oleh Pengurus Rayon/Cabang Anda.</p>
+              <div style={{ backgroundColor: '#fffbeb', padding: '12px', borderRadius: '6px', borderLeft: '3px solid #f59e0b', marginTop: '16px' }}>
+                <p style={{ fontSize: '0.75rem', color: '#b45309', margin: 0, lineHeight: '1.4' }}>*NIM, Nama, dan NIA bersifat tetap dan hanya dapat diubah oleh Pengurus Instansi Anda.</p>
               </div>
             )}
           </div>
+
         </div>
 
-        <div style={{ height: '80px' }}></div>
+        <div style={{ height: '50px' }} className="mobile-only"></div>
       </div>
     </>
   );

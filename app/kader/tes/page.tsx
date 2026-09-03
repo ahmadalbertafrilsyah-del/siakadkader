@@ -55,7 +55,7 @@ export default function PageTesPemahamanKader() {
     e.preventDefault();
     if (formJawaban.some(jawab => jawab.trim() === '')) return alert("Harap isi semua jawaban sebelum mengirimkan tes!");
 
-    if (window.confirm("Pastikan jawaban sudah benar. Anda tidak bisa mengulang tes ini jika sudah dikirim. Lanjutkan?")) {
+    if (window.confirm("Pastikan semua jawaban sudah benar. Anda tidak bisa mengulang tes ini. Lanjutkan kirim?")) {
       setIsSubmitting(true);
       try {
         await addDoc(collection(db, "jawaban_tes"), {
@@ -71,74 +71,180 @@ export default function PageTesPemahamanKader() {
   return (
     <>
       <style>{`
-        .mobile-padded { display: flex; flex-direction: column; gap: 20px; }
+        /* RESPONSIVE LAYOUT & HIDE SCROLLBAR */
+        .page-wrapper { display: flex; flex-direction: column; gap: 20px; }
+        
+        .header-card { background: white; padding: 20px 25px; border-radius: 12px; border: 1px solid #eaeaea; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        .table-container { width: 100%; overflow-x: auto; border: 1px solid #eaeaea; border-radius: 12px; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.01); padding: 15px; min-height: 50vh; }
+        
+        /* STYLE TABEL */
+        .tabel-tes { width: 100%; border-collapse: collapse; min-width: 750px; text-align: left; }
+        .tabel-tes th { background-color: #f0f4f8; color: #555; padding: 12px 15px; font-size: 0.85rem; white-space: nowrap; }
+        .tabel-tes td { padding: 15px; border-bottom: 1px solid #eee; color: #333; font-size: 0.9rem; vertical-align: middle; }
+        .tabel-tes tr:last-child td { border-bottom: none; }
+        .tabel-tes tr:hover { background-color: #fdfdfd; }
+
+        /* STYLE FORM PENGERJAAN TES (ISIAN) */
+        .form-container { background: transparent; }
+        .question-card { 
+          background: #fff; border: 1px solid #e0e4e8; border-radius: 10px; padding: 25px; margin-bottom: 20px; 
+          box-shadow: 0 2px 6px rgba(0,0,0,0.02); transition: border-color 0.3s;
+        }
+        .question-card:focus-within { border-color: #3498db; }
+        
+        .question-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 15px; }
+        .question-badge { background: #f0f4f8; color: #0000af; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; white-space: nowrap; }
+        .question-text { font-size: 0.95rem; font-weight: bold; color: #1a252f; line-height: 1.5; margin: 0; padding-top: 2px; }
+        
+        .answer-input { 
+          width: 100%; padding: 15px; border: 1px solid #ced4da; border-radius: 8px; font-size: 0.9rem; 
+          resize: vertical; outline: none; background-color: #fdfdfd; transition: all 0.3s; 
+          font-family: inherit; line-height: 1.6; color: #333; box-sizing: border-box;
+        }
+        .answer-input:focus { border-color: #3498db; background-color: #fff; box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1); }
+        .answer-input::placeholder { color: #aab7b8; }
+
+        /* TOMBOL */
+        .btn-mulai { background-color: #0000af; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.8rem; transition: 0.2s; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,175,0.15); }
+        .btn-mulai:hover { background-color: #00008a; }
+        
+        .btn-batal { background-color: #fff; color: #555; border: 1px solid #ccc; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem; transition: 0.2s; }
+        .btn-batal:hover { background-color: #f8f9fa; color: #e74c3c; border-color: #e74c3c; }
+        
+        .btn-submit { background-color: #27ae60; color: white; border: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.95rem; transition: 0.3s; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.2); }
+        .btn-submit:hover:not(:disabled) { background-color: #219653; transform: translateY(-2px); }
+        .btn-submit:disabled { background-color: #95a5a6; cursor: not-allowed; box-shadow: none; }
+
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
         @media (max-width: 767px) {
            body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
            ::-webkit-scrollbar { display: none; }
-           .mobile-padded { padding: 15px !important; }
+           .page-wrapper { padding: 15px; }
+           .question-card { padding: 15px; }
         }
       `}</style>
 
-      <div className="mobile-padded">
-        <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #eaeaea', minHeight: '80vh' }}>
-          
-          {selectedTes ? (
-            <div>
-               <div style={{ borderBottom: '2px solid #eee', paddingBottom: '15px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '15px' }}>
-                 <div>
-                   <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.2rem', textTransform: 'uppercase' }}>📝 {selectedTes.judul}</h3>
-                   <p style={{ fontSize: '0.85rem', color: '#e74c3c', margin: '5px 0 0 0', fontWeight: 'bold' }}>PERHATIAN: Tes hanya dapat dikerjakan satu kali. Jangan merefresh halaman saat mengerjakan!</p>
-                 </div>
-                 <button onClick={() => { if (window.confirm("Yakin ingin membatalkan pengerjaan tes ini? Jawaban Anda akan hilang.")) setSelectedTes(null) }} style={{ backgroundColor: '#f8f9fa', color: '#333', border: '1px solid #ccc', padding: '8px 15px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>❌ Batal Kerjakan</button>
-               </div>
+      <div className="page-wrapper">
+        
+        {/* HEADER */}
+        {!selectedTes && (
+          <div className="header-card">
+            <h3 style={{ color: '#0d1b2a', margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>Ujian & Evaluasi Pemahaman</h3>
+            <p style={{ fontSize: '0.85rem', color: '#777', margin: 0 }}>Daftar Pre-Test atau Post-Test yang sedang dibuka sesuai dengan jenjang kaderisasi Anda.</p>
+          </div>
+        )}
 
-               <form onSubmit={handleSubmitJawaban} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                 {(selectedTes.daftar_soal || []).map((soal: string, idx: number) => (
-                   <div key={idx} style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', borderLeft: '4px solid #0000af' }}>
-                     <p style={{ margin: '0 0 15px 0', fontWeight: 'bold', color: '#333', fontSize: '0.95rem', lineHeight: '1.5' }}>{idx + 1}. {soal}</p>
-                     <textarea rows={5} required placeholder="Ketikkan jawaban Anda secara mendetail di sini..." value={formJawaban[idx]} onChange={(e) => {
-                         const newJawaban = [...formJawaban]; newJawaban[idx] = e.target.value; setFormJawaban(newJawaban);
-                     }} style={{ width: '100%', padding: '15px', border: '1px solid #ccc', borderRadius: '6px', fontSize: '0.9rem', resize: 'vertical', outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff', fontFamily: 'inherit' }} />
-                   </div>
-                 ))}
-                 <button disabled={isSubmitting} type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '15px', borderRadius: '8px', fontWeight: 'bold', cursor: isSubmitting ? 'not-allowed' : 'pointer', fontSize: '1rem', marginTop: '10px' }}>
-                   {isSubmitting ? 'MENGIRIM JAWABAN...' : 'KIRIM JAWABAN PERMANEN 🚀'}
-                 </button>
-               </form>
+        {selectedTes ? (
+          /* ================== MODE PENGERJAAN TES (FORM ISIAN) ================== */
+          <div className="form-container">
+            <div style={{ background: 'white', padding: '20px 25px', borderRadius: '12px', border: '1px solid #eaeaea', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+              <div>
+                <h3 style={{ color: '#0d1b2a', margin: '0 0 10px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>{selectedTes.judul}</h3>
+                <div style={{ backgroundColor: '#fff9e6', borderLeft: '3px solid #f39c12', padding: '8px 12px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '1rem' }}>⚠️</span>
+                  <span style={{ fontSize: '0.8rem', color: '#b9770e', fontWeight: '500' }}>Pastikan koneksi stabil. Jangan memuat ulang (refresh) halaman saat mengerjakan.</span>
+                </div>
+              </div>
+              <button className="btn-batal" onClick={() => { if (window.confirm("Batal mengerjakan? Semua isian Anda yang belum terkirim akan hilang.")) setSelectedTes(null) }}>
+                Batal Kerjakan
+              </button>
             </div>
-          ) : (
-            <>
-              <div style={{ borderBottom: '2px solid #eee', paddingBottom: '15px', marginBottom: '20px' }}>
-                <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.2rem' }}>📝 Ujian & Evaluasi Pemahaman</h3>
-                <p style={{ fontSize: '0.85rem', color: '#777', margin: '5px 0 0 0' }}>Daftar Pre-Test atau Post-Test yang sedang dibuka oleh pengurus sesuai dengan jenjang kaderisasi Anda saat ini.</p>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-                {listTesTersedia.length === 0 ? (
-                  <div style={{ gridColumn: '1 / -1', padding: '40px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ccc', borderRadius: '8px', color: '#999' }}>Belum ada ujian / tes yang dibuka untuk Anda saat ini.</div>
-                ) : (
-                  listTesTersedia.map(tes => {
-                    const sudahDikerjakan = jawabanRiwayatKader.includes(tes.id);
-                    return (
-                      <div key={tes.id} style={{ backgroundColor: '#fff', border: '1px solid #eee', padding: '20px', borderRadius: '10px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        <div>
-                          <h4 style={{ margin: '0 0 5px 0', color: '#0d1b2a', fontSize: '1.1rem' }}>{tes.judul}</h4>
-                          <div style={{ fontSize: '0.75rem', color: '#777' }}>Jumlah Soal: <span style={{fontWeight: 'bold', color: '#e67e22'}}>{tes.daftar_soal?.length || 0} Pertanyaan Isian</span></div>
-                        </div>
-                        {sudahDikerjakan ? (
-                          <div style={{ backgroundColor: '#eaf4fc', color: '#27ae60', padding: '12px', borderRadius: '6px', textAlign: 'center', fontWeight: 'bold', border: '1px solid #2ecc71', fontSize: '0.85rem' }}>✅ Anda sudah menyelesaikan tes ini.</div>
-                        ) : (
-                          <button onClick={() => handleMulaiTes(tes)} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', transition: '0.2s' }}>Mulai Kerjakan Tes ✏️</button>
-                        )}
-                      </div>
-                    )
-                  })
-                )}
+            <form onSubmit={handleSubmitJawaban}>
+              {(selectedTes.daftar_soal || []).map((soal: string, idx: number) => (
+                <div className="question-card" key={idx}>
+                  <div className="question-header">
+                    <span className="question-badge">Soal {idx + 1}</span>
+                    <p className="question-text">{soal}</p>
+                  </div>
+                  <textarea 
+                    rows={4} 
+                    required 
+                    placeholder="Tuliskan jawaban Anda secara mendetail..." 
+                    className="answer-input"
+                    value={formJawaban[idx]} 
+                    onChange={(e) => {
+                      const newJawaban = [...formJawaban]; 
+                      newJawaban[idx] = e.target.value; 
+                      setFormJawaban(newJawaban);
+                    }} 
+                  />
+                </div>
+              ))}
+              
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button disabled={isSubmitting} type="submit" className="btn-submit">
+                  {isSubmitting ? 'Mengirim Jawaban...' : 'Kirim Jawaban Sekarang 📤'}
+                </button>
               </div>
-            </>
-          )}
-        </div>
-        <div style={{ height: '80px' }} className="mobile-only"></div>
+            </form>
+          </div>
+        ) : (
+          /* ================== MODE DAFTAR TES TERSEDIA (TABEL) ================== */
+          <div className="table-container">
+            <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto' }}>
+              <table className="tabel-tes">
+                <thead>
+                  <tr>
+                    <th style={{ borderRadius: '8px 0 0 8px', textAlign: 'center', width: '5%' }}>No</th>
+                    <th style={{ width: '40%' }}>Judul Tes Evaluasi</th>
+                    <th style={{ textAlign: 'center', width: '15%' }}>Jumlah Soal</th>
+                    <th style={{ textAlign: 'center', width: '20%' }}>Status Anda</th>
+                    <th style={{ borderRadius: '0 8px 8px 0', textAlign: 'center', width: '20%' }}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {listTesTersedia.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: '#999', fontSize: '0.9rem' }}>
+                        Belum ada ujian atau tes yang sedang dibuka saat ini.
+                      </td>
+                    </tr>
+                  ) : (
+                    listTesTersedia.map((tes, index) => {
+                      const sudahDikerjakan = jawabanRiwayatKader.includes(tes.id);
+                      return (
+                        <tr key={tes.id}>
+                          <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#777' }}>{index + 1}</td>
+                          <td>
+                            <div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '0.95rem' }}>
+                              {tes.judul}
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span style={{ color: '#e67e22', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                              {tes.daftar_soal?.length || 0} Isian
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {sudahDikerjakan ? (
+                              <span style={{ backgroundColor: '#eaf4fc', color: '#27ae60', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold', border: '1px solid #2ecc71', whiteSpace: 'nowrap' }}>✅ Tes Selesai</span>
+                            ) : (
+                              <span style={{ backgroundColor: '#f4f6f9', color: '#7f8c8d', padding: '6px 12px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 'bold', border: '1px solid #bdc3c7', whiteSpace: 'nowrap' }}>Belum Dikerjakan</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {sudahDikerjakan ? (
+                              <span style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.8rem' }}>Tuntas 🎉</span>
+                            ) : (
+                              <button onClick={() => handleMulaiTes(tes)} className="btn-mulai">
+                                Mulai Kerjakan ✏️
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        <div style={{ height: '50px' }} className="mobile-only"></div>
       </div>
     </>
   );

@@ -342,7 +342,7 @@ export default function PageManajemenAkunRayon() {
       <div className="desktop-view page-wrapper">
         
         {/* HEADER GABUNGAN DENGAN TOMBOL TAB (KADER & PENDAMPING) */}
-        <div className="header-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+        <div className="header-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '32px' }}>
           <div>
             <h3 style={{ margin: '0 0 6px 0', color: 'var(--text-main)', fontSize: '1.25rem', fontWeight: '700' }}>Manajemen Akun Rayon</h3>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>Kelola data akun kader dan pendamping di lingkungan Rayon Anda.</p>

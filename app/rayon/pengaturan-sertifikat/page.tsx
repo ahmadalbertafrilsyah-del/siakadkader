@@ -8,25 +8,26 @@ import * as XLSX from 'xlsx';
 
 export default function PagePengaturanSertifikatRayon() {
   const [adminRayonId, setAdminRayonId] = useState('');
+  const [namaRayonAsli, setNamaRayonAsli] = useState('');
   
+  // State Konfigurasi Utama
   const [formJenjang, setFormJenjang] = useState('MAPABA');
   const [formAngkatan, setFormAngkatan] = useState(new Date().getFullYear().toString());
   const [orientasi, setOrientasi] = useState('portrait');
-  const [templateUrl, setTemplateUrl] = useState('');
-  const [fileTemplate, setFileTemplate] = useState<File | null>(null);
-  const [isSavingSetting, setIsSavingSetting] = useState(false);
-
-  const defaultPosisi = {
-    nomor: { top: 25, left: 50, fontSize: 14, isBold: true, isItalic: false },
-    nama: { top: 45, left: 35, fontSize: 24, isBold: true, isItalic: false },
-    nik: { top: 48, left: 35, fontSize: 14, isBold: false, isItalic: false },
-    ttl: { top: 51, left: 35, fontSize: 14, isBold: false, isItalic: false },
-    jurusan: { top: 54, left: 35, fontSize: 14, isBold: false, isItalic: false },
-    pt: { top: 57, left: 35, fontSize: 14, isBold: false, isItalic: false },
-  };
   
-  const [posisi, setPosisi] = useState(defaultPosisi);
-
+  // State Data Sertifikat Rayon
+  const [masaKhidmat, setMasaKhidmat] = useState('2024-2025');
+  const [tempatDitetapkan, setTempatDitetapkan] = useState('Kota Malang');
+  const [tanggalMasehi, setTanggalMasehi] = useState('');
+  const [tanggalHijriyah, setTanggalHijriyah] = useState('');
+  const [tanggalPelaksanaan, setTanggalPelaksanaan] = useState('');
+  const [tempatPelaksanaan, setTempatPelaksanaan] = useState('');
+  
+  const [namaKetuaRayon, setNamaKetuaRayon] = useState('');
+  const [stempelUrl, setStempelUrl] = useState('');
+  const [fileStempel, setFileStempel] = useState<File | null>(null);
+  
+  const [isSavingSetting, setIsSavingSetting] = useState(false);
   const [fileExcel, setFileExcel] = useState<File | null>(null);
   const [isUploadingExcel, setIsUploadingExcel] = useState(false);
 
@@ -36,7 +37,9 @@ export default function PagePengaturanSertifikatRayon() {
         const qRole = query(collection(db, "users"), where("email", "==", user.email));
         onSnapshot(qRole, (snapRole: any) => {
           if (!snapRole.empty) {
-            setAdminRayonId(snapRole.docs[0].data().username);
+            const data = snapRole.docs[0].data();
+            setAdminRayonId(data.username);
+            setNamaRayonAsli(data.nama || data.username);
           }
         });
       }
@@ -50,25 +53,22 @@ export default function PagePengaturanSertifikatRayon() {
     const unsub = onSnapshot(doc(db, "pengaturan_sertifikat", docId), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
-        setTemplateUrl(data.templateUrl || '');
         setOrientasi(data.orientasi || 'portrait');
-        if (data.posisi) {
-          const loadedPosisi = data.posisi;
-          Object.keys(defaultPosisi).forEach(k => {
-            if (loadedPosisi[k]) {
-               if (loadedPosisi[k].fontSize === undefined) loadedPosisi[k].fontSize = 14;
-               if (loadedPosisi[k].isBold === undefined) loadedPosisi[k].isBold = false;
-               if (loadedPosisi[k].isItalic === undefined) loadedPosisi[k].isItalic = false;
-            } else {
-               loadedPosisi[k] = defaultPosisi[k as keyof typeof defaultPosisi];
-            }
-          });
-          setPosisi(loadedPosisi);
-        }
+        setMasaKhidmat(data.masaKhidmat || '2024-2025');
+        setTempatDitetapkan(data.tempatDitetapkan || 'Kota Malang');
+        setTanggalMasehi(data.tanggalMasehi || '');
+        setTanggalHijriyah(data.tanggalHijriyah || '');
+        setTanggalPelaksanaan(data.tanggalPelaksanaan || '');
+        setTempatPelaksanaan(data.tempatPelaksanaan || '');
+        setNamaKetuaRayon(data.namaKetuaRayon || '');
+        setStempelUrl(data.stempelUrl || '');
       } else {
-        setTemplateUrl('');
         setOrientasi('portrait');
-        setPosisi(defaultPosisi);
+        setMasaKhidmat('2024-2025');
+        setTempatDitetapkan('Kota Malang');
+        setTanggalMasehi(''); setTanggalHijriyah('');
+        setTanggalPelaksanaan(''); setTempatPelaksanaan('');
+        setNamaKetuaRayon(''); setStempelUrl('');
       }
     });
     return () => unsub();
@@ -86,16 +86,18 @@ export default function PagePengaturanSertifikatRayon() {
   const handleSimpanPengaturan = async () => {
     setIsSavingSetting(true);
     try {
-      let finalUrl = templateUrl;
-      if (fileTemplate) finalUrl = await uploadToCloudinary(fileTemplate);
+      let finalStempelUrl = stempelUrl;
+      if (fileStempel) finalStempelUrl = await uploadToCloudinary(fileStempel);
       
       const docId = `${adminRayonId}_${formJenjang}_${formAngkatan}`;
       await setDoc(doc(db, "pengaturan_sertifikat", docId), {
-        templateUrl: finalUrl, orientasi, posisi, updatedAt: Date.now()
+        orientasi, masaKhidmat, tempatDitetapkan, tanggalMasehi, tanggalHijriyah, 
+        tanggalPelaksanaan, tempatPelaksanaan, namaKetuaRayon, 
+        stempelUrl: finalStempelUrl, updatedAt: Date.now()
       }, { merge: true });
       
-      alert("Pengaturan Sertifikat & Kanvas berhasil disimpan!");
-      setFileTemplate(null);
+      alert("Pengaturan Data Sertifikat berhasil disimpan!");
+      setFileStempel(null);
     } catch (error) { alert("Gagal menyimpan pengaturan."); } finally { setIsSavingSetting(false); }
   };
 
@@ -140,132 +142,212 @@ export default function PagePengaturanSertifikatRayon() {
     reader.readAsBinaryString(fileExcel);
   };
 
-  const updatePosisi = (field: string, prop: string, value: any) => {
-    setPosisi({ ...posisi, [field]: { ...posisi[field as keyof typeof posisi], [prop]: value } });
-  };
-
+  // Variabel untuk Preview Live
   const aspectRatio = orientasi === 'portrait' ? '1 / 1.414' : '1.414 / 1';
-  // Skala rasio Font (pt) ke Container Query Width (cqw) agar presisi di layar mana pun
-  const fontScaleCqw = orientasi === 'portrait' ? 0.168 : 0.1188;
+  let namaKegiatanFull = 'Masa Penerimaan Anggota Baru (MAPABA)';
+  let statusKader = 'ANGGOTA PMII';
+  if (formJenjang === 'PKD') {
+    namaKegiatanFull = 'Pelatihan Kader Dasar (PKD)';
+    statusKader = 'KADER MUJAHID PMII';
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-        <h3 style={{ color: '#0d1b2a', margin: '0 0 10px 0', fontSize: '1.1rem' }}>📥 Upload Data Kelengkapan Sertifikat (Excel)</h3>
-        <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '15px' }}>Header kolom wajib: <b>NIM, NIK, Tempat, Tanggal Lahir, Jurusan, Perguruan Tinggi, Nomor Sertifikat, NIA</b>.</p>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <input type="file" accept=".xlsx, .xls" onChange={(e) => setFileExcel(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', backgroundColor: '#fafafa', fontSize: '0.85rem' }} />
-          <button onClick={handleUploadExcelData} disabled={isUploadingExcel} style={{ backgroundColor: '#27ae60', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: isUploadingExcel ? 'not-allowed' : 'pointer', fontSize: '0.85rem' }}>
-            {isUploadingExcel ? 'Memproses Data...' : '📤 Proses & Update Database'}
-          </button>
-        </div>
-      </div>
-
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+    <>
+      <style>{`
+        .pengaturan-sertifikat-wrapper { display: flex; flex-direction: column; gap: 20px; width: 100%; box-sizing: border-box; }
+        .card-panel { background: #ffffff; padding: 20px 25px; border-radius: 12px; border: 1px solid #eaeaea; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
         
-        <div style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <h3 style={{ color: '#0d1b2a', margin: '0', fontSize: '1.1rem', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>⚙️ Setting Template & Posisi Teks</h3>
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-label { font-size: 0.75rem; font-weight: bold; color: #555; text-transform: uppercase; }
+        .form-input { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; color: #333; outline: none; background-color: #fafafa; }
+        .form-input:focus { border-color: #0000af; background-color: #fff; }
+        
+        .section-title { font-size: 1rem; color: #0d1b2a; margin: 0 0 15px 0; font-weight: bold; padding-bottom: 10px; border-bottom: 2px solid #f0f4f8; }
+        
+        @media (max-width: 768px) {
+          .pengaturan-sertifikat-wrapper { gap: 15px; padding: 5px; }
+          .card-panel { padding: 15px; }
+        }
+      `}</style>
+
+      <div className="pengaturan-sertifikat-wrapper">
+        
+        {/* 1. UPLOAD EXCEL KELENGKAPAN */}
+        <div className="card-panel">
+          <h3 className="section-title">📥 Upload Data Kelengkapan Sertifikat (Excel)</h3>
+          <p style={{ fontSize: '0.8rem', color: '#777', marginBottom: '15px' }}>Header kolom wajib: <b>NIM, NIK, Tempat, Tanggal Lahir, Jurusan, Perguruan Tinggi, Nomor Sertifikat, NIA</b>.</p>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input type="file" accept=".xlsx, .xls" onChange={(e) => setFileExcel(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', border: '1px dashed #bbb', borderRadius: '8px', backgroundColor: '#fafafa', fontSize: '0.85rem', flex: '1 1 250px' }} />
+            <button onClick={handleUploadExcelData} disabled={isUploadingExcel} style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '8px', fontWeight: 'bold', cursor: isUploadingExcel ? 'not-allowed' : 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {isUploadingExcel ? 'Memproses Data...' : '📤 Proses & Update Database'}
+            </button>
+          </div>
+        </div>
+
+        {/* 2. FORM & PREVIEW */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#555' }}>Jenjang Kaderisasi</label>
-              <select value={formJenjang} onChange={e => setFormJenjang(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '5px' }}>
-                <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#555' }}>Tahun Angkatan</label>
-              <input type="number" value={formAngkatan} onChange={e => setFormAngkatan(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '5px' }} />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#555' }}>Orientasi Kertas A4</label>
-              <select value={orientasi} onChange={e => setOrientasi(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginTop: '5px' }}>
-                <option value="portrait">A4 Portrait (Berdiri)</option><option value="landscape">A4 Landscape (Mendatar)</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#555' }}>Upload Template Kosong (Gambar)</label>
-              <input type="file" accept="image/*" onChange={(e) => setFileTemplate(e.target.files ? e.target.files[0] : null)} style={{ width: '100%', padding: '6px', border: '1px dashed #3498db', borderRadius: '4px', marginTop: '5px', fontSize: '0.75rem' }} />
-            </div>
-          </div>
-
-          <div style={{ backgroundColor: '#fafafa', padding: '15px', borderRadius: '8px', border: '1px solid #eee' }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: '#e67e22' }}>🛠️ Pengatur Koordinat & Font (Arial Narrow)</h4>
+          {/* KOLOM KIRI: FORM PENGATURAN */}
+          <div className="card-panel" style={{ flex: '1 1 450px', display: 'flex', flexDirection: 'column' }}>
             
-            <div style={{ display: 'grid', gap: '10px' }}>
-              {Object.keys(posisi).map((key) => {
-                const p = (posisi as any)[key];
-                return (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.8rem', backgroundColor: '#fff', padding: '8px', border: '1px solid #ddd', borderRadius: '4px' }}>
-                    <strong style={{ width: '60px', textTransform: 'capitalize' }}>{key}</strong>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      X:<input type="number" value={p.left} onChange={e => updatePosisi(key, 'left', Number(e.target.value))} style={{ width: '45px', padding: '4px', border: '1px solid #ccc' }} />%
-                    </div>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      Y:<input type="number" value={p.top} onChange={e => updatePosisi(key, 'top', Number(e.target.value))} style={{ width: '45px', padding: '4px', border: '1px solid #ccc' }} />%
-                    </div>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      Size:<input type="number" value={p.fontSize} onChange={e => updatePosisi(key, 'fontSize', Number(e.target.value))} style={{ width: '45px', padding: '4px', border: '1px solid #ccc' }} title="Ukuran Font (pt)" />
-                    </div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer', fontWeight: 'bold' }}>
-                      <input type="checkbox" checked={p.isBold} onChange={e => updatePosisi(key, 'isBold', e.target.checked)} /> B
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer', fontStyle: 'italic' }}>
-                      <input type="checkbox" checked={p.isItalic} onChange={e => updatePosisi(key, 'isItalic', e.target.checked)} /> I
-                    </label>
+            {/* Filter Dasar */}
+            <h3 className="section-title">⚙️ Basis Sertifikat & Kegiatan</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">Jenjang Kaderisasi</label>
+                <select value={formJenjang} onChange={e => setFormJenjang(e.target.value)} className="form-input">
+                  <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Tahun Angkatan</label>
+                <input type="number" value={formAngkatan} onChange={e => setFormAngkatan(e.target.value)} className="form-input" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Orientasi Kertas A4</label>
+                <select value={orientasi} onChange={e => setOrientasi(e.target.value)} className="form-input">
+                  <option value="portrait">A4 Portrait (Berdiri)</option><option value="landscape">A4 Landscape (Mendatar)</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Masa Khidmat Rayon</label>
+                <input type="text" placeholder="Misal: 2024-2025" value={masaKhidmat} onChange={e => setMasaKhidmat(e.target.value)} className="form-input" />
+              </div>
+            </div>
+
+            {/* Form Pelaksanaan & Penetapan */}
+            <h3 className="section-title">📅 Data Pelaksanaan & Penetapan</h3>
+            <div className="form-grid">
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Tanggal Pelaksanaan Kegiatan</label>
+                <input type="text" placeholder="Misal: 16 - 17 November 2024" value={tanggalPelaksanaan} onChange={e => setTanggalPelaksanaan(e.target.value)} className="form-input" />
+              </div>
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Tempat Pelaksanaan Kegiatan</label>
+                <input type="text" placeholder="Misal: SMP Ma'arif 3 Batu" value={tempatPelaksanaan} onChange={e => setTempatPelaksanaan(e.target.value)} className="form-input" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Tempat Ditetapkan</label>
+                <input type="text" placeholder="Misal: Kota Malang" value={tempatDitetapkan} onChange={e => setTempatDitetapkan(e.target.value)} className="form-input" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Tgl Ditetapkan (Masehi)</label>
+                <input type="text" placeholder="Misal: 12 Desember 2024 M" value={tanggalMasehi} onChange={e => setTanggalMasehi(e.target.value)} className="form-input" />
+              </div>
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Tgl Ditetapkan (Hijriyah)</label>
+                <input type="text" placeholder="Misal: 10 Jumadil Akhir 1446 H" value={tanggalHijriyah} onChange={e => setTanggalHijriyah(e.target.value)} className="form-input" />
+              </div>
+            </div>
+
+            {/* Form TTD Rayon */}
+            <h3 className="section-title">✍️ Pengesahan Rayon</h3>
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">Nama Ketua Rayon (Kapital)</label>
+                <input type="text" placeholder="Misal: ALFIAN FAHMI MA'ARIF" value={namaKetuaRayon} onChange={e => setNamaKetuaRayon(e.target.value)} className="form-input" />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Upload Stempel Rayon (PNG Transparan)</label>
+                <input type="file" accept="image/png" onChange={(e) => setFileStempel(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', border: '1px dashed #3498db', borderRadius: '8px', fontSize: '0.75rem', backgroundColor: '#f4f9fd' }} />
+                {(stempelUrl || fileStempel) && (
+                  <div style={{ marginTop: '5px', padding: '5px', backgroundColor: '#eee', borderRadius: '6px', width: 'fit-content' }}>
+                    <img src={fileStempel ? URL.createObjectURL(fileStempel) : stempelUrl} alt="Stempel" style={{ height: '40px', objectFit: 'contain' }} />
                   </div>
-                );
-              })}
+                )}
+              </div>
+            </div>
+
+            <button onClick={handleSimpanPengaturan} disabled={isSavingSetting} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '14px', borderRadius: '8px', fontWeight: 'bold', cursor: isSavingSetting ? 'not-allowed' : 'pointer', fontSize: '0.85rem', marginTop: '10px', boxShadow: '0 4px 6px rgba(0,0,175,0.1)' }}>
+              {isSavingSetting ? 'Menyimpan Konfigurasi...' : '💾 Simpan Data Sertifikat'}
+            </button>
+          </div>
+
+          {/* KOLOM KANAN: PREVIEW TEKS */}
+          <div className="card-panel" style={{ flex: '1 1 400px', backgroundColor: '#f4f6f8', border: '1px dashed #ccc' }}>
+            <h3 className="section-title" style={{ borderBottom: 'none', marginBottom: '10px' }}>👀 Simulasi Teks Sertifikat</h3>
+            <p style={{ fontSize: '0.75rem', color: '#777', marginBottom: '20px' }}>*Posisi pasti dan template gambar diatur oleh Komisariat. Pratinjau ini hanya memastikan teks dan data rayon yang Anda masukkan benar.</p>
+            
+            <div style={{ 
+              width: '100%', 
+              aspectRatio: aspectRatio, 
+              backgroundColor: 'white', 
+              boxShadow: '0 4px 15px rgba(0,0,0,0.05)', 
+              borderRadius: '2px',
+              padding: '6% 8%',
+              boxSizing: 'border-box',
+              containerType: 'inline-size',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative'
+            }}>
+               
+               <div style={{ textAlign: 'center', fontFamily: '"Times New Roman", Times, serif', color: '#000' }}>
+                 <div style={{ fontSize: '3.5cqi', fontWeight: 'bold', letterSpacing: '1px' }}>PIAGAM KEANGGOTAAN</div>
+                 <div style={{ fontSize: '2.5cqi', fontWeight: 'bold', letterSpacing: '1px' }}>PERGERAKAN MAHASISWA ISLAM INDONESIA</div>
+                 <div style={{ fontSize: '1.5cqi', marginTop: '1%' }}>Nomor : 10/{formJenjang}-X/{formAngkatan}</div>
+               </div>
+
+               <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '2.2cqi', color: '#111', lineHeight: '1.5', marginTop: '6%', flex: 1 }}>
+                 <div style={{ textAlign: 'center', marginBottom: '3%' }}>Bismillahirrahmanirrahim...</div>
+                 
+                 <div style={{ textAlign: 'justify', marginBottom: '4%' }}>
+                    Yang bertanda tangan di bawah ini {namaRayonAsli || 'Rayon PMII'} Komisariat Sunan Ampel Malang masa khidmat {masaKhidmat || '...'} memberikan status <b>{statusKader}</b> kepada :
+                 </div>
+
+                 {/* Mockup Biodata */}
+                 <div style={{ marginLeft: '10%', marginBottom: '4%' }}>
+                   <table style={{ fontSize: '2.2cqi' }}>
+                     <tbody>
+                       <tr><td style={{ width: '15cqi' }}>Nama</td><td>: Ahmad Albert Afrilsyah</td></tr>
+                       <tr><td>NIK</td><td>: 35730123456789</td></tr>
+                       <tr><td>TTL</td><td>: Malang, 10 Agustus 2002</td></tr>
+                     </tbody>
+                   </table>
+                 </div>
+
+                 <div style={{ textAlign: 'justify' }}>
+                    Bahwa nama yang disebutkan diatas telah <b>LULUS</b> {namaKegiatanFull} pada tanggal {tanggalPelaksanaan || '...'} yang dilaksanakan di {tempatPelaksanaan || '...'} oleh {namaRayonAsli || 'Rayon PMII'}.
+                 </div>
+               </div>
+
+               {/* Area TTD dan Tanggal */}
+               <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '2cqi', color: '#111', marginTop: 'auto' }}>
+                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '5%' }}>
+                   <div style={{ textAlign: 'left' }}>
+                     <div>Ditetapkan di : {tempatDitetapkan || '...'}</div>
+                     <div style={{ borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '2px' }}>
+                       Pada Tanggal : {tanggalMasehi || '...'}
+                     </div>
+                     <div>{tanggalHijriyah || '...'}</div>
+                   </div>
+                 </div>
+
+                 <div style={{ display: 'flex', justifyContent: 'space-between', textAlign: 'center' }}>
+                   <div style={{ width: '30%' }}>
+                     <div style={{ fontWeight: 'bold' }}>NAMA KETUA PC</div>
+                     <div style={{ fontStyle: 'italic', fontSize: '1.8cqi' }}>Ketua PC. PMII Kota Malang</div>
+                   </div>
+                   <div style={{ width: '30%' }}>
+                     <div style={{ fontWeight: 'bold' }}>NAMA KETUA PK</div>
+                     <div style={{ fontStyle: 'italic', fontSize: '1.8cqi' }}>Ketua PK. PMII Sunan Ampel</div>
+                   </div>
+                   <div style={{ width: '30%', position: 'relative' }}>
+                     <div style={{ fontWeight: 'bold' }}>{namaKetuaRayon || 'NAMA KETUA RAYON'}</div>
+                     <div style={{ fontStyle: 'italic', fontSize: '1.8cqi' }}>Ketua {namaRayonAsli || 'PR. PMII'}</div>
+                     {(stempelUrl || fileStempel) && (
+                       <img src={fileStempel ? URL.createObjectURL(fileStempel) : stempelUrl} alt="stempel" style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translate(-50%, 5px)', width: '12cqi', opacity: 0.8 }} />
+                     )}
+                   </div>
+                 </div>
+               </div>
+
             </div>
           </div>
 
-          <button onClick={handleSimpanPengaturan} disabled={isSavingSetting} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '12px', borderRadius: '4px', fontWeight: 'bold', cursor: isSavingSetting ? 'not-allowed' : 'pointer' }}>
-            {isSavingSetting ? 'Menyimpan...' : '💾 Simpan Konfigurasi & Layout'}
-          </button>
         </div>
-
-        <div style={{ flex: '1 1 400px', display: 'flex', flexDirection: 'column', alignItems: 'center', backgroundColor: '#ecf0f1', padding: '20px', borderRadius: '8px' }}>
-          <h4 style={{ margin: '0 0 15px 0', color: '#333' }}>👀 Live Preview Kanvas</h4>
-          <div style={{ 
-            position: 'relative', width: '100%', maxWidth: '800px', 
-            aspectRatio: aspectRatio, backgroundColor: 'white', border: '2px solid #ccc', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', overflow: 'hidden',
-            containerType: 'inline-size' /* MENGGUNAKAN CONTAINER QUERIES AGAR SKALA FONT AKURAT */
-          }}>
-            {(templateUrl || fileTemplate) && (
-              <img src={fileTemplate ? URL.createObjectURL(fileTemplate) : templateUrl} alt="Template" style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'fill', zIndex: 1 }} />
-            )}
-            
-            {Object.keys(posisi).map(key => {
-              const p = (posisi as any)[key];
-              const textSimulasi = key === 'nomor' ? '10/MAPABA-X/2026' : 
-                                   key === 'nama' ? 'Ahmad Albert Afrilsyah' : 
-                                   key === 'nik' ? '35730123456789' : 
-                                   key === 'ttl' ? 'Malang, 10 Agustus 2002' : 
-                                   key === 'jurusan' ? 'Teknik Informatika' : 'UIN Maulana Malik Ibrahim';
-              return (
-                <div key={key} style={{ 
-                  position: 'absolute', zIndex: 2, 
-                  top: `${p.top}%`, left: `${p.left}%`, 
-                  transform: key === 'nomor' ? 'translate(-50%, 0)' : 'none', 
-                  fontFamily: '"Arial Narrow", Arial, sans-serif',
-                  fontSize: `${p.fontSize * fontScaleCqw}cqw`, 
-                  fontWeight: p.isBold ? 'bold' : 'normal',
-                  fontStyle: p.isItalic ? 'italic' : 'normal',
-                  color: 'blue', border: '1px dashed rgba(0,0,255,0.3)', background: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap',
-                  lineHeight: '1.2'
-                }}>
-                  {textSimulasi}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
       </div>
-    </div>
+    </>
   );
 }

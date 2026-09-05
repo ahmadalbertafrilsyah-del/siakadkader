@@ -64,6 +64,7 @@ export default function KomisariatLayout({ children }: { children: React.ReactNo
     { id: '/komisariat/kalender', icon: '📅', label: 'Kalender Terpusat' },
     { id: '/komisariat/pengumuman', icon: '📢', label: 'Pengumuman' },
     { id: '/komisariat/broadcast', icon: '📡', label: 'Broadcast Notifikasi' },
+    { id: '/komisariat/pengaturan-sertifikat', icon: '📜', label: 'Sertifikat Digital' },
     { id: '/komisariat/log-aktivitas', icon: '⏱️', label: 'Log Aktivitas' },
   ];
 

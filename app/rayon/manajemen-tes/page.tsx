@@ -27,14 +27,12 @@ export default function PageManajemenTesRayon() {
             setAdminRayonId(currentRayonId);
             setNamaRayonAsli(snapRole.docs[0].data().nama || currentRayonId);
             
-            // Pengaturan KOP
             onSnapshot(doc(db, "users", currentRayonId), (rayonSnap: any) => {
               if (rayonSnap.exists()) {
                 setPengaturanCetak({ kopSuratUrl: rayonSnap.data().kopSuratUrl || '', footerUrl: rayonSnap.data().footerUrl || '' });
               }
             });
 
-            // Master Tes Rayon Lokal
             onSnapshot(query(collection(db, "master_tes"), where("id_rayon", "==", currentRayonId)), (snap: any) => {
               const tesList: any[] = []; snap.forEach((doc: any) => tesList.push({ id: doc.id, ...doc.data() })); setListTes(tesList);
             });
@@ -90,7 +88,6 @@ export default function PageManajemenTesRayon() {
   return (
     <>
       <style>{`
-        /* TOGGLE DESKTOP & MOBILE */
         .desktop-view { display: flex; flex-direction: column; gap: 20px; }
         .mobile-view { display: none; }
         
@@ -104,7 +101,6 @@ export default function PageManajemenTesRayon() {
            ::-webkit-scrollbar { display: none; }
         }
 
-        /* KHUSUS CETAK PDF */
         @media print {
           @page { size: A4 portrait; margin: 0; }
           main.no-print { display: block !important; }
@@ -132,47 +128,45 @@ export default function PageManajemenTesRayon() {
         @media screen { .print-layout-container { display: none !important; } }
       `}</style>
 
-      {/* ============================================== */}
-      {/* 1. DESKTOP VIEW                                */}
-      {/* ============================================== */}
+      {/* 1. DESKTOP VIEW */}
       <div className="desktop-view">
-        <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ color: '#0d1b2a', margin: '0 0 10px 0', fontSize: '1.2rem' }}>📝 Manajemen Tes Pemahaman</h3>
-          <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>Buat soal tes sendiri atau tarik soal standar dari Pusat Komisariat untuk diujikan ke kader.</p>
+        <div style={{ background: 'white', padding: '25px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <h3 style={{ color: '#0d1b2a', margin: '0 0 6px 0', fontSize: '1.25rem', fontWeight: '700' }}>📝 Manajemen Tes Pemahaman</h3>
+          <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px', borderBottom: '1px solid #eaeaea', paddingBottom: '15px' }}>Buat soal tes sendiri atau tarik soal standar dari Pusat Komisariat untuk diujikan ke kader.</p>
           
           {selectedTesHasil ? (
-            <div style={{ backgroundColor: '#fcfcfc', borderRadius: '10px', border: '1px solid #eaeaea', padding: '20px' }}>
-              <button onClick={() => setSelectedTesHasil(null)} style={{ marginBottom: '15px', padding: '8px 15px', backgroundColor: '#fdfdfd', border: '1px solid #ccc', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>⬅️ Kembali ke Daftar</button>
+            <div style={{ backgroundColor: '#fcfcfc', borderRadius: '12px', border: '1px solid #eaeaea', padding: '20px' }}>
+              <button onClick={() => setSelectedTesHasil(null)} style={{ marginBottom: '15px', padding: '8px 15px', backgroundColor: '#f8f9fa', border: '1px solid #ddd', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', color: '#555' }}>⬅️ Kembali ke Daftar</button>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h4 style={{ color: '#1e824c', margin: 0, fontSize: '1rem' }}>Data Hasil Ujian: {selectedTesHasil.judul}</h4>
-                <button onClick={() => window.print()} style={{ backgroundColor: '#007bff', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>🖨️ Cetak Hasil</button>
+                <h4 style={{ color: '#0000af', margin: 0, fontSize: '1rem' }}>Data Hasil Ujian: {selectedTesHasil.judul}</h4>
+                <button onClick={() => window.print()} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 5px rgba(0,0,175,0.1)' }}>🖨️ Cetak Hasil</button>
               </div>
 
-              <div style={{ width: '100%', overflowX: 'auto', border: '1px solid #eaeaea', borderRadius: '8px', overflow: 'hidden' }}>
-                <table className="tabel-utama" style={{ minWidth: '800px', width: '100%' }}>
+              <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto', overflowY: 'visible', border: '1px solid #eaeaea', borderRadius: '8px', backgroundColor: '#fff' }}>
+                <table style={{ minWidth: '800px', width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                   <thead>
-                    <tr>
-                      <th style={{ width: '15%', textAlign: 'left' }}>Waktu Submit</th>
-                      <th style={{ width: '25%', textAlign: 'left' }}>Data Kader</th>
-                      <th style={{ width: '60%', textAlign: 'left' }}>Jawaban Kader</th>
+                    <tr style={{ backgroundColor: '#f0f4f8', color: '#555' }}>
+                      <th style={{ padding: '12px 15px', width: '15%' }}>Waktu Submit</th>
+                      <th style={{ padding: '12px 15px', width: '25%' }}>Data Kader</th>
+                      <th style={{ padding: '12px 15px', width: '60%' }}>Jawaban Kader</th>
                     </tr>
                   </thead>
                   <tbody>
                     {jawabanTesViewer.length === 0 ? (
-                      <tr><td colSpan={3} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Belum ada yang mengumpulkan jawaban.</td></tr>
+                      <tr><td colSpan={3} style={{ textAlign: 'center', padding: '40px', color: '#999' }}>Belum ada yang mengumpulkan jawaban.</td></tr>
                     ) : (
                       jawabanTesViewer.map((jawab: any) => (
-                        <tr key={jawab.nim}>
-                          <td style={{ verticalAlign: 'top', fontSize: '0.75rem', color: '#555' }}>{jawab.tanggal}</td>
-                          <td style={{ verticalAlign: 'top' }}><div style={{fontWeight: 'bold', color: '#0d1b2a'}}>{jawab.nama}</div><div style={{fontSize: '0.75rem', color: '#888'}}>NIM: {jawab.nim}</div></td>
-                          <td style={{ verticalAlign: 'top' }}>
+                        <tr key={jawab.nim} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ padding: '15px', verticalAlign: 'top', fontSize: '0.75rem', color: '#555' }}>{jawab.tanggal}</td>
+                          <td style={{ padding: '15px', verticalAlign: 'top' }}><div style={{fontWeight: 'bold', color: '#0d1b2a'}}>{jawab.nama}</div><div style={{fontSize: '0.75rem', color: '#888'}}>NIM: {jawab.nim}</div></td>
+                          <td style={{ padding: '15px', verticalAlign: 'top' }}>
                             <details style={{ cursor: 'pointer', outline: 'none' }}>
-                              <summary style={{ color: '#27ae60', fontWeight: 'bold', fontSize: '0.85rem', padding: '6px 10px', backgroundColor: '#eaf4fc', borderRadius: '6px', display: 'inline-block' }}>Lihat Jawaban Detail</summary>
+                              <summary style={{ color: '#0000af', fontWeight: 'bold', fontSize: '0.85rem', padding: '6px 12px', backgroundColor: '#eaf4fc', borderRadius: '6px', display: 'inline-block', border: '1px solid #cce5ff' }}>Lihat Jawaban Detail</summary>
                               <div style={{ marginTop: '10px', padding: '15px', backgroundColor: '#fafafa', border: '1px solid #eee', borderRadius: '8px' }}>
                                 {(selectedTesHasil.daftar_soal || []).map((soal: string, i: number) => (
                                   <div key={i} style={{ marginBottom: '15px' }}>
                                     <div style={{ fontWeight: 'bold', color: '#333', fontSize: '0.85rem' }}>Q: {soal}</div>
-                                    <div style={{ color: '#004a87', fontStyle: 'italic', paddingLeft: '12px', borderLeft: '3px solid #3498db', marginTop: '6px', whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>A: {jawab.jawaban[i] || '- Kosong -'}</div>
+                                    <div style={{ color: '#004a87', fontStyle: 'italic', paddingLeft: '12px', borderLeft: '3px solid #0000af', marginTop: '6px', whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>A: {jawab.jawaban[i] || '- Kosong -'}</div>
                                   </div>
                                 ))}
                               </div>
@@ -186,23 +180,23 @@ export default function PageManajemenTesRayon() {
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eaeaea', borderRadius: '10px' }}>
-                  <h4 style={{ margin: '0 0 15px 0', color: '#1e824c', fontSize: '0.95rem' }}>📥 Tarik Tes Standar Komisariat</h4>
-                  <div className="hide-scroll" style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #ddd', padding: '10px', borderRadius: '8px', backgroundColor: '#fff' }}>
+            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <div style={{ flex: '1 1 340px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div style={{ backgroundColor: '#fcfcfc', padding: '20px', border: '1px solid #eaeaea', borderRadius: '12px' }}>
+                  <h4 style={{ margin: '0 0 15px 0', color: '#0d1b2a', fontSize: '0.95rem', fontWeight: '700' }}>📥 Tarik Tes Standar Komisariat</h4>
+                  <div className="hide-scroll" style={{ maxHeight: '220px', overflowX: 'visible', overflowY: 'auto', border: '1px solid #eaeaea', padding: '12px', borderRadius: '8px', backgroundColor: '#fff' }}>
                     {masterTesPusat.length === 0 ? (
-                      <div style={{ fontSize: '0.8rem', color: '#999', textAlign: 'center' }}>Pusat belum menetapkan tes standar.</div>
+                      <div style={{ fontSize: '0.8rem', color: '#999', textAlign: 'center', padding: '20px' }}>Pusat belum menetapkan tes standar.</div>
                     ) : (
                       masterTesPusat.map((tesPusat: any) => {
                         const isDitarik = listTes.some(t => t.judul === tesPusat.judul && t.jenjang === tesPusat.jenjang);
                         return (
-                          <div key={tesPusat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px dashed #eee' }}>
-                            <div><strong style={{ fontSize: '0.85rem', color: '#0d1b2a' }}>{tesPusat.judul}</strong><br/><span style={{ fontSize: '0.75rem', color: '#555' }}>Jenjang: {tesPusat.jenjang}</span></div>
+                          <div key={tesPusat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px dashed #eee' }}>
+                            <div style={{ paddingRight: '10px' }}><strong style={{ fontSize: '0.85rem', color: '#0d1b2a' }}>{tesPusat.judul}</strong><br/><span style={{ fontSize: '0.75rem', color: '#777' }}>Jenjang: {tesPusat.jenjang}</span></div>
                             {isDitarik ? (
-                              <span style={{ fontSize: '0.7rem', color: '#27ae60', fontWeight: 'bold', backgroundColor: '#e8f5e9', padding: '4px 8px', borderRadius: '6px' }}>Ditarik</span>
+                              <span style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: '600', backgroundColor: '#f0fdf4', padding: '6px 10px', borderRadius: '6px', border: '1px solid #dcfce7' }}>Tersedia</span>
                             ) : (
-                              <button onClick={() => handleTarikTesPusat(tesPusat)} style={{ backgroundColor: '#f1c40f', color: '#0d1b2a', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>Tarik</button>
+                              <button onClick={() => handleTarikTesPusat(tesPusat)} style={{ backgroundColor: '#0000af', color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}>Tarik</button>
                             )}
                           </div>
                         )
@@ -211,46 +205,55 @@ export default function PageManajemenTesRayon() {
                   </div>
                 </div>
 
-                <div style={{ backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eaeaea', borderRadius: '10px' }}>
-                  <h4 style={{ marginTop: 0, color: '#0d1b2a', fontSize: '0.95rem', marginBottom: '15px' }}>➕ Buat Tes / Soal Lokal</h4>
-                  <form onSubmit={handleBuatTes} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <input type="text" placeholder="Judul Tes (Misal: Post Test Mapaba)" required value={formTes.judul} onChange={e => setFormTes({...formTes, judul: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem', outline: 'none' }} />
-                    <select required value={formTes.jenjang} onChange={e => setFormTes({...formTes, jenjang: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer', outline: 'none' }}>
-                      <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option><option value="SKP">SKP</option><option value="NONFORMAL">Non-Formal</option>
-                    </select>
-                    <textarea rows={4} placeholder="Daftar Pertanyaan (Enter untuk memisah soal)..." required value={formTes.soal} onChange={e => setFormTes({...formTes, soal: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', resize: 'vertical', fontSize: '0.85rem', outline: 'none' }} />
-                    <button type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>Simpan Tes Lokal</button>
+                <div style={{ backgroundColor: '#fcfcfc', padding: '20px', border: '1px solid #eaeaea', borderRadius: '12px' }}>
+                  <h4 style={{ marginTop: 0, color: '#0d1b2a', fontSize: '0.95rem', marginBottom: '15px', fontWeight: '700' }}>➕ Buat Tes / Soal Lokal</h4>
+                  <form onSubmit={handleBuatTes} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: '#777', fontWeight: '600', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Judul Tes</label>
+                      <input type="text" placeholder="Misal: Post Test Mapaba" required value={formTes.judul} onChange={e => setFormTes({...formTes, judul: e.target.value})} style={{ width: '100%', padding: '10px 14px', border: '1px solid #eaeaea', borderRadius: '8px', fontSize: '0.85rem', outline: 'none', backgroundColor: '#fff', boxSizing: 'border-box' }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: '#777', fontWeight: '600', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Jenjang</label>
+                      <select required value={formTes.jenjang} onChange={e => setFormTes({...formTes, jenjang: e.target.value})} style={{ width: '100%', padding: '10px 14px', border: '1px solid #eaeaea', borderRadius: '8px', fontSize: '0.85rem', cursor: 'pointer', outline: 'none', backgroundColor: '#fff', boxSizing: 'border-box' }}>
+                        <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option><option value="SKP">SKP</option><option value="NONFORMAL">Non-Formal</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: '#777', fontWeight: '600', display: 'block', marginBottom: '6px', textTransform: 'uppercase' }}>Daftar Pertanyaan</label>
+                      <textarea rows={4} placeholder="Enter untuk memisah soal..." required value={formTes.soal} onChange={e => setFormTes({...formTes, soal: e.target.value})} style={{ width: '100%', padding: '10px 14px', border: '1px solid #eaeaea', borderRadius: '8px', resize: 'vertical', fontSize: '0.85rem', outline: 'none', backgroundColor: '#fff', boxSizing: 'border-box' }} />
+                    </div>
+                    <button type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem', marginTop: '6px' }}>Simpan Tes Lokal</button>
                   </form>
                 </div>
               </div>
 
-              <div style={{ flex: '2 1 450px', overflowX: 'auto', border: '1px solid #eaeaea', borderRadius: '10px', overflow: 'hidden', alignSelf: 'flex-start' }}>
-                <table className="tabel-utama" style={{ minWidth: '550px', width: '100%' }}>
+              <div className="hide-scroll" style={{ flex: '2 1 450px', overflowX: 'auto', overflowY: 'visible', border: '1px solid #eaeaea', borderRadius: '12px', backgroundColor: '#fff' }}>
+                <table style={{ minWidth: '550px', width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                   <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left' }}>Judul Tes & Jenjang</th>
-                      <th style={{ textAlign: 'center', width: '10%' }}>Soal</th>
-                      <th style={{ textAlign: 'center', width: '20%' }}>Status</th>
-                      <th style={{ textAlign: 'center', width: '25%' }}>Aksi</th>
+                    <tr style={{ backgroundColor: '#f0f4f8', color: '#555' }}>
+                      <th style={{ padding: '14px 18px' }}>Judul Tes & Jenjang</th>
+                      <th style={{ padding: '14px 18px', textAlign: 'center', width: '10%' }}>Soal</th>
+                      <th style={{ padding: '14px 18px', textAlign: 'center', width: '20%' }}>Status</th>
+                      <th style={{ padding: '14px 18px', textAlign: 'center', width: '25%' }}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {listTes.length === 0 ? (
-                      <tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Belum ada tes yang siap diujikan.</td></tr>
+                      <tr><td colSpan={4} style={{ textAlign: 'center', padding: '50px', color: '#999' }}>Belum ada tes yang siap diujikan.</td></tr>
                     ) : (
                       listTes.map((tes) => (
-                        <tr key={tes.id}>
-                          <td><div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '0.95rem' }}>{tes.judul}</div><div style={{ fontSize: '0.75rem', color: '#888' }}>{tes.jenjang}</div></td>
-                          <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#e67e22', fontSize: '0.95rem' }}>{tes.daftar_soal?.length || 0}</td>
-                          <td style={{ textAlign: 'center' }}>
-                            <div onClick={() => handleToggleStatusTes(tes.id, tes.status)} style={{ display: 'inline-flex', padding: '6px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tes.status === 'Buka' ? '#e8f5e9' : '#ffebee', color: tes.status === 'Buka' ? '#2e7d32' : '#c62828' }}>
+                        <tr key={tes.id} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ padding: '16px 18px' }}><div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '0.9rem' }}>{tes.judul}</div><div style={{ fontSize: '0.75rem', color: '#777' }}>{tes.jenjang}</div></td>
+                          <td style={{ padding: '16px 18px', textAlign: 'center', fontWeight: 'bold', color: '#e67e22', fontSize: '0.9rem' }}>{tes.daftar_soal?.length || 0}</td>
+                          <td style={{ padding: '16px 18px', textAlign: 'center' }}>
+                            <div onClick={() => handleToggleStatusTes(tes.id, tes.status)} style={{ display: 'inline-flex', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tes.status === 'Buka' ? '#f0fdf4' : '#fef2f2', color: tes.status === 'Buka' ? '#15803d' : '#b91c1c', border: `1px solid ${tes.status === 'Buka' ? '#dcfce7' : '#fee2e2'}` }}>
                               {tes.status === 'Buka' ? '🔓 Buka' : '🔒 Tutup'}
                             </div>
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td style={{ padding: '16px 18px', textAlign: 'center' }}>
                             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                              <button onClick={() => handleLihatHasilTes(tes)} style={{ color: 'white', backgroundColor: '#3498db', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Hasil</button>
-                              <button onClick={async () => { if (window.confirm("Hapus tes ini?")) { await deleteDoc(doc(db, "master_tes", tes.id)); catatLogAktivitas(`Menghapus Tes: ${tes.judul}`); } }} style={{ color: 'white', backgroundColor: '#e74c3c', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Hapus</button>
+                              <button onClick={() => handleLihatHasilTes(tes)} style={{ color: '#b45309', backgroundColor: '#fef3c7', border: '1px solid #fde68a', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Hasil</button>
+                              <button onClick={async () => { if (window.confirm("Hapus tes ini?")) { await deleteDoc(doc(db, "master_tes", tes.id)); catatLogAktivitas(`Menghapus Tes: ${tes.judul}`); } }} style={{ color: '#dc2626', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.75rem' }}>Hapus</button>
                             </div>
                           </td>
                         </tr>
@@ -264,44 +267,42 @@ export default function PageManajemenTesRayon() {
         </div>
       </div>
 
-      {/* ============================================== */}
-      {/* 2. MOBILE VIEW (Dengan Tabel Horizontal Scroll)*/}
-      {/* ============================================== */}
+      {/* 2. MOBILE VIEW */}
       <div className="mobile-view">
         {selectedTesHasil ? (
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #ddd', padding: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eaeaea', padding: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <button onClick={() => setSelectedTesHasil(null)} style={{ padding: '8px 12px', backgroundColor: '#f1c40f', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.85rem' }}>⬅️ Kembali</button>
-              <button onClick={() => window.print()} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.85rem' }}>🖨️ Cetak</button>
+              <button onClick={() => setSelectedTesHasil(null)} style={{ padding: '6px 12px', backgroundColor: '#f8f9fa', border: '1px solid #ddd', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.8rem', color: '#555' }}>⬅️ Kembali</button>
+              <button onClick={() => window.print()} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.8rem' }}>🖨️ Cetak</button>
             </div>
             
-            <h4 style={{ color: '#1e824c', margin: '0 0 15px 0', fontSize: '1rem' }}>Hasil: {selectedTesHasil.judul}</h4>
+            <h4 style={{ color: '#0000af', margin: '0 0 15px 0', fontSize: '0.95rem' }}>Hasil: {selectedTesHasil.judul}</h4>
             
-            <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto', borderRadius: '8px', border: '1px solid #eaeaea' }}>
-               <table className="tabel-utama" style={{ minWidth: '650px', width: '100%' }}>
+            <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto', overflowY: 'visible', borderRadius: '8px', border: '1px solid #eaeaea' }}>
+               <table style={{ minWidth: '650px', width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                   <thead>
-                    <tr>
-                      <th style={{ width: '20%', textAlign: 'left' }}>Tgl Submit</th>
-                      <th style={{ width: '30%', textAlign: 'left' }}>Data Kader</th>
-                      <th style={{ width: '50%', textAlign: 'left' }}>Jawaban Kader</th>
+                    <tr style={{ backgroundColor: '#f0f4f8', color: '#555' }}>
+                      <th style={{ padding: '10px', width: '20%' }}>Tgl Submit</th>
+                      <th style={{ padding: '10px', width: '30%' }}>Data Kader</th>
+                      <th style={{ padding: '10px', width: '50%' }}>Jawaban Kader</th>
                     </tr>
                   </thead>
                   <tbody>
                     {jawabanTesViewer.length === 0 ? (
-                      <tr><td colSpan={3} style={{ textAlign: 'center', padding: '20px', color: '#999' }}>Belum ada yang mengumpulkan jawaban.</td></tr>
+                      <tr><td colSpan={3} style={{ textAlign: 'center', padding: '30px', color: '#999' }}>Belum ada yang mengumpulkan jawaban.</td></tr>
                     ) : (
                       jawabanTesViewer.map((jawab: any) => (
-                        <tr key={jawab.nim}>
-                          <td style={{ verticalAlign: 'top', color: '#555' }}>{jawab.tanggal}</td>
-                          <td style={{ verticalAlign: 'top' }}><div style={{fontWeight: 'bold', color: '#0d1b2a'}}>{jawab.nama}</div><div style={{color: '#888'}}>NIM: {jawab.nim}</div></td>
-                          <td style={{ verticalAlign: 'top' }}>
+                        <tr key={jawab.nim} style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ padding: '10px', verticalAlign: 'top', color: '#555', fontSize: '0.75rem' }}>{jawab.tanggal}</td>
+                          <td style={{ padding: '10px', verticalAlign: 'top' }}><div style={{fontWeight: 'bold', color: '#0d1b2a'}}>{jawab.nama}</div><div style={{color: '#888', fontSize: '0.7rem'}}>NIM: {jawab.nim}</div></td>
+                          <td style={{ padding: '10px', verticalAlign: 'top' }}>
                             <details style={{ cursor: 'pointer', outline: 'none' }}>
-                              <summary style={{ color: '#27ae60', fontWeight: 'bold', padding: '6px', backgroundColor: '#eaf4fc', borderRadius: '6px', display: 'inline-block' }}>Tampilkan Jawaban</summary>
-                              <div style={{ marginTop: '10px', padding: '15px', backgroundColor: '#fafafa', border: '1px solid #eee', borderRadius: '8px' }}>
+                              <summary style={{ color: '#0000af', fontWeight: 'bold', padding: '6px 10px', backgroundColor: '#eaf4fc', borderRadius: '6px', display: 'inline-block', fontSize: '0.75rem' }}>Tampilkan Jawaban</summary>
+                              <div style={{ marginTop: '10px', padding: '12px', backgroundColor: '#fafafa', border: '1px solid #eee', borderRadius: '8px' }}>
                                 {(selectedTesHasil.daftar_soal || []).map((soal: string, i: number) => (
-                                  <div key={i} style={{ marginBottom: '12px' }}>
-                                    <div style={{ fontWeight: 'bold', color: '#333' }}>Q: {soal}</div>
-                                    <div style={{ color: '#004a87', fontStyle: 'italic', paddingLeft: '12px', borderLeft: '3px solid #3498db', marginTop: '6px', whiteSpace: 'pre-wrap' }}>A: {jawab.jawaban[i] || '- Kosong -'}</div>
+                                  <div key={i} style={{ marginBottom: '10px' }}>
+                                    <div style={{ fontWeight: 'bold', color: '#333', fontSize: '0.8rem' }}>Q: {soal}</div>
+                                    <div style={{ color: '#004a87', fontStyle: 'italic', paddingLeft: '10px', borderLeft: '3px solid #0000af', marginTop: '4px', whiteSpace: 'pre-wrap', fontSize: '0.8rem' }}>A: {jawab.jawaban[i] || '- Kosong -'}</div>
                                   </div>
                                 ))}
                               </div>
@@ -316,21 +317,21 @@ export default function PageManajemenTesRayon() {
           </div>
         ) : (
           <>
-            <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
-              <h4 style={{ margin: '0 0 15px 0', color: '#1e824c', fontSize: '0.95rem' }}>📥 Tarik Tes Standar Komisariat</h4>
-              <div className="hide-scroll" style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #ddd', padding: '10px', borderRadius: '8px', backgroundColor: '#fafafa' }}>
+            <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <h4 style={{ margin: '0 0 12px 0', color: '#0d1b2a', fontSize: '0.9rem', fontWeight: '700' }}>📥 Tarik Tes Standar Komisariat</h4>
+              <div className="hide-scroll" style={{ maxHeight: '180px', overflowX: 'visible', overflowY: 'auto', border: '1px solid #eaeaea', padding: '10px', borderRadius: '8px', backgroundColor: '#fafafa' }}>
                 {masterTesPusat.length === 0 ? (
-                  <div style={{ fontSize: '0.85rem', color: '#999', textAlign: 'center' }}>Pusat belum menetapkan tes standar.</div>
+                  <div style={{ fontSize: '0.8rem', color: '#999', textAlign: 'center', padding: '15px' }}>Pusat belum menetapkan tes standar.</div>
                 ) : (
                   masterTesPusat.map((tesPusat: any) => {
                     const isDitarik = listTes.some(t => t.judul === tesPusat.judul && t.jenjang === tesPusat.jenjang);
                     return (
                       <div key={tesPusat.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px dashed #eee' }}>
-                        <div style={{ flex: 1, paddingRight: '10px' }}><strong style={{ fontSize: '0.85rem', color: '#0d1b2a' }}>{tesPusat.judul}</strong><br/><span style={{ fontSize: '0.75rem', color: '#555' }}>Jenjang: {tesPusat.jenjang}</span></div>
+                        <div style={{ flex: 1, paddingRight: '10px' }}><strong style={{ fontSize: '0.8rem', color: '#0d1b2a' }}>{tesPusat.judul}</strong><br/><span style={{ fontSize: '0.7rem', color: '#777' }}>Jenjang: {tesPusat.jenjang}</span></div>
                         {isDitarik ? (
-                          <span style={{ fontSize: '0.7rem', color: '#27ae60', fontWeight: 'bold', backgroundColor: '#e8f5e9', padding: '6px 10px', borderRadius: '6px' }}>Ditarik</span>
+                          <span style={{ fontSize: '0.65rem', color: '#15803d', fontWeight: '600', backgroundColor: '#f0fdf4', padding: '4px 8px', borderRadius: '4px', border: '1px solid #dcfce7' }}>Tersedia</span>
                         ) : (
-                          <button onClick={() => handleTarikTesPusat(tesPusat)} style={{ backgroundColor: '#f1c40f', color: '#0d1b2a', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold' }}>Tarik</button>
+                          <button onClick={() => handleTarikTesPusat(tesPusat)} style={{ backgroundColor: '#0000af', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold' }}>Tarik</button>
                         )}
                       </div>
                     )
@@ -339,29 +340,28 @@ export default function PageManajemenTesRayon() {
               </div>
             </div>
 
-            <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
-              <h4 style={{ marginTop: 0, color: '#0d1b2a', fontSize: '0.95rem', marginBottom: '15px' }}>➕ Buat Tes Lokal</h4>
-              <form onSubmit={handleBuatTes} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <input type="text" placeholder="Judul Tes" required value={formTes.judul} onChange={e => setFormTes({...formTes, judul: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', outline: 'none' }} />
-                <select required value={formTes.jenjang} onChange={e => setFormTes({...formTes, jenjang: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', fontSize: '0.85rem', backgroundColor: '#fff', outline: 'none' }}>
+            <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <h4 style={{ marginTop: 0, color: '#0d1b2a', fontSize: '0.9rem', marginBottom: '12px', fontWeight: '700' }}>➕ Buat Tes Lokal</h4>
+              <form onSubmit={handleBuatTes} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <input type="text" placeholder="Judul Tes" required value={formTes.judul} onChange={e => setFormTes({...formTes, judul: e.target.value})} style={{ width: '100%', padding: '10px 12px', border: '1px solid #eaeaea', borderRadius: '8px', fontSize: '0.85rem', outline: 'none', backgroundColor: '#fff', boxSizing: 'border-box' }} />
+                <select required value={formTes.jenjang} onChange={e => setFormTes({...formTes, jenjang: e.target.value})} style={{ width: '100%', padding: '10px 12px', border: '1px solid #eaeaea', borderRadius: '8px', fontSize: '0.85rem', backgroundColor: '#fff', outline: 'none', boxSizing: 'border-box' }}>
                   <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option><option value="SKP">SKP</option><option value="NONFORMAL">Non-Formal</option>
                 </select>
-                <textarea rows={4} placeholder="Daftar Pertanyaan (Enter untuk memisah soal)..." required value={formTes.soal} onChange={e => setFormTes({...formTes, soal: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ccc', borderRadius: '8px', resize: 'vertical', fontSize: '0.85rem', outline: 'none' }} />
-                <button type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '15px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.9rem' }}>Simpan Tes Lokal</button>
+                <textarea rows={3} placeholder="Daftar Pertanyaan (Enter untuk memisah soal)..." required value={formTes.soal} onChange={e => setFormTes({...formTes, soal: e.target.value})} style={{ width: '100%', padding: '10px 12px', border: '1px solid #eaeaea', borderRadius: '8px', resize: 'vertical', fontSize: '0.85rem', outline: 'none', backgroundColor: '#fff', boxSizing: 'border-box' }} />
+                <button type="submit" style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.85rem' }}>Simpan Tes Lokal</button>
               </form>
             </div>
 
-            <h4 style={{ margin: '5px 0 0 0', color: '#555', fontSize: '0.9rem', fontWeight: 'bold' }}>Daftar Ujian Tes Tersedia</h4>
+            <h4 style={{ margin: '5px 0 0 0', color: '#0d1b2a', fontSize: '0.95rem', fontWeight: '700' }}>Daftar Ujian Tes Tersedia</h4>
             
-            {/* TABEL DAFTAR TES MOBILE */}
-            <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
-              <table className="tabel-utama" style={{ minWidth: '550px', width: '100%' }}>
+            <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto', overflowY: 'visible', backgroundColor: '#fff', border: '1px solid #eaeaea', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <table style={{ minWidth: '550px', width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                 <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left' }}>Judul Tes & Jenjang</th>
-                    <th style={{ textAlign: 'center', width: '10%' }}>Soal</th>
-                    <th style={{ textAlign: 'center', width: '20%' }}>Status</th>
-                    <th style={{ textAlign: 'center', width: '25%' }}>Aksi</th>
+                  <tr style={{ backgroundColor: '#f0f4f8', color: '#555' }}>
+                    <th style={{ padding: '12px 14px' }}>Judul Tes & Jenjang</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center', width: '10%' }}>Soal</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center', width: '20%' }}>Status</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'center', width: '25%' }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -369,21 +369,21 @@ export default function PageManajemenTesRayon() {
                     <tr><td colSpan={4} style={{ textAlign: 'center', padding: '30px', color: '#999' }}>Belum ada tes dibuat.</td></tr>
                   ) : (
                     listTes.map((tes) => (
-                      <tr key={tes.id}>
-                        <td>
-                          <div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '0.95rem' }}>{tes.judul}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#888' }}>{tes.jenjang}</div>
+                      <tr key={tes.id} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ fontWeight: 'bold', color: '#0d1b2a', fontSize: '0.85rem' }}>{tes.judul}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#777' }}>{tes.jenjang}</div>
                         </td>
-                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#e67e22', fontSize: '0.95rem' }}>{tes.daftar_soal?.length || 0}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <div onClick={() => handleToggleStatusTes(tes.id, tes.status)} style={{ display: 'inline-flex', padding: '6px 12px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tes.status === 'Buka' ? '#e8f5e9' : '#ffebee', color: tes.status === 'Buka' ? '#2e7d32' : '#c62828' }}>
+                        <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 'bold', color: '#e67e22', fontSize: '0.85rem' }}>{tes.daftar_soal?.length || 0}</td>
+                        <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                          <div onClick={() => handleToggleStatusTes(tes.id, tes.status)} style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', cursor: 'pointer', backgroundColor: tes.status === 'Buka' ? '#f0fdf4' : '#fef2f2', color: tes.status === 'Buka' ? '#15803d' : '#b91c1c', border: `1px solid ${tes.status === 'Buka' ? '#dcfce7' : '#fee2e2'}` }}>
                             {tes.status === 'Buka' ? '🔓 Buka' : '🔒 Tutup'}
                           </div>
                         </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                            <button onClick={() => handleLihatHasilTes(tes)} style={{ backgroundColor: '#3498db', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold' }}>Hasil</button>
-                            <button onClick={async () => { if (window.confirm("Hapus tes ini?")) { await deleteDoc(doc(db, "master_tes", tes.id)); } }} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', fontWeight: 'bold' }}>Hapus</button>
+                        <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                            <button onClick={() => handleLihatHasilTes(tes)} style={{ backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.7rem' }}>Hasil</button>
+                            <button onClick={async () => { if (window.confirm("Hapus tes ini?")) { await deleteDoc(doc(db, "master_tes", tes.id)); } }} style={{ backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fee2e2', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.7rem' }}>Hapus</button>
                           </div>
                         </td>
                       </tr>
@@ -397,9 +397,7 @@ export default function PageManajemenTesRayon() {
         )}
       </div>
 
-      {/* ============================================== */}
-      {/* 3. TAMPILAN KHUSUS CETAK PDF                   */}
-      {/* ============================================== */}
+      {/* 3. TAMPILAN KHUSUS CETAK PDF */}
       {selectedTesHasil && (
         <div className="print-layout-container">
           {pengaturanCetak.kopSuratUrl && (<div className="bg-kertas-a4"><img src={pengaturanCetak.kopSuratUrl} alt="Background A4" /></div>)}

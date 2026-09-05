@@ -9,18 +9,37 @@ export default function PageSertifikatKader() {
   const [profilKader, setProfilKader] = useState<any>({ nama: '', nim: '', id_rayon: '', jenjang: 'MAPABA', angkatan: '' });
   
   const defaultPosisi = {
-    nomor: { top: 30, left: 50, fontSize: 14, isBold: true, isItalic: false }, 
-    nama: { top: 45, left: 40, fontSize: 24, isBold: true, isItalic: false }, 
-    nik: { top: 48, left: 40, fontSize: 14, isBold: false, isItalic: false },
-    ttl: { top: 51, left: 40, fontSize: 14, isBold: false, isItalic: false }, 
-    jurusan: { top: 54, left: 40, fontSize: 14, isBold: false, isItalic: false }, 
-    pt: { top: 57, left: 40, fontSize: 14, isBold: false, isItalic: false },
+    nomor: { top: 30, left: 50, width: 40, fontSize: 16, isBold: true, isItalic: false, align: 'center' }, 
+    teksPembuka: { top: 32, left: 10, width: 80, fontSize: 14, isBold: false, isItalic: false, align: 'justify' },
+    nama: { top: 38.4, left: 22, width: 60, fontSize: 16, isBold: true, isItalic: false, align: 'left' }, 
+    nik: { top: 41.2, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' },
+    ttl: { top: 44, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' }, 
+    jurusan: { top: 47, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' }, 
+    pt: { top: 49.8, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' },
+    teksKelulusan: { top: 54.5, left: 10, width: 80, fontSize: 14, isBold: false, isItalic: false, align: 'justify' },
+    penetapan: { top: 72, left: 60, width: 35, fontSize: 14, isBold: false, isItalic: false, align: 'left' },
+    ttdCabang: { top: 88, left: 20, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
+    ttdKomisariat: { top: 88, left: 50, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
+    ttdRayon: { top: 88, left: 80, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
+    stempelCabang: { top: 78, left: 15, width: 15, fontSize: 12 },
+    stempelKomisariat: { top: 78, left: 45, width: 15, fontSize: 12 },
+    stempelRayon: { top: 78, left: 75, width: 15, fontSize: 12 },
+    scanTtdCabang: { top: 82, left: 20, width: 18, fontSize: 12 },
+    scanTtdKomisariat: { top: 82, left: 50, width: 18, fontSize: 12 }
   };
 
   const [settings, setSettings] = useState({
-    templateUrl: 'https://via.placeholder.com/1123x794/ffffff/cccccc?text=Memuat+Sertifikat...',
-    orientasi: 'landscape',
-    posisi: defaultPosisi
+    templateUrl: '',
+    orientasi: 'portrait',
+    posisi: defaultPosisi,
+    namaKetuaCabang: '',
+    stempelCabangUrl: '',
+    scanTtdCabangUrl: '',
+    namaKetuaKomisariat: '',
+    stempelKomisariatUrl: '',
+    scanTtdKomisariatUrl: '',
+    namaKetuaRayon: '',
+    stempelRayonUrl: ''
   });
 
   const [selectedJenjang, setSelectedJenjang] = useState('MAPABA');
@@ -35,7 +54,7 @@ export default function PageSertifikatKader() {
           if (!snapRole.empty) {
             const p = snapRole.docs[0].data();
             setProfilKader({ 
-              nama: p.nama, nim: p.nim, id_rayon: p.id_rayon, jenjang: p.jenjang || 'MAPABA', angkatan: p.angkatan || '-',
+              nama: p.nama, nim: p.nim, id_rayon: p.id_rayon, jenjang: p.jenjang || 'MAPABA', angkatan: p.angkatan || new Date().getFullYear().toString(),
               nik: p.nik || '-', ttl: p.ttl || '-', jurusan: p.jurusan || '-', pt: p.pt || '-', 
               nomor_sertifikat: p.nomor_sertifikat || '', nia: p.nia || ''
             });
@@ -50,58 +69,79 @@ export default function PageSertifikatKader() {
   }, []);
 
   useEffect(() => {
-    if (!profilKader.id_rayon) return;
-    const docId = `${profilKader.id_rayon}_${selectedJenjang}_${profilKader.angkatan}`;
-    
-    const unsub = onSnapshot(doc(db, "pengaturan_sertifikat", docId), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        let loadedPosisi = data.posisi;
-        if (loadedPosisi) {
-           Object.keys(defaultPosisi).forEach(k => {
-             if (loadedPosisi[k]) {
-                if (loadedPosisi[k].fontSize === undefined) loadedPosisi[k].fontSize = 14;
-                if (loadedPosisi[k].isBold === undefined) loadedPosisi[k].isBold = false;
-                if (loadedPosisi[k].isItalic === undefined) loadedPosisi[k].isItalic = false;
-             } else {
-                loadedPosisi[k] = defaultPosisi[k as keyof typeof defaultPosisi];
-             }
-           });
-        }
-        setSettings({
-          templateUrl: data.templateUrl || '',
-          orientasi: data.orientasi || 'landscape',
-          posisi: loadedPosisi || defaultPosisi
-        });
-      } else {
-        setSettings({
-          templateUrl: 'https://via.placeholder.com/800x1131/ffffff/cccccc?text=Sertifikat+Belum+Diatur+Instansi',
-          orientasi: 'landscape',
-          posisi: defaultPosisi
-        });
+    if (!profilKader.angkatan) return;
+
+    let unsubs: (() => void)[] = [];
+
+    const qMaster = query(
+      collection(db, "master_template_sertifikat"),
+      where("jenjang", "==", selectedJenjang),
+      where("angkatan", "==", profilKader.angkatan)
+    );
+    const unsubMaster = onSnapshot(qMaster, (snapshot) => {
+      if (!snapshot.empty) {
+        const masterData = snapshot.docs[0].data();
+        let loadedPosisi = masterData.posisi || defaultPosisi;
+
+        setSettings(prev => ({
+          ...prev,
+          templateUrl: masterData.templateUrl || '',
+          orientasi: masterData.orientasi || 'portrait',
+          posisi: loadedPosisi,
+          namaKetuaCabang: masterData.namaKetuaCabang || '',
+          stempelCabangUrl: masterData.stempelCabangUrl || '',
+          scanTtdCabangUrl: masterData.scanTtdCabangUrl || '',
+          namaKetuaKomisariat: masterData.namaKetuaKomisariat || '',
+          stempelKomisariatUrl: masterData.stempelKomisariatUrl || '',
+          scanTtdKomisariatUrl: masterData.scanTtdKomisariatUrl || ''
+        }));
       }
     });
-    return () => unsub();
-  }, [profilKader.id_rayon, selectedJenjang, profilKader.angkatan]);
+    unsubs.push(unsubMaster);
+
+    if (profilKader.id_rayon) {
+      const rayonDocId = `${profilKader.id_rayon}_${selectedJenjang}_${profilKader.angkatan}`;
+      const unsubRayon = onSnapshot(doc(db, "pengaturan_sertifikat", rayonDocId), (docSnap) => {
+        if (docSnap.exists()) {
+          const rayonData = docSnap.data();
+          setSettings(prev => ({
+            ...prev,
+            namaKetuaRayon: rayonData.namaKetuaRayon || '',
+            stempelRayonUrl: rayonData.stempelUrl || ''
+          }));
+        }
+      });
+      unsubs.push(unsubRayon);
+    }
+
+    return () => { unsubs.forEach(u => u()); };
+  }, [selectedJenjang, profilKader.angkatan, profilKader.id_rayon]);
 
   const nomorDitampilkan = profilKader.nia && profilKader.nia !== '-' ? profilKader.nia : (profilKader.nomor_sertifikat ? profilKader.nomor_sertifikat : '- Belum Ada Nomor -');
   const aspectRatio = settings.orientasi === 'portrait' ? '1 / 1.414' : '1.414 / 1';
   const fontScaleCqw = settings.orientasi === 'portrait' ? 0.168 : 0.1188;
 
+  let namaKegiatanFull = selectedJenjang === 'PKD' ? 'Pelatihan Kader Dasar (PKD)' : (selectedJenjang === 'SIG' ? 'Sekolah Islam Gender (SIG)' : 'Masa Penerimaan Anggota Baru (MAPABA)');
+  let statusKader = selectedJenjang === 'PKD' ? 'KADER MUJAHID PMII' : 'ANGGOTA PMII';
+
   const getDataTeks = (key: string) => {
     if (key === 'nomor') return nomorDitampilkan;
-    if (key === 'nama') return profilKader.nama;
-    if (key === 'nik') return profilKader.nik;
-    if (key === 'ttl') return profilKader.ttl;
-    if (key === 'jurusan') return profilKader.jurusan;
-    if (key === 'pt') return profilKader.pt;
+    if (key === 'teksPembuka') return `Yang bertanda tangan di bawah ini Pengurus Rayon PMII Komisariat Sunan Ampel Malang memberikan status <b>${statusKader}</b> kepada :`;
+    if (key === 'nama') return `Nama          : ${profilKader.nama}`;
+    if (key === 'nik') return `NIK             : ${profilKader.nik}`;
+    if (key === 'ttl') return `TTL             : ${profilKader.ttl}`;
+    if (key === 'jurusan') return `Jurusan       : ${profilKader.jurusan}`;
+    if (key === 'pt') return `Perguruan Tinggi : ${profilKader.pt}`;
+    if (key === 'teksKelulusan') return `Bahwa nama yang disebutkan diatas telah <b>LULUS</b> ${namaKegiatanFull} oleh Pengurus Rayon PMII.`;
+    if (key === 'ttdCabang') return `${settings.namaKetuaCabang || 'NAMA KETUA PC'}<br/>Ketua PC. PMII Kota Malang`;
+    if (key === 'ttdKomisariat') return `${settings.namaKetuaKomisariat || 'NAMA KETUA PK'}<br/>Ketua PK. PMII Sunan Ampel`;
+    if (key === 'ttdRayon') return `${settings.namaKetuaRayon || 'NAMA KETUA RAYON'}<br/>Ketua Rayon PMII`;
     return '';
   };
 
   return (
     <>
       <style>{`
-        /* COLOR PALETTE & LAYOUT */
         :root {
           --text-main: #111827;
           --text-muted: #6b7280;
@@ -154,7 +194,7 @@ export default function PageSertifikatKader() {
           .print-layout-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: ${settings.orientasi === 'portrait' ? '210mm' : '297mm'} !important; height: ${settings.orientasi === 'portrait' ? '297mm' : '210mm'} !important; z-index: 9999 !important; background: white !important; }
           .bg-sertifikat { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
           .bg-sertifikat img { width: 100%; height: 100%; object-fit: fill; display: block; }
-          .isian-data { position: absolute; z-index: 10; font-family: "Arial Narrow", Arial, sans-serif; color: black !important; white-space: nowrap; line-height: 1.2; }
+          .isian-data { position: absolute; z-index: 10; font-family: "Arial Narrow", Arial, sans-serif; color: black !important; line-height: 1.2; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen { .print-layout-container { display: none !important; } }
@@ -169,7 +209,6 @@ export default function PageSertifikatKader() {
             <div>
               <div className="header-title-container">
                 <div className="header-icon">
-                  {/* SVG Ikon Sertifikat / Penghargaan */}
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="8" r="6"></circle>
                     <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>
@@ -177,7 +216,7 @@ export default function PageSertifikatKader() {
                 </div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-main)' }}>Cetak Piagam & Sertifikat Digital</h3>
               </div>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Sertifikat resmi PMII yang tata letaknya telah diatur oleh Pengurus.</p>
+              <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: 0 }}>Sertifikat resmi PMII lengkap dengan stempel dan tanda tangan digital instansi.</p>
             </div>
             
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -185,10 +224,8 @@ export default function PageSertifikatKader() {
                 <option value="MAPABA">MAPABA</option>
                 <option value="PKD">PKD</option>
                 <option value="SIG">SIG</option>
-                <option value="SKP">SKP</option>
               </select>
               <button onClick={() => window.print()} className="btn-print">
-                {/* SVG Ikon Cetak */}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="6 9 6 2 18 2 18 9"></polyline>
                   <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
@@ -212,20 +249,59 @@ export default function PageSertifikatKader() {
             overflow: 'hidden', backgroundColor: '#fdfdfd', containerType: 'inline-size',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
           }}>
-            {settings.templateUrl && (
+            {settings.templateUrl ? (
               <img src={settings.templateUrl} alt="Template Sertifikat" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1 }} />
+            ) : (
+              <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '0.85rem', zIndex: 1, padding: '20px', textAlign: 'center' }}>
+                ⚠️ Template sertifikat untuk {selectedJenjang} belum diatur oleh Admin Komisariat.
+              </div>
+            )}
+
+            {/* Render Stempel (zIndex 7) */}
+            {settings.stempelCabangUrl && (settings.posisi as any).stempelCabang && (
+              <div style={{ position: 'absolute', zIndex: 7, top: `${(settings.posisi as any).stempelCabang.top}%`, left: `${(settings.posisi as any).stempelCabang.left}%`, width: `${(settings.posisi as any).stempelCabang.width}%` }}>
+                <img src={settings.stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+              </div>
+            )}
+            {settings.stempelKomisariatUrl && (settings.posisi as any).stempelKomisariat && (
+              <div style={{ position: 'absolute', zIndex: 7, top: `${(settings.posisi as any).stempelKomisariat.top}%`, left: `${(settings.posisi as any).stempelKomisariat.left}%`, width: `${(settings.posisi as any).stempelKomisariat.width}%` }}>
+                <img src={settings.stempelKomisariatUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+              </div>
+            )}
+            {settings.stempelRayonUrl && (settings.posisi as any).stempelRayon && (
+              <div style={{ position: 'absolute', zIndex: 7, top: `${(settings.posisi as any).stempelRayon.top}%`, left: `${(settings.posisi as any).stempelRayon.left}%`, width: `${(settings.posisi as any).stempelRayon.width}%` }}>
+                <img src={settings.stempelRayonUrl} alt="Stempel Rayon" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+              </div>
+            )}
+
+            {/* Render Scan TTD (zIndex 6) */}
+            {settings.scanTtdCabangUrl && (settings.posisi as any).scanTtdCabang && (
+              <div style={{ position: 'absolute', zIndex: 6, top: `${(settings.posisi as any).scanTtdCabang.top}%`, left: `${(settings.posisi as any).scanTtdCabang.left}%`, width: `${(settings.posisi as any).scanTtdCabang.width}%` }}>
+                <img src={settings.scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+              </div>
+            )}
+            {settings.scanTtdKomisariatUrl && (settings.posisi as any).scanTtdKomisariat && (
+              <div style={{ position: 'absolute', zIndex: 6, top: `${(settings.posisi as any).scanTtdKomisariat.top}%`, left: `${(settings.posisi as any).scanTtdKomisariat.left}%`, width: `${(settings.posisi as any).scanTtdKomisariat.width}%` }}>
+                <img src={settings.scanTtdKomisariatUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+              </div>
             )}
             
+            {/* Render Teks Dinamis */}
             {Object.keys(settings.posisi).map(key => {
+              if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat'].includes(key)) return null;
               const p = (settings.posisi as any)[key];
+              if (!p) return null;
+              const isCenter = key === 'nomor';
+
               return (
                 <div key={key} style={{ 
-                  position: 'absolute', zIndex: 2, top: `${p.top}%`, left: `${p.left}%`, transform: key === 'nomor' ? 'translate(-50%, 0)' : 'none', 
+                  position: 'absolute', zIndex: 2, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`, 
+                  textAlign: p.align || (isCenter ? 'center' : 'left'), transform: isCenter ? 'translate(-50%, 0)' : 'none', 
                   fontFamily: '"Arial Narrow", Arial, sans-serif', fontSize: `${p.fontSize * fontScaleCqw}cqw`, 
                   fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
-                  color: '#000', whiteSpace: 'nowrap', lineHeight: '1.2'
+                  color: '#000', lineHeight: '1.2'
                 }}>
-                  {getDataTeks(key)}
+                  <div dangerouslySetInnerHTML={{ __html: getDataTeks(key) }} />
                 </div>
               );
             })}
@@ -240,14 +316,46 @@ export default function PageSertifikatKader() {
         <div className="bg-sertifikat">
           {settings.templateUrl && <img src={settings.templateUrl} alt="Background" />}
         </div>
+
+        {settings.stempelCabangUrl && (settings.posisi as any).stempelCabang && (
+          <div className="isian-data" style={{ zIndex: 7, top: `${(settings.posisi as any).stempelCabang.top}%`, left: `${(settings.posisi as any).stempelCabang.left}%`, width: `${(settings.posisi as any).stempelCabang.width}%` }}>
+            <img src={settings.stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', opacity: 0.85 }} />
+          </div>
+        )}
+        {settings.stempelKomisariatUrl && (settings.posisi as any).stempelKomisariat && (
+          <div className="isian-data" style={{ zIndex: 7, top: `${(settings.posisi as any).stempelKomisariat.top}%`, left: `${(settings.posisi as any).stempelKomisariat.left}%`, width: `${(settings.posisi as any).stempelKomisariat.width}%` }}>
+            <img src={settings.stempelKomisariatUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', opacity: 0.85 }} />
+          </div>
+        )}
+        {settings.stempelRayonUrl && (settings.posisi as any).stempelRayon && (
+          <div className="isian-data" style={{ zIndex: 7, top: `${(settings.posisi as any).stempelRayon.top}%`, left: `${(settings.posisi as any).stempelRayon.left}%`, width: `${(settings.posisi as any).stempelRayon.width}%` }}>
+            <img src={settings.stempelRayonUrl} alt="Stempel Rayon" style={{ width: '100%', objectFit: 'contain', opacity: 0.85 }} />
+          </div>
+        )}
+
+        {settings.scanTtdCabangUrl && (settings.posisi as any).scanTtdCabang && (
+          <div className="isian-data" style={{ zIndex: 6, top: `${(settings.posisi as any).scanTtdCabang.top}%`, left: `${(settings.posisi as any).scanTtdCabang.left}%`, width: `${(settings.posisi as any).scanTtdCabang.width}%` }}>
+            <img src={settings.scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain' }} />
+          </div>
+        )}
+        {settings.scanTtdKomisariatUrl && (settings.posisi as any).scanTtdKomisariat && (
+          <div className="isian-data" style={{ zIndex: 6, top: `${(settings.posisi as any).scanTtdKomisariat.top}%`, left: `${(settings.posisi as any).scanTtdKomisariat.left}%`, width: `${(settings.posisi as any).scanTtdKomisariat.width}%` }}>
+            <img src={settings.scanTtdKomisariatUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain' }} />
+          </div>
+        )}
+
         {Object.keys(settings.posisi).map(key => {
+           if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat'].includes(key)) return null;
            const p = (settings.posisi as any)[key];
+           if (!p) return null;
+           const isCenter = key === 'nomor';
            return (
              <div key={key} className="isian-data" style={{ 
-               top: `${p.top}%`, left: `${p.left}%`, transform: key === 'nomor' ? 'translate(-50%, 0)' : 'none', 
+               top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`, 
+               textAlign: p.align || (isCenter ? 'center' : 'left'), transform: isCenter ? 'translate(-50%, 0)' : 'none', 
                fontSize: `${p.fontSize}pt`, fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
              }}>
-               {getDataTeks(key)}
+               <div dangerouslySetInnerHTML={{ __html: getDataTeks(key) }} />
              </div>
            );
         })}

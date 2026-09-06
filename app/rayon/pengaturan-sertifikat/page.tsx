@@ -249,11 +249,11 @@ export default function PagePengaturanSertifikatRayon() {
   const getRayonDataTeks = (key: string) => {
     if (key === 'nomor') return `10/${formJenjang}-X/${formAngkatan}`;
     if (key === 'teksPembuka') return `Yang bertanda tangan di bawah ini ${namaRayonLengkap} Komisariat Sunan Ampel Malang masa khidmat ${masaKhidmat || '...'} memberikan status <b>${statusKader}</b> kepada :`;
-    if (key === 'nama') return 'AHMAD ALBERT AFRILSYAH';
+    if (key === 'nama') return 'Ahmad Albert Afrilsyah';
     if (key === 'nik') return '35730123456789';
-    if (key === 'ttl') return 'MALANG, 10 AGUSTUS 2002';
-    if (key === 'jurusan') return 'TEKNIK INFORMATIKA';
-    if (key === 'pt') return 'UNIVERSITAS ISLAM NEGERI MAULANA MALIK IBRAHIM MALANG';
+    if (key === 'ttl') return 'Malang, 10 Agustus 2002';
+    if (key === 'jurusan') return 'Teknik Informatika';
+    if (key === 'pt') return 'Universitas Islam Negeri Maulana Malik Ibrahim Malang';
     if (key === 'teksKelulusan') return `Bahwa nama yang disebutkan diatas telah Lulus ${namaKegiatanFull} pada tanggal ${tanggalPelaksanaan || '...'} yang dilaksanakan di ${tempatPelaksanaan || '...'} oleh ${namaRayonLengkap}.`;
     if (key === 'penetapan') return `<div>${tempatDitetapkan || '...'}</div><div style="border-bottom: 1.2px solid #000; padding-bottom: 1px; margin-bottom: 1px">${tanggalMasehi || '...'}</div><div>${tanggalHijriyah || '...'}</div>`;
     if (key === 'ttdCabang') return `<span style="font-weight: bold;">${masterTemplate?.namaKetuaCabang || 'NAMA KETUA PC'}</span><br/><span style="font-weight: normal;">Ketua PC. PMII Kota Malang</span>`;

@@ -379,11 +379,11 @@ export default function PagePengaturanSertifikatKomisariat() {
                   let renderContent = '';
                   if (key === 'nomor') renderContent = `10/${formJenjang}-X/${formAngkatan}`;
                   else if (key === 'teksPembuka') renderContent = `Yang bertanda tangan di bawah ini Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia "KAWAH" Chondrodimuko Komisariat Sunan Ampel Malang masa khidmat 2024-2025 memberikan status <b>ANGGOTA/KADER MUJAHID PMII</b> kepada :`;
-                  else if (key === 'nama') renderContent = 'AHMAD ALBERT AFRILSYAH';
+                  else if (key === 'nama') renderContent = 'Ahmad Albert Afrilsyah';
                   else if (key === 'nik') renderContent = '35730123456789';
-                  else if (key === 'ttl') renderContent = 'MALANG, 10 AGUSTUS 2002';
-                  else if (key === 'jurusan') renderContent = 'TEKNIK INFORMATIKA';
-                  else if (key === 'pt') renderContent = 'UNIVERSITAS ISLAM NEGERI MAULANA MALIK IBRAHIM MALANG';
+                  else if (key === 'ttl') renderContent = 'Malang, 10 Agustus 2002';
+                  else if (key === 'jurusan') renderContent = 'Teknik Informatika';
+                  else if (key === 'pt') renderContent = 'Universitas Islam Negeri Maulana Malik Ibrahim Malang';
                   else if (key === 'teksKelulusan') renderContent = `Bahwa nama yang disebutkan diatas telah Lulus ${formJenjang === 'PKD' ? 'Pelatihan Kader Dasar (PKD)' : 'Masa Penerimaan Anggota Baru (MAPABA)'} pada tanggal 16 - 20 Oktober 2026 yang dilaksanakan di MTs Ma'arif NU Kota Malang oleh Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia "KAWAH" Chondrodimuko.`;
                   else if (key === 'penetapan') renderContent = `<div>Kota Malang</div><div style="border-bottom: 1.2px solid #000; padding-bottom: 1px; margin-bottom: 1px">12 Desember 2026 M</div><div>12 Jumadil Awal 1449 H</div>`;
                   

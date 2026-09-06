@@ -92,8 +92,7 @@ export default function PagePengaturanSertifikatRayon() {
         setStempelUrl(data.stempelUrl || '');
         setScanTtdRayonUrl(data.scanTtdRayonUrl || '');
       } else {
-        setMasaKhidmat('2024-2025');
-        setTempatDitetapkan('Kota Malang');
+        setMasaKhidmat('2024-2025'); setTempatDitetapkan('Kota Malang');
         setTanggalMasehi(''); setTanggalHijriyah('');
         setTanggalPelaksanaan(''); setTempatPelaksanaan('');
         setNamaKetuaRayon(''); setStempelUrl(''); setScanTtdRayonUrl('');
@@ -139,14 +138,12 @@ export default function PagePengaturanSertifikatRayon() {
       await setDoc(doc(db, "pengaturan_sertifikat", docId), {
         orientasi, masaKhidmat, tempatDitetapkan, tanggalMasehi, tanggalHijriyah, 
         tanggalPelaksanaan, tempatPelaksanaan, namaKetuaRayon, 
-        stempelUrl: finalStempelUrl, 
-        scanTtdRayonUrl: finalTtdRayonUrl,
+        stempelUrl: finalStempelUrl, scanTtdRayonUrl: finalTtdRayonUrl,
         updatedAt: Date.now()
       }, { merge: true });
       
       alert("Pengaturan Data Sertifikat Rayon berhasil disimpan!");
-      setFileStempel(null);
-      setFileTtdRayon(null);
+      setFileStempel(null); setFileTtdRayon(null);
     } catch (error) { alert("Gagal menyimpan pengaturan."); } finally { setIsSavingSetting(false); }
   };
 
@@ -172,31 +169,18 @@ export default function PagePengaturanSertifikatRayon() {
           const docRef = doc(db, "kader_sertifikat", certDocId);
 
           batch.set(docRef, {
-            id_rayon: adminRayonId,
-            jenjang: formJenjang,
-            angkatan: formAngkatan,
-            nama: row.Nama || '',
-            nim: nimKader,
-            nik: row.NIK ? row.NIK.toString() : '',
-            ttl: row['Tempat, Tanggal Lahir'] || '',
-            jurusan: row.Jurusan || '',
-            pt: row['Perguruan Tinggi'] || '',
-            nomor_sertifikat: row['Nomor Sertifikat'] || '',
-            nia: row.NIA ? row.NIA.toString() : '',
-            updatedAt: Date.now()
+            id_rayon: adminRayonId, jenjang: formJenjang, angkatan: formAngkatan,
+            nama: row.Nama || '', nim: nimKader, nik: row.NIK ? row.NIK.toString() : '',
+            ttl: row['Tempat, Tanggal Lahir'] || '', jurusan: row.Jurusan || '',
+            pt: row['Perguruan Tinggi'] || '', nomor_sertifikat: row['Nomor Sertifikat'] || '',
+            nia: row.NIA ? row.NIA.toString() : '', updatedAt: Date.now()
           }, { merge: true });
           count++;
         }
-
         await batch.commit();
         alert(`Berhasil mengimpor data sertifikat untuk ${count} kader pada jenjang ${formJenjang}!`);
         setFileExcel(null);
-      } catch (error) { 
-        console.error(error);
-        alert("Gagal memproses file Excel."); 
-      } finally { 
-        setIsUploadingExcel(false); 
-      }
+      } catch (error) { alert("Gagal memproses file Excel."); } finally { setIsUploadingExcel(false); }
     };
     reader.readAsBinaryString(fileExcel);
   };
@@ -208,11 +192,8 @@ export default function PagePengaturanSertifikatRayon() {
       const docRef = doc(db, "kader_sertifikat", selectedKaderEdit.id);
       await setDoc(docRef, { ...selectedKaderEdit, updatedAt: Date.now() }, { merge: true });
       alert("Data kader berhasil diperbarui!");
-      setModalEditOpen(false);
-      setSelectedKaderEdit(null);
-    } catch (err) {
-      alert("Gagal memperbarui data kader.");
-    }
+      setModalEditOpen(false); setSelectedKaderEdit(null);
+    } catch (err) { alert("Gagal memperbarui data kader."); }
   };
 
   const handleHapusKader = async (id: string) => {
@@ -220,23 +201,19 @@ export default function PagePengaturanSertifikatRayon() {
     try {
       await deleteDoc(doc(db, "kader_sertifikat", id));
       alert("Data berhasil dihapus.");
-    } catch (err) {
-      alert("Gagal menghapus data.");
-    }
+    } catch (err) { alert("Gagal menghapus data."); }
   };
 
   const filteredKader = listKaderSertifikat.filter(k => 
-    k.nama?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    k.nim?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    k.nama?.toLowerCase().includes(searchTerm.toLowerCase()) || k.nim?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     k.nomor_sertifikat?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const isPortrait = orientasi === 'portrait';
-  const aspectRatio = isPortrait ? '1 / 1.414' : '1.414 / 1';
+  const canvasWidth = orientasi === 'portrait' ? 794 : 1123;
+  const canvasHeight = orientasi === 'portrait' ? 1123 : 794;
 
   let namaKegiatanFull = formJenjang === 'PKD' ? 'Pelatihan Kader Dasar (PKD)' : (formJenjang === 'SIG' ? 'Sekolah Islam Gender (SIG)' : 'Masa Penerimaan Anggota Baru (MAPABA)');
   let statusKader = formJenjang === 'PKD' ? 'KADER MUJAHID PMII' : 'ANGGOTA PMII';
-
   const cleanRayonName = namaRayonAsli ? namaRayonAsli.replace(/^(PR\.?\s*PMII|Pengurus\s*Rayon\s*PMII)\s*/i, '') : adminRayonId;
   const namaRayonLengkap = `Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia ${cleanRayonName}`;
 
@@ -263,10 +240,8 @@ export default function PagePengaturanSertifikatRayon() {
 
   const rawMasterPosisi = masterTemplate?.posisi || defaultPosisi;
   const ttdRayonPos = rawMasterPosisi.ttdRayon || defaultPosisi.ttdRayon;
-
   const posisiMaster = {
-    ...defaultPosisi,
-    ...rawMasterPosisi,
+    ...defaultPosisi, ...rawMasterPosisi,
     stempelRayon: rawMasterPosisi.stempelRayon || { left: ttdRayonPos.left - 5, top: ttdRayonPos.top - 10, width: 15 },
     scanTtdRayon: rawMasterPosisi.scanTtdRayon || { left: ttdRayonPos.left, top: ttdRayonPos.top - 6, width: 18 }
   };
@@ -281,7 +256,6 @@ export default function PagePengaturanSertifikatRayon() {
     if (key === 'pt') return 'UNIVERSITAS ISLAM NEGERI MAULANA MALIK IBRAHIM MALANG';
     if (key === 'teksKelulusan') return `Bahwa nama yang disebutkan diatas telah Lulus ${namaKegiatanFull} pada tanggal ${tanggalPelaksanaan || '...'} yang dilaksanakan di ${tempatPelaksanaan || '...'} oleh ${namaRayonLengkap}.`;
     if (key === 'penetapan') return `<div>${tempatDitetapkan || '...'}</div><div style="border-bottom: 1.2px solid #000; padding-bottom: 1px; margin-bottom: 1px">${tanggalMasehi || '...'}</div><div>${tanggalHijriyah || '...'}</div>`;
-    
     if (key === 'ttdCabang') return `<span style="font-weight: bold;">${masterTemplate?.namaKetuaCabang || 'NAMA KETUA PC'}</span><br/><span style="font-weight: normal;">Ketua PC. PMII Kota Malang</span>`;
     if (key === 'ttdKomisariat') return `<span style="font-weight: bold;">${masterTemplate?.namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel Malang</span>`;
     if (key === 'ttdRayon') return `<span style="font-weight: bold;">${namaKetuaRayon || 'NAMA KETUA RAYON'}</span><br/><span style="font-weight: normal;">Ketua ${namaRayonAsli || 'Rayon PMII'}</span>`;
@@ -308,6 +282,9 @@ export default function PagePengaturanSertifikatRayon() {
         .data-table th { background: #f8fafc; color: #334155; font-weight: bold; }
         .action-btn { padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; cursor: pointer; border: none; white-space: nowrap; }
         
+        /* Wadah scroll absolut */
+        .preview-scroll-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+
         @media (max-width: 768px) {
           body, html { overflow-x: hidden; }
           .pengaturan-sertifikat-wrapper { padding: 6px 6px 90px 6px; gap: 12px; width: 100%; max-width: 100vw; }
@@ -317,15 +294,10 @@ export default function PagePengaturanSertifikatRayon() {
       `}</style>
 
       <div className="pengaturan-sertifikat-wrapper">
-        
         <div className="card-panel" style={{ padding: '12px 16px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#0d1b2a', marginRight: '6px' }}>📁 Menu:</span>
-          <button className={`tab-btn ${activeTab === 'pengaturan' ? 'active' : ''}`} onClick={() => setActiveTab('pengaturan')}>
-            Pengaturan
-          </button>
-          <button className={`tab-btn ${activeTab === 'database' ? 'active' : ''}`} onClick={() => setActiveTab('database')}>
-            Data Kader ({listKaderSertifikat.length})
-          </button>
+          <button className={`tab-btn ${activeTab === 'pengaturan' ? 'active' : ''}`} onClick={() => setActiveTab('pengaturan')}>Pengaturan</button>
+          <button className={`tab-btn ${activeTab === 'database' ? 'active' : ''}`} onClick={() => setActiveTab('database')}>Data Kader ({listKaderSertifikat.length})</button>
         </div>
 
         <div className="card-panel" style={{ padding: '12px 16px', backgroundColor: '#fdfdfe' }}>
@@ -333,8 +305,7 @@ export default function PagePengaturanSertifikatRayon() {
             <div className="form-group">
               <label className="form-label">Jenjang Kaderisasi Aktif</label>
               <select value={formJenjang} onChange={e => setFormJenjang(e.target.value)} className="form-input" style={{ fontWeight: 'bold', color: '#0000af' }}>
-                <option value="MAPABA">MAPABA</option>
-                <option value="PKD">PKD</option>
+                <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option>
               </select>
             </div>
             <div className="form-group">
@@ -358,7 +329,6 @@ export default function PagePengaturanSertifikatRayon() {
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-              
               <div className="card-panel" style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column' }}>
                 
                 <h3 className="section-title">⚙️ Konfigurasi Teks & Kegiatan</h3>
@@ -431,96 +401,89 @@ export default function PagePengaturanSertifikatRayon() {
                 </button>
               </div>
 
-              {/* LIVE PREVIEW RAYON - SINKRON DENGAN KADER MENGGUNAKAN CONTAINER QUERY CQW */}
+              {/* LIVE PREVIEW RAYON ABSOLUT CONTAINER */}
               <div className="card-panel" style={{ flex: '1 1 320px', backgroundColor: '#ecf0f1', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <h3 className="section-title" style={{ width: '100%', borderBottom: 'none', marginBottom: '5px', textAlign: 'center' }}>👀 Live Preview Sertifikat</h3>
                 <p style={{ fontSize: '0.75rem', color: '#777', marginBottom: '12px', textAlign: 'center' }}>Tata letak ditarik otomatis dari Master Komisariat.</p>
                 
-                <div style={{ 
-                  position: 'relative', width: '100%', maxWidth: '550px', 
-                  aspectRatio: aspectRatio,
-                  backgroundColor: 'white', border: '2px solid #ccc', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', overflow: 'hidden',
-                  containerType: 'inline-size'
-                }}>
-                  
-                  {masterTemplate?.templateUrl ? (
-                    <img src={masterTemplate.templateUrl} alt="Blanko Komisariat" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1, pointerEvents: 'none' }} />
-                  ) : (
-                    <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '0.8rem', zIndex: 1, padding: '15px', textAlign: 'center' }}>
-                      ⚠️ Blanko kosong untuk {formJenjang} ({formAngkatan}) belum diatur oleh Komisariat.
-                    </div>
-                  )}
-
-                  {/* Stempel Cabang */}
-                  {masterTemplate?.stempelCabangUrl && (posisiMaster as any).stempelCabang && (
-                    <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelCabang.top}%`, left: `${(posisiMaster as any).stempelCabang.left}%`, width: `${(posisiMaster as any).stempelCabang.width}%`, padding: '2px 4px' }}>
-                      <img src={masterTemplate.stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
-                    </div>
-                  )}
-                  {/* Stempel Komisariat */}
-                  {masterTemplate?.stempelKomisariatUrl && (posisiMaster as any).stempelKomisariat && (
-                    <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelKomisariat.top}%`, left: `${(posisiMaster as any).stempelKomisariat.left}%`, width: `${(posisiMaster as any).stempelKomisariat.width}%`, padding: '2px 4px' }}>
-                      <img src={masterTemplate.stempelKomisariatUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
-                    </div>
-                  )}
-                  {/* Stempel Rayon */}
-                  {(stempelUrl || masterTemplate?.posisi?.stempelRayon) && (posisiMaster as any).stempelRayon && (
-                    <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelRayon.top}%`, left: `${(posisiMaster as any).stempelRayon.left}%`, width: `${(posisiMaster as any).stempelRayon.width}%`, padding: '2px 4px' }}>
-                      {stempelUrl ? (
-                        <img src={stempelUrl} alt="Stempel Rayon" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
-                      ) : (
-                        <div style={{ textAlign: 'center', fontSize: '0.65rem', color: '#2980b9' }}>[Stempel Rayon]</div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Scan TTD Cabang */}
-                  {masterTemplate?.scanTtdCabangUrl && (posisiMaster as any).scanTtdCabang && (
-                    <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdCabang.top}%`, left: `${(posisiMaster as any).scanTtdCabang.left}%`, width: `${(posisiMaster as any).scanTtdCabang.width}%`, padding: '2px 4px' }}>
-                      <img src={masterTemplate.scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                    </div>
-                  )}
-                  {/* Scan TTD Komisariat */}
-                  {masterTemplate?.scanTtdKomisariatUrl && (posisiMaster as any).scanTtdKomisariat && (
-                    <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdKomisariat.top}%`, left: `${(posisiMaster as any).scanTtdKomisariat.left}%`, width: `${(posisiMaster as any).scanTtdKomisariat.width}%`, padding: '2px 4px' }}>
-                      <img src={masterTemplate.scanTtdKomisariatUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                    </div>
-                  )}
-                  {/* Scan TTD Rayon */}
-                  {(scanTtdRayonUrl || masterTemplate?.posisi?.scanTtdRayon) && (posisiMaster as any).scanTtdRayon && (
-                    <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdRayon.top}%`, left: `${(posisiMaster as any).scanTtdRayon.left}%`, width: `${(posisiMaster as any).scanTtdRayon.width}%`, padding: '2px 4px' }}>
-                      {scanTtdRayonUrl ? (
-                        <img src={scanTtdRayonUrl} alt="Scan TTD Rayon" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                      ) : (
-                        <div style={{ textAlign: 'center', fontSize: '0.65rem', color: '#e67e22' }}>[Scan TTD Rayon]</div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Render Teks Dinamis dengan Skala CQW */}
-                  {Object.keys(posisiMaster).map(key => {
-                    if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) return null;
-                    const p = (posisiMaster as any)[key];
-                    if (!p) return null;
-                    const isCenter = key === 'nomor';
-
-                    return (
-                      <div key={key} style={{ 
-                        position: 'absolute', zIndex: 2, 
-                        top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`, 
-                        textAlign: p.align || (isCenter ? 'center' : 'left'), 
-                        transform: isCenter ? 'translate(-50%, 0)' : 'none', 
-                        fontFamily: '"Arial Narrow", sans-serif', 
-                        fontSize: `${(p.fontSize || 14) / 6.5}cqw`, 
-                        fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
-                        color: '#000', lineHeight: '1.3',
-                        padding: '2px 4px', border: '1px solid transparent', margin: 0
-                      }}>
-                        <div dangerouslySetInnerHTML={{ __html: getRayonDataTeks(key) }} />
+                <div className="preview-scroll-container">
+                  <div style={{ 
+                    position: 'relative', width: `${canvasWidth}px`, minWidth: `${canvasWidth}px`, height: `${canvasHeight}px`,
+                    margin: '0 auto', backgroundColor: 'white', border: '1px solid #ccc', borderRadius: '6px', 
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.1)', overflow: 'hidden'
+                  }}>
+                    
+                    {masterTemplate?.templateUrl ? (
+                      <img src={masterTemplate.templateUrl} alt="Blanko Komisariat" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1, pointerEvents: 'none' }} />
+                    ) : (
+                      <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '0.8rem', zIndex: 1, padding: '15px', textAlign: 'center' }}>
+                        ⚠️ Blanko kosong untuk {formJenjang} ({formAngkatan}) belum diatur oleh Komisariat.
                       </div>
-                    );
-                  })}
+                    )}
 
+                    {/* Stempel */}
+                    {masterTemplate?.stempelCabangUrl && (posisiMaster as any).stempelCabang && (
+                      <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelCabang.top}%`, left: `${(posisiMaster as any).stempelCabang.left}%`, width: `${(posisiMaster as any).stempelCabang.width}%`, padding: '2px 4px' }}>
+                        <img src={masterTemplate.stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+                      </div>
+                    )}
+                    {masterTemplate?.stempelKomisariatUrl && (posisiMaster as any).stempelKomisariat && (
+                      <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelKomisariat.top}%`, left: `${(posisiMaster as any).stempelKomisariat.left}%`, width: `${(posisiMaster as any).stempelKomisariat.width}%`, padding: '2px 4px' }}>
+                        <img src={masterTemplate.stempelKomisariatUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+                      </div>
+                    )}
+                    {(stempelUrl || masterTemplate?.posisi?.stempelRayon) && (posisiMaster as any).stempelRayon && (
+                      <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelRayon.top}%`, left: `${(posisiMaster as any).stempelRayon.left}%`, width: `${(posisiMaster as any).stempelRayon.width}%`, padding: '2px 4px' }}>
+                        {stempelUrl ? (
+                          <img src={stempelUrl} alt="Stempel Rayon" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+                        ) : (
+                          <div style={{ textAlign: 'center', fontSize: '0.65rem', color: '#2980b9' }}>[Stempel Rayon]</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Scan TTD */}
+                    {masterTemplate?.scanTtdCabangUrl && (posisiMaster as any).scanTtdCabang && (
+                      <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdCabang.top}%`, left: `${(posisiMaster as any).scanTtdCabang.left}%`, width: `${(posisiMaster as any).scanTtdCabang.width}%`, padding: '2px 4px' }}>
+                        <img src={masterTemplate.scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                      </div>
+                    )}
+                    {masterTemplate?.scanTtdKomisariatUrl && (posisiMaster as any).scanTtdKomisariat && (
+                      <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdKomisariat.top}%`, left: `${(posisiMaster as any).scanTtdKomisariat.left}%`, width: `${(posisiMaster as any).scanTtdKomisariat.width}%`, padding: '2px 4px' }}>
+                        <img src={masterTemplate.scanTtdKomisariatUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                      </div>
+                    )}
+                    {(scanTtdRayonUrl || masterTemplate?.posisi?.scanTtdRayon) && (posisiMaster as any).scanTtdRayon && (
+                      <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdRayon.top}%`, left: `${(posisiMaster as any).scanTtdRayon.left}%`, width: `${(posisiMaster as any).scanTtdRayon.width}%`, padding: '2px 4px' }}>
+                        {scanTtdRayonUrl ? (
+                          <img src={scanTtdRayonUrl} alt="Scan TTD Rayon" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                        ) : (
+                          <div style={{ textAlign: 'center', fontSize: '0.65rem', color: '#e67e22' }}>[Scan TTD Rayon]</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Teks Dinamis */}
+                    {Object.keys(posisiMaster).map(key => {
+                      if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) return null;
+                      const p = (posisiMaster as any)[key];
+                      if (!p) return null;
+                      const isCenter = key === 'nomor';
+
+                      return (
+                        <div key={key} style={{ 
+                          position: 'absolute', zIndex: 2, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`, 
+                          textAlign: p.align || (isCenter ? 'center' : 'left'), transform: isCenter ? 'translate(-50%, 0)' : 'none', 
+                          fontFamily: '"Arial", Helvetica, sans-serif', fontSize: `${((p.fontSize || 14) / 650) * canvasWidth}px`, 
+                          fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
+                          color: '#000', lineHeight: '1.3', padding: '2px 4px', border: '1px solid transparent', margin: 0
+                        }}>
+                          <div dangerouslySetInnerHTML={{ __html: getRayonDataTeks(key) }} />
+                        </div>
+                      );
+                    })}
+
+                  </div>
                 </div>
               </div>
 
@@ -529,39 +492,20 @@ export default function PagePengaturanSertifikatRayon() {
         ) : (
           <div className="card-panel">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-              <h3 className="section-title" style={{ margin: 0, borderBottom: 'none' }}>
-                📋 Daftar Kader ({formJenjang} - {formAngkatan})
-              </h3>
-              <input 
-                type="text" 
-                placeholder="Cari Nama / NIM / No Sertifikat..." 
-                value={searchTerm} 
-                onChange={e => setSearchTerm(e.target.value)} 
-                className="form-input" 
-                style={{ width: '100%', maxWidth: '260px', padding: '8px 12px' }} 
-              />
+              <h3 className="section-title" style={{ margin: 0, borderBottom: 'none' }}>📋 Daftar Kader ({formJenjang} - {formAngkatan})</h3>
+              <input type="text" placeholder="Cari Nama / NIM / No Sertifikat..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="form-input" style={{ width: '100%', maxWidth: '260px', padding: '8px 12px' }} />
             </div>
 
             <div className="data-table-container">
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>No</th>
-                    <th>Nama Kader</th>
-                    <th>NIM / NIA</th>
-                    <th>No. Sertifikat</th>
-                    <th>NIK</th>
-                    <th>Jurusan / PT</th>
-                    <th style={{ textAlign: 'center' }}>Aksi</th>
+                    <th>No</th><th>Nama Kader</th><th>NIM / NIA</th><th>No. Sertifikat</th><th>NIK</th><th>Jurusan / PT</th><th style={{ textAlign: 'center' }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredKader.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', color: '#777', padding: '20px' }}>
-                        Belum ada data kader untuk jenjang <b>{formJenjang}</b> angkatan <b>{formAngkatan}</b>.
-                      </td>
-                    </tr>
+                    <tr><td colSpan={7} style={{ textAlign: 'center', color: '#777', padding: '20px' }}>Belum ada data kader untuk jenjang <b>{formJenjang}</b> angkatan <b>{formAngkatan}</b>.</td></tr>
                   ) : (
                     filteredKader.map((k, idx) => (
                       <tr key={k.id}>
@@ -572,12 +516,8 @@ export default function PagePengaturanSertifikatRayon() {
                         <td>{k.nik}</td>
                         <td>{k.jurusan} <br/><span style={{ color: '#666', fontSize: '0.75rem' }}>{k.pt}</span></td>
                         <td style={{ textAlign: 'center', display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                          <button onClick={() => { setSelectedKaderEdit(k); setModalEditOpen(true); }} className="action-btn" style={{ background: '#f59e0b', color: '#fff' }}>
-                            ✏️ Edit
-                          </button>
-                          <button onClick={() => handleHapusKader(k.id)} className="action-btn" style={{ background: '#ef4444', color: '#fff' }}>
-                            🗑️ Hapus
-                          </button>
+                          <button onClick={() => { setSelectedKaderEdit(k); setModalEditOpen(true); }} className="action-btn" style={{ background: '#f59e0b', color: '#fff' }}>✏️ Edit</button>
+                          <button onClick={() => handleHapusKader(k.id)} className="action-btn" style={{ background: '#ef4444', color: '#fff' }}>🗑️ Hapus</button>
                         </td>
                       </tr>
                     ))
@@ -587,59 +527,26 @@ export default function PagePengaturanSertifikatRayon() {
             </div>
           </div>
         )}
-
       </div>
 
       {modalEditOpen && selectedKaderEdit && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '15px', boxSizing: 'border-box' }}>
           <div style={{ background: '#fff', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '1rem', color: '#0d1b2a', borderBottom: '2px solid #f0f4f8', paddingBottom: '8px' }}>
-              ✏️ Edit Kelengkapan Sertifikat Kader
-            </h3>
-            
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '1rem', color: '#0d1b2a', borderBottom: '2px solid #f0f4f8', paddingBottom: '8px' }}>✏️ Edit Kelengkapan Sertifikat Kader</h3>
             <form onSubmit={handleSimpanEditKader} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div className="form-group">
-                <label className="form-label">Nama Kader</label>
-                <input type="text" value={selectedKaderEdit.nama || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nama: e.target.value})} className="form-input" required />
-              </div>
+              <div className="form-group"><label className="form-label">Nama Kader</label><input type="text" value={selectedKaderEdit.nama || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nama: e.target.value})} className="form-input" required /></div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div className="form-group">
-                  <label className="form-label">NIM</label>
-                  <input type="text" value={selectedKaderEdit.nim || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nim: e.target.value})} className="form-input" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">NIA</label>
-                  <input type="text" value={selectedKaderEdit.nia || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nia: e.target.value})} className="form-input" />
-                </div>
+                <div className="form-group"><label className="form-label">NIM</label><input type="text" value={selectedKaderEdit.nim || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nim: e.target.value})} className="form-input" /></div>
+                <div className="form-group"><label className="form-label">NIA</label><input type="text" value={selectedKaderEdit.nia || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nia: e.target.value})} className="form-input" /></div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Nomor Sertifikat</label>
-                <input type="text" value={selectedKaderEdit.nomor_sertifikat || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nomor_sertifikat: e.target.value})} className="form-input" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">NIK</label>
-                <input type="text" value={selectedKaderEdit.nik || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nik: e.target.value})} className="form-input" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tempat, Tanggal Lahir</label>
-                <input type="text" value={selectedKaderEdit.ttl || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, ttl: e.target.value})} className="form-input" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Jurusan</label>
-                <input type="text" value={selectedKaderEdit.jurusan || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, jurusan: e.target.value})} className="form-input" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Perguruan Tinggi</label>
-                <input type="text" value={selectedKaderEdit.pt || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, pt: e.target.value})} className="form-input" />
-              </div>
-
+              <div className="form-group"><label className="form-label">Nomor Sertifikat</label><input type="text" value={selectedKaderEdit.nomor_sertifikat || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nomor_sertifikat: e.target.value})} className="form-input" /></div>
+              <div className="form-group"><label className="form-label">NIK</label><input type="text" value={selectedKaderEdit.nik || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nik: e.target.value})} className="form-input" /></div>
+              <div className="form-group"><label className="form-label">Tempat, Tanggal Lahir</label><input type="text" value={selectedKaderEdit.ttl || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, ttl: e.target.value})} className="form-input" /></div>
+              <div className="form-group"><label className="form-label">Jurusan</label><input type="text" value={selectedKaderEdit.jurusan || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, jurusan: e.target.value})} className="form-input" /></div>
+              <div className="form-group"><label className="form-label">Perguruan Tinggi</label><input type="text" value={selectedKaderEdit.pt || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, pt: e.target.value})} className="form-input" /></div>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button type="button" onClick={() => { setModalEditOpen(false); setSelectedKaderEdit(null); }} style={{ padding: '8px 14px', borderRadius: '6px', background: '#cbd5e1', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
-                  Batal
-                </button>
-                <button type="submit" style={{ padding: '8px 16px', borderRadius: '6px', background: '#0000af', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
-                  Simpan
-                </button>
+                <button type="button" onClick={() => { setModalEditOpen(false); setSelectedKaderEdit(null); }} style={{ padding: '8px 14px', borderRadius: '6px', background: '#cbd5e1', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>Batal</button>
+                <button type="submit" style={{ padding: '8px 16px', borderRadius: '6px', background: '#0000af', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>Simpan</button>
               </div>
             </form>
           </div>

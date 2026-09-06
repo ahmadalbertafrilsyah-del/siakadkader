@@ -14,7 +14,6 @@ export default function PagePengaturanSertifikatKomisariat() {
   const [templateUrl, setTemplateUrl] = useState('');
   const [fileTemplate, setFileTemplate] = useState<File | null>(null);
 
-  // Penandatangan & Stempel / Scan TTD
   const [namaKetuaCabang, setNamaKetuaCabang] = useState('');
   const [stempelCabangUrl, setStempelCabangUrl] = useState('');
   const [fileStempelCabang, setFileStempelCabang] = useState<File | null>(null);
@@ -27,7 +26,6 @@ export default function PagePengaturanSertifikatKomisariat() {
   const [scanTtdKomisariatUrl, setScanTtdKomisariatUrl] = useState('');
   const [fileScanTtdKomisariat, setFileScanTtdKomisariat] = useState<File | null>(null);
 
-  // Target Salin Template Lain
   const [copyJenjang, setCopyJenjang] = useState('MAPABA');
   const [copyAngkatan, setCopyAngkatan] = useState(new Date().getFullYear().toString());
 
@@ -101,6 +99,8 @@ export default function PagePengaturanSertifikatKomisariat() {
             }
           });
           setPosisi(loadedPosisi as typeof defaultPosisi);
+        } else {
+          setPosisi(defaultPosisi);
         }
       } else {
         setTemplateUrl('');
@@ -181,7 +181,6 @@ export default function PagePengaturanSertifikatKomisariat() {
     setPosisi({ ...posisi, [field]: { ...posisi[field as keyof typeof posisi], [prop]: value } });
   };
 
-  // Drag and Drop Handler pada Preview Canvas (Mendukung Teks, Stempel, dan Scan TTD)
   const handleMouseDown = (e: React.MouseEvent, key: string) => {
     e.stopPropagation();
     setDraggingKey(key);
@@ -211,8 +210,7 @@ export default function PagePengaturanSertifikatKomisariat() {
   };
 
   const isPortrait = orientasi === 'portrait';
-  const previewWidth = 650;
-  const previewHeight = isPortrait ? previewWidth * 1.414 : previewWidth / 1.414;
+  const aspectRatio = isPortrait ? '1 / 1.414' : '1.414 / 1';
 
   return (
     <>
@@ -222,7 +220,7 @@ export default function PagePengaturanSertifikatKomisariat() {
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .form-group { display: flex; flex-direction: column; gap: 6px; }
         .form-label { font-size: 0.75rem; font-weight: bold; color: #555; text-transform: uppercase; }
-        .form-input { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; color: #333; outline: none; background-color: #fafafa; }
+        .form-input { padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; color: #333; outline: none; background-color: #fafafa; width: 100%; box-sizing: border-box; }
         .form-input:focus { border-color: #0000af; background-color: #fff; }
         .section-title { font-size: 1rem; color: #0d1b2a; margin: 0 0 15px 0; font-weight: bold; padding-bottom: 10px; border-bottom: 2px solid #f0f4f8; }
         .kordinat-row { display: grid; grid-template-columns: 130px 1fr 1fr 1fr 1fr 1fr 60px; gap: 6px; align-items: center; background-color: #fff; padding: 8px; border: 1px solid #eaeaea; border-radius: 8px; font-size: 0.72rem; margin-bottom: 8px; }
@@ -231,14 +229,13 @@ export default function PagePengaturanSertifikatKomisariat() {
 
       <div className="pengaturan-komisariat-wrapper">
         
-        {/* TARGET & SALIN TEMPLATE */}
         <div className="card-panel">
           <h3 className="section-title">📂 Target Template Master Sertifikat</h3>
           <div className="form-grid">
             <div className="form-group">
               <label className="form-label">Jenjang Kaderisasi</label>
               <select value={formJenjang} onChange={e => setFormJenjang(e.target.value)} className="form-input">
-                <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option>
+                <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option>
               </select>
             </div>
             <div className="form-group">
@@ -256,7 +253,7 @@ export default function PagePengaturanSertifikatKomisariat() {
           <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#f4f6f8', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#333' }}>⚡ Salin Pengaturan Koordinat dari:</span>
             <select value={copyJenjang} onChange={e => setCopyJenjang(e.target.value)} className="form-input" style={{ width: '130px', padding: '6px' }}>
-              <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option>
+              <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option>
             </select>
             <input type="number" value={copyAngkatan} onChange={e => setCopyAngkatan(e.target.value)} className="form-input" style={{ width: '90px', padding: '6px' }} />
             <button onClick={handleSalinTemplateMaster} style={{ backgroundColor: '#27ae60', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
@@ -267,7 +264,6 @@ export default function PagePengaturanSertifikatKomisariat() {
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
           
-          {/* UPLOAD & KONTROL KOORDINAT */}
           <div className="card-panel" style={{ flex: '1 1 540px', display: 'flex', flexDirection: 'column' }}>
             
             <h3 className="section-title">🖼️ Upload Blanko, Stempel & Scan TTD</h3>
@@ -307,25 +303,25 @@ export default function PagePengaturanSertifikatKomisariat() {
             <h3 className="section-title" style={{ marginTop: '10px' }}>🛠️ Pengatur Koordinat, Ukuran & Posisi Stempel / TTD</h3>
             <div style={{ backgroundColor: '#f9f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #eee' }}>
               {Object.keys(posisi).map((key) => {
-                const p = (posisi as any)[key];
+                const p = (posisi as any)[key] || {};
                 return (
                   <div key={key} className="kordinat-row">
                     <strong style={{ textTransform: 'capitalize', color: '#0d1b2a' }}>{key}</strong>
                     <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
                       <span style={{ color: '#777', fontWeight: 'bold' }}>X:</span>
-                      <input type="number" step="0.1" value={p.left} onChange={e => updatePosisi(key, 'left', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%
+                      <input type="number" step="0.1" value={p.left ?? ''} onChange={e => updatePosisi(key, 'left', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%
                     </div>
                     <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
                       <span style={{ color: '#777', fontWeight: 'bold' }}>Y:</span>
-                      <input type="number" step="0.1" value={p.top} onChange={e => updatePosisi(key, 'top', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%
+                      <input type="number" step="0.1" value={p.top ?? ''} onChange={e => updatePosisi(key, 'top', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%
                     </div>
                     <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
                       <span style={{ color: '#777', fontWeight: 'bold' }}>W:</span>
-                      <input type="number" step="1" value={p.width} onChange={e => updatePosisi(key, 'width', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%
+                      <input type="number" step="1" value={p.width ?? ''} onChange={e => updatePosisi(key, 'width', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%
                     </div>
                     <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
                       <span style={{ color: '#777', fontWeight: 'bold' }}>Sz:</span>
-                      <input type="number" value={p.fontSize} onChange={e => updatePosisi(key, 'fontSize', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />
+                      <input type="number" value={p.fontSize ?? ''} onChange={e => updatePosisi(key, 'fontSize', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />
                     </div>
                     <div>
                       <select value={p.align || 'left'} onChange={e => updatePosisi(key, 'align', e.target.value)} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.7rem' }}>
@@ -334,7 +330,7 @@ export default function PagePengaturanSertifikatKomisariat() {
                     </div>
                     <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'center' }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '1px', cursor: 'pointer', fontWeight: 'bold', color: p.isBold ? '#0000af' : '#777' }}>
-                        <input type="checkbox" checked={p.isBold} onChange={e => updatePosisi(key, 'isBold', e.target.checked)} /> B
+                        <input type="checkbox" checked={!!p.isBold} onChange={e => updatePosisi(key, 'isBold', e.target.checked)} /> B
                       </label>
                     </div>
                   </div>
@@ -347,10 +343,10 @@ export default function PagePengaturanSertifikatKomisariat() {
             </button>
           </div>
 
-          {/* LIVE PREVIEW INTERAKTIF (DRAG & DROP SEMUA ELEMEN TERMASUK STEMPEL & SCAN TTD RAYON) */}
+          {/* LIVE PREVIEW KOMISARIAT - MENGGUNAKAN CONTAINER QUERY CQW AGAR 100% SINKRON DENGAN KADER */}
           <div className="card-panel" style={{ flex: '1 1 450px', backgroundColor: '#ecf0f1', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <h3 className="section-title" style={{ width: '100%', borderBottom: 'none' }}>👀 Live Preview Master (Bisa Diseret)</h3>
-            <p style={{ fontSize: '0.75rem', color: '#777', marginBottom: '15px', textAlign: 'center' }}>Klik dan seret teks, stempel (termasuk stempel rayon), maupun scan TTD langsung pada kanvas untuk mengatur posisinya.</p>
+            <h3 className="section-title" style={{ width: '100%', borderBottom: 'none', textAlign: 'center' }}>👀 Live Preview Master (Bisa Diseret)</h3>
+            <p style={{ fontSize: '0.75rem', color: '#777', marginBottom: '15px', textAlign: 'center' }}>Klik dan seret teks, stempel, maupun scan TTD langsung pada kanvas untuk mengatur posisinya.</p>
             
             <div 
               id="preview-canvas-box"
@@ -358,106 +354,95 @@ export default function PagePengaturanSertifikatKomisariat() {
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
               style={{ 
-                position: 'relative', width: `${previewWidth}px`, height: `${previewHeight}px`, 
-                backgroundColor: 'white', border: '2px solid #ccc', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', overflow: 'hidden', cursor: draggingKey ? 'grabbing' : 'default'
+                position: 'relative', width: '100%', maxWidth: '550px', 
+                aspectRatio: aspectRatio,
+                backgroundColor: 'white', border: '2px solid #ccc', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', overflow: 'hidden', cursor: draggingKey ? 'grabbing' : 'default',
+                containerType: 'inline-size'
               }}
             >
               
               {(templateUrl || fileTemplate) ? (
-                <img src={fileTemplate ? URL.createObjectURL(fileTemplate) : templateUrl} alt="Template" style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'fill', zIndex: 1, pointerEvents: 'none' }} />
+                <img src={fileTemplate ? URL.createObjectURL(fileTemplate) : templateUrl} alt="Template" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1, pointerEvents: 'none' }} />
               ) : (
                 <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', zIndex: 1, pointerEvents: 'none' }}>
                   - Belum ada blanko kosong diupload -
                 </div>
               )}
               
+              {/* Stempel Cabang */}
+              {(fileStempelCabang ? URL.createObjectURL(fileStempelCabang) : stempelCabangUrl) && (posisi as any).stempelCabang && (
+                <div onMouseDown={e => handleMouseDown(e, 'stempelCabang')} style={{ position: 'absolute', zIndex: 7, top: `${(posisi as any).stempelCabang.top}%`, left: `${(posisi as any).stempelCabang.left}%`, width: `${(posisi as any).stempelCabang.width}%`, cursor: 'grab', padding: '2px 4px' }}>
+                  <img src={fileStempelCabang ? URL.createObjectURL(fileStempelCabang) : stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none', opacity: 0.85 }} />
+                </div>
+              )}
+              {/* Stempel Komisariat */}
+              {(fileStempelKomisariat ? URL.createObjectURL(fileStempelKomisariat) : stempelKomisariatUrl) && (posisi as any).stempelKomisariat && (
+                <div onMouseDown={e => handleMouseDown(e, 'stempelKomisariat')} style={{ position: 'absolute', zIndex: 7, top: `${(posisi as any).stempelKomisariat.top}%`, left: `${(posisi as any).stempelKomisariat.left}%`, width: `${(posisi as any).stempelKomisariat.width}%`, cursor: 'grab', padding: '2px 4px' }}>
+                  <img src={fileStempelKomisariat ? URL.createObjectURL(fileStempelKomisariat) : stempelKomisariatUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none', opacity: 0.85 }} />
+                </div>
+              )}
+              {/* Stempel Rayon Placeholder */}
+              {(posisi as any).stempelRayon && (
+                <div onMouseDown={e => handleMouseDown(e, 'stempelRayon')} style={{ position: 'absolute', zIndex: 7, top: `${(posisi as any).stempelRayon.top}%`, left: `${(posisi as any).stempelRayon.left}%`, width: `${(posisi as any).stempelRayon.width}%`, cursor: 'grab', padding: '2px 4px', textAlign: 'center', fontSize: '0.65rem', color: '#2980b9' }}>
+                  [Stempel Rayon]
+                </div>
+              )}
+
+              {/* Scan TTD Cabang */}
+              {(fileScanTtdCabang ? URL.createObjectURL(fileScanTtdCabang) : scanTtdCabangUrl) && (posisi as any).scanTtdCabang && (
+                <div onMouseDown={e => handleMouseDown(e, 'scanTtdCabang')} style={{ position: 'absolute', zIndex: 6, top: `${(posisi as any).scanTtdCabang.top}%`, left: `${(posisi as any).scanTtdCabang.left}%`, width: `${(posisi as any).scanTtdCabang.width}%`, cursor: 'grab', padding: '2px 4px' }}>
+                  <img src={fileScanTtdCabang ? URL.createObjectURL(fileScanTtdCabang) : scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                </div>
+              )}
+              {/* Scan TTD Komisariat */}
+              {(fileScanTtdKomisariat ? URL.createObjectURL(fileScanTtdKomisariat) : scanTtdKomisariatUrl) && (posisi as any).scanTtdKomisariat && (
+                <div onMouseDown={e => handleMouseDown(e, 'scanTtdKomisariat')} style={{ position: 'absolute', zIndex: 6, top: `${(posisi as any).scanTtdKomisariat.top}%`, left: `${(posisi as any).scanTtdKomisariat.left}%`, width: `${(posisi as any).scanTtdKomisariat.width}%`, cursor: 'grab', padding: '2px 4px' }}>
+                  <img src={fileScanTtdKomisariat ? URL.createObjectURL(fileScanTtdKomisariat) : scanTtdKomisariatUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                </div>
+              )}
+              {/* Scan TTD Rayon Placeholder */}
+              {(posisi as any).scanTtdRayon && (
+                <div onMouseDown={e => handleMouseDown(e, 'scanTtdRayon')} style={{ position: 'absolute', zIndex: 6, top: `${(posisi as any).scanTtdRayon.top}%`, left: `${(posisi as any).scanTtdRayon.left}%`, width: `${(posisi as any).scanTtdRayon.width}%`, cursor: 'grab', padding: '2px 4px', textAlign: 'center', fontSize: '0.65rem', color: '#e67e22' }}>
+                  [Scan TTD Rayon]
+                </div>
+              )}
+
+              {/* Render Teks Master dengan Skala CQW */}
               {Object.keys(posisi).map(key => {
+                if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) return null;
                 const p = (posisi as any)[key];
                 if (!p) return null;
                 const isCenter = key === 'nomor';
 
-                // Render Stempel (Cabang, Komisariat, Rayon)
-                if (['stempelCabang', 'stempelKomisariat', 'stempelRayon'].includes(key)) {
-                  let imgUrl = '';
-                  if (key === 'stempelCabang') imgUrl = fileStempelCabang ? URL.createObjectURL(fileStempelCabang) : stempelCabangUrl;
-                  if (key === 'stempelKomisariat') imgUrl = fileStempelKomisariat ? URL.createObjectURL(fileStempelKomisariat) : stempelKomisariatUrl;
-                  if (key === 'stempelRayon') imgUrl = 'https://res.cloudinary.com/dcmdaghbq/image/upload/v1/placeholder-stempel.png'; // Contoh placeholder atau preview statis jika rayon belum upload
-                  
-                  if (key !== 'stempelRayon' && !imgUrl) return null;
-                  return (
-                    <div key={key} onMouseDown={e => handleMouseDown(e, key)} style={{ position: 'absolute', zIndex: 7, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`, cursor: 'grab', border: '1.5px dashed #2980b9', background: 'rgba(41, 128, 185, 0.1)', padding: '2px' }}>
-                      <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#2980b9', textAlign: 'center' }}>{key}</div>
-                      {imgUrl && <img src={imgUrl} alt={key} style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none', opacity: 0.85 }} />}
-                    </div>
-                  );
-                }
-
-                // Render Scan TTD (Cabang, Komisariat, Rayon)
-                if (['scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) {
-                  let imgUrl = '';
-                  if (key === 'scanTtdCabang') imgUrl = fileScanTtdCabang ? URL.createObjectURL(fileScanTtdCabang) : scanTtdCabangUrl;
-                  if (key === 'scanTtdKomisariat') imgUrl = fileScanTtdKomisariat ? URL.createObjectURL(fileScanTtdKomisariat) : scanTtdKomisariatUrl;
-                  if (key === 'scanTtdRayon') imgUrl = ''; // Placeholder TTD Rayon preview
-
-                  if (key !== 'scanTtdRayon' && !imgUrl) return null;
-                  return (
-                    <div key={key} onMouseDown={e => handleMouseDown(e, key)} style={{ position: 'absolute', zIndex: 6, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`, cursor: 'grab', border: '1.5px dashed #e67e22', background: 'rgba(230, 126, 34, 0.1)', padding: '2px' }}>
-                      <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#e67e22', textAlign: 'center' }}>{key}</div>
-                      {imgUrl && <img src={imgUrl} alt={key} style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />}
-                    </div>
-                  );
-                }
-
-                let renderContent = null;
-                if (key === 'nomor') renderContent = '10/MAPABA-X/2026';
-                else if (key === 'teksPembuka') renderContent = 'Yang bertanda tangan di bawah ini Pengurus Rayon Pergerakan Mahawasiswa Islam Indonesia "KAWAH" Chondrodimuko Komisariat Sunan Ampel Malang masa khidmat 2024-2025 memberikan status <b>ANGGOTA PMII</b> kepada :';
+                let renderContent = '';
+                if (key === 'nomor') renderContent = `10/${formJenjang}-X/${formAngkatan}`;
+                else if (key === 'teksPembuka') renderContent = `Yang bertanda tangan di bawah ini Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia "KAWAH" Chondrodimuko Komisariat Sunan Ampel Malang masa khidmat 2024-2025 memberikan status <b>ANGGOTA PMII</b> kepada :`;
                 else if (key === 'nama') renderContent = 'AHMAD ALBERT AFRILSYAH';
                 else if (key === 'nik') renderContent = '35730123456789';
                 else if (key === 'ttl') renderContent = 'MALANG, 10 AGUSTUS 2002';
                 else if (key === 'jurusan') renderContent = 'TEKNIK INFORMATIKA';
                 else if (key === 'pt') renderContent = 'UNIVERSITAS ISLAM NEGERI MAULANA MALIK IBRAHIM MALANG';
-                else if (key === 'teksKelulusan') renderContent = 'Bahwa nama yang disebutkan diatas telah Lulus Masa Penerimaan Anggota Baru (MAPABA) pada tanggal 16 - 20 Oktober 2026 yang dilaksanakan di MTs Ma\'arif NU Kota Malang oleh Pengurus Rayon Pergerakan Mahawasiswa Islam Indonesia "KAWAH" Chondrodimuko.';
+                else if (key === 'teksKelulusan') renderContent = `Bahwa nama yang disebutkan diatas telah Lulus ${formJenjang === 'PKD' ? 'Pelatihan Kader Dasar (PKD)' : 'Masa Penerimaan Anggota Baru (MAPABA)'} pada tanggal 16 - 20 Oktober 2026 yang dilaksanakan di MTs Ma'arif NU Kota Malang oleh Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia "KAWAH" Chondrodimuko.`;
+                else if (key === 'penetapan') renderContent = `<div>Kota Malang</div><div style="border-bottom: 1.2px solid #000; padding-bottom: 1px; margin-bottom: 1px">12 Desember 2026 M</div><div>12 Jumadil Awal 1449 H</div>`;
                 
-                else if (key === 'penetapan') {
-                  return (
-                    <div key={key} onMouseDown={e => handleMouseDown(e, key)} style={{ 
-                      position: 'absolute', zIndex: 2, 
-                      top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`,
-                      textAlign: p.align || 'left', cursor: 'grab',
-                      fontFamily: '"Arial Narrow", sans-serif',
-                      fontSize: `${p.fontSize}px`, 
-                      fontWeight: p.isBold ? 'bold' : 'normal',
-                      fontStyle: p.isItalic ? 'italic' : 'normal',
-                      color: '#000', lineHeight: '1.3',
-                      border: '1px dashed rgba(255,0,0,0.5)', background: 'rgba(255,255,255,0.6)', padding: '2px 4px'
-                    }}>
-                      <div>Kota Malang</div>
-                      <div style={{ borderBottom: '1.5px solid #000', paddingBottom: '2px', marginBottom: '2px' }}>
-                        12 Desember 2024 M
-                      </div>
-                      <div>10 Jumadil Akhir 1446 H</div>
-                    </div>
-                  );
-                }
-                
-                else if (key === 'ttdCabang') renderContent = `${namaKetuaCabang || 'NAMA KETUA PC'}<br/>Ketua PC. PMII Kota Malang`;
-                else if (key === 'ttdKomisariat') renderContent = `${namaKetuaKomisariat || 'NAMA KETUA PK'}<br/>Ketua PK. PMII Sunan Ampel Malang`;
-                else if (key === 'ttdRayon') renderContent = `NAMA KETUA RAYON<br/>Ketua PR. PMII "KAWAH" Chondrodimuko`;
+                else if (key === 'ttdCabang') renderContent = `<span style="font-weight: bold;">${namaKetuaCabang || 'NAMA KETUA PC'}</span><br/><span style="font-weight: normal;">Ketua PC. PMII Kota Malang</span>`;
+                else if (key === 'ttdKomisariat') renderContent = `<span style="font-weight: bold;">${namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel</span>`;
+                else if (key === 'ttdRayon') renderContent = `<span style="font-weight: bold;">NAMA KETUA RAYON</span><br/><span style="font-weight: normal;">Ketua Rayon PMII</span>`;
 
                 return (
                   <div key={key} onMouseDown={e => handleMouseDown(e, key)} style={{ 
                     position: 'absolute', zIndex: 2, 
-                    top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`,
+                    top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`,
                     textAlign: p.align || (isCenter ? 'center' : 'left'),
                     transform: isCenter ? 'translate(-50%, 0)' : 'none', cursor: 'grab',
                     fontFamily: '"Arial Narrow", sans-serif',
-                    fontSize: `${p.fontSize}px`, 
+                    fontSize: `${(p.fontSize || 14) / 6.5}cqw`, 
                     fontWeight: p.isBold ? 'bold' : 'normal',
                     fontStyle: p.isItalic ? 'italic' : 'normal',
                     color: '#000', lineHeight: '1.3',
-                    border: '1px dashed rgba(255,0,0,0.5)', background: 'rgba(255,255,255,0.6)', padding: '2px 4px'
+                    border: '1px dashed rgba(255,0,0,0.5)', background: 'rgba(255,255,255,0.6)', padding: '2px 4px', margin: 0
                   }}>
-                    <div dangerouslySetInnerHTML={{ __html: renderContent || '' }} />
+                    <div dangerouslySetInnerHTML={{ __html: renderContent }} />
                   </div>
                 );
               })}

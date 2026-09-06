@@ -235,7 +235,7 @@ export default function PagePengaturanSertifikatKomisariat() {
             <div className="form-group">
               <label className="form-label">Jenjang Kaderisasi</label>
               <select value={formJenjang} onChange={e => setFormJenjang(e.target.value)} className="form-input">
-                <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option>
+                <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option>
               </select>
             </div>
             <div className="form-group">
@@ -253,7 +253,7 @@ export default function PagePengaturanSertifikatKomisariat() {
           <div style={{ marginTop: '15px', padding: '12px', backgroundColor: '#f4f6f8', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#333' }}>⚡ Salin Pengaturan Koordinat dari:</span>
             <select value={copyJenjang} onChange={e => setCopyJenjang(e.target.value)} className="form-input" style={{ width: '130px', padding: '6px' }}>
-              <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option><option value="SIG">SIG</option>
+              <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option>
             </select>
             <input type="number" value={copyAngkatan} onChange={e => setCopyAngkatan(e.target.value)} className="form-input" style={{ width: '90px', padding: '6px' }} />
             <button onClick={handleSalinTemplateMaster} style={{ backgroundColor: '#27ae60', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
@@ -426,7 +426,7 @@ export default function PagePengaturanSertifikatKomisariat() {
                 else if (key === 'penetapan') renderContent = `<div>Kota Malang</div><div style="border-bottom: 1.2px solid #000; padding-bottom: 1px; margin-bottom: 1px">12 Desember 2026 M</div><div>12 Jumadil Awal 1449 H</div>`;
                 
                 else if (key === 'ttdCabang') renderContent = `<span style="font-weight: bold;">${namaKetuaCabang || 'NAMA KETUA PC'}</span><br/><span style="font-weight: normal;">Ketua PC. PMII Kota Malang</span>`;
-                else if (key === 'ttdKomisariat') renderContent = `<span style="font-weight: bold;">${namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel</span>`;
+                else if (key === 'ttdKomisariat') renderContent = `<span style="font-weight: bold;">${namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel Malang</span>`;
                 else if (key === 'ttdRayon') renderContent = `<span style="font-weight: bold;">NAMA KETUA RAYON</span><br/><span style="font-weight: normal;">Ketua Rayon PMII</span>`;
 
                 return (

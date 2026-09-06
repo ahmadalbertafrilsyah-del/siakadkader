@@ -283,7 +283,7 @@ export default function PagePengaturanSertifikatRayon() {
     if (key === 'penetapan') return `<div>${tempatDitetapkan || '...'}</div><div style="border-bottom: 1.2px solid #000; padding-bottom: 1px; margin-bottom: 1px">${tanggalMasehi || '...'}</div><div>${tanggalHijriyah || '...'}</div>`;
     
     if (key === 'ttdCabang') return `<span style="font-weight: bold;">${masterTemplate?.namaKetuaCabang || 'NAMA KETUA PC'}</span><br/><span style="font-weight: normal;">Ketua PC. PMII Kota Malang</span>`;
-    if (key === 'ttdKomisariat') return `<span style="font-weight: bold;">${masterTemplate?.namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel</span>`;
+    if (key === 'ttdKomisariat') return `<span style="font-weight: bold;">${masterTemplate?.namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel Malang</span>`;
     if (key === 'ttdRayon') return `<span style="font-weight: bold;">${namaKetuaRayon || 'NAMA KETUA RAYON'}</span><br/><span style="font-weight: normal;">Ketua ${namaRayonAsli || 'Rayon PMII'}</span>`;
     return '';
   };

@@ -218,7 +218,7 @@ export default function PageSertifikatKader() {
     
     // Nama Ketua Bold, Jabatan di bawahnya Normal
     if (key === 'ttdCabang') return `<span style="font-weight: bold;">${settings.namaKetuaCabang || 'NAMA KETUA PC'}</span><br/><span style="font-weight: normal;">Ketua PC. PMII Kota Malang</span>`;
-    if (key === 'ttdKomisariat') return `<span style="font-weight: bold;">${settings.namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel</span>`;
+    if (key === 'ttdKomisariat') return `<span style="font-weight: bold;">${settings.namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel Malang</span>`;
     if (key === 'ttdRayon') return `<span style="font-weight: bold;">${settings.namaKetuaRayon || 'NAMA KETUA RAYON'}</span><br/><span style="font-weight: normal;">Ketua ${profilRayon.nama || 'Rayon PMII'}</span>`;
     
     return '';

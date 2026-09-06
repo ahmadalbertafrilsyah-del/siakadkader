@@ -245,7 +245,7 @@ export default function PageSertifikatKader() {
           .print-layout-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: ${settings.orientasi === 'portrait' ? '210mm' : '297mm'} !important; height: ${settings.orientasi === 'portrait' ? '297mm' : '210mm'} !important; z-index: 9999 !important; background: white !important; }
           .bg-sertifikat { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
           .bg-sertifikat img { width: 100%; height: 100%; object-fit: fill; display: block; }
-          .isian-data { position: absolute; z-index: 10; font-family: "Arial Narrow", Arial, sans-serif; color: black !important; line-height: 1.3; margin: 0; }
+          .isian-data { position: absolute; z-index: 10; font-family: "Arial Narrow", sans-serif; color: black !important; line-height: 1.3; margin: 0; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen { .print-layout-container { display: none !important; } }
@@ -358,7 +358,7 @@ export default function PageSertifikatKader() {
                   top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`, 
                   textAlign: p.align || (isCenter ? 'center' : 'left'), 
                   transform: isCenter ? 'translate(-50%, 0)' : 'none', 
-                  fontFamily: '"Arial Narrow", Arial, sans-serif', 
+                  fontFamily: '"Arial Narrow", sans-serif', 
                   fontSize: `${p.fontSize / 6.5}cqw`, 
                   fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
                   color: '#000', lineHeight: '1.3',

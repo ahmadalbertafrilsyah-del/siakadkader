@@ -47,10 +47,12 @@ export default function PagePengaturanSertifikatKomisariat() {
     ttdCabang: { left: 20, top: 88.0, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
     ttdKomisariat: { left: 50, top: 88.0, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
     ttdRayon: { left: 80, top: 88.0, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
-    stempelCabang: { left: 15, top: 78.0, width: 30, fontSize: 12 },
-    stempelKomisariat: { left: 45, top: 78.0, width: 30, fontSize: 12 },
+    stempelCabang: { left: 15, top: 78.0, width: 15, fontSize: 12 },
+    stempelKomisariat: { left: 45, top: 78.0, width: 15, fontSize: 12 },
+    stempelRayon: { left: 75, top: 78.0, width: 15, fontSize: 12 },
     scanTtdCabang: { left: 20, top: 82.0, width: 18, fontSize: 12 },
-    scanTtdKomisariat: { left: 50, top: 82.0, width: 18, fontSize: 12 }
+    scanTtdKomisariat: { left: 50, top: 82.0, width: 18, fontSize: 12 },
+    scanTtdRayon: { left: 80, top: 82.0, width: 18, fontSize: 12 }
   };
   
   const [posisi, setPosisi] = useState(defaultPosisi);
@@ -345,10 +347,10 @@ export default function PagePengaturanSertifikatKomisariat() {
             </button>
           </div>
 
-          {/* LIVE PREVIEW INTERAKTIF (DRAG & DROP SEMUA ELEMEN TERMASUK STEMPEL & SCAN TTD) */}
+          {/* LIVE PREVIEW INTERAKTIF (DRAG & DROP SEMUA ELEMEN TERMASUK STEMPEL & SCAN TTD RAYON) */}
           <div className="card-panel" style={{ flex: '1 1 450px', backgroundColor: '#ecf0f1', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <h3 className="section-title" style={{ width: '100%', borderBottom: 'none' }}>👀 Live Preview Master (Bisa Diseret)</h3>
-            <p style={{ fontSize: '0.75rem', color: '#777', marginBottom: '15px', textAlign: 'center' }}>Klik dan seret teks, stempel, maupun scan TTD langsung pada kanvas untuk mengatur posisinya dengan bebas.</p>
+            <p style={{ fontSize: '0.75rem', color: '#777', marginBottom: '15px', textAlign: 'center' }}>Klik dan seret teks, stempel (termasuk stempel rayon), maupun scan TTD langsung pada kanvas untuk mengatur posisinya.</p>
             
             <div 
               id="preview-canvas-box"
@@ -374,55 +376,47 @@ export default function PagePengaturanSertifikatKomisariat() {
                 if (!p) return null;
                 const isCenter = key === 'nomor';
 
-                // Render Stempel Cabang & Komisariat (zIndex dinaikkan menjadi 7 agar di atas TTD)
-                if (key === 'stempelCabang') {
-                  const imgUrl = fileStempelCabang ? URL.createObjectURL(fileStempelCabang) : stempelCabangUrl;
-                  if (!imgUrl) return null;
+                // Render Stempel (Cabang, Komisariat, Rayon)
+                if (['stempelCabang', 'stempelKomisariat', 'stempelRayon'].includes(key)) {
+                  let imgUrl = '';
+                  if (key === 'stempelCabang') imgUrl = fileStempelCabang ? URL.createObjectURL(fileStempelCabang) : stempelCabangUrl;
+                  if (key === 'stempelKomisariat') imgUrl = fileStempelKomisariat ? URL.createObjectURL(fileStempelKomisariat) : stempelKomisariatUrl;
+                  if (key === 'stempelRayon') imgUrl = 'https://res.cloudinary.com/dcmdaghbq/image/upload/v1/placeholder-stempel.png'; // Contoh placeholder atau preview statis jika rayon belum upload
+                  
+                  if (key !== 'stempelRayon' && !imgUrl) return null;
                   return (
                     <div key={key} onMouseDown={e => handleMouseDown(e, key)} style={{ position: 'absolute', zIndex: 7, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`, cursor: 'grab', border: '1.5px dashed #2980b9', background: 'rgba(41, 128, 185, 0.1)', padding: '2px' }}>
-                      <img src={imgUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none', opacity: 0.85 }} />
-                    </div>
-                  );
-                }
-                if (key === 'stempelKomisariat') {
-                  const imgUrl = fileStempelKomisariat ? URL.createObjectURL(fileStempelKomisariat) : stempelKomisariatUrl;
-                  if (!imgUrl) return null;
-                  return (
-                    <div key={key} onMouseDown={e => handleMouseDown(e, key)} style={{ position: 'absolute', zIndex: 7, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`, cursor: 'grab', border: '1.5px dashed #2980b9', background: 'rgba(41, 128, 185, 0.1)', padding: '2px' }}>
-                      <img src={imgUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none', opacity: 0.85 }} />
+                      <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#2980b9', textAlign: 'center' }}>{key}</div>
+                      {imgUrl && <img src={imgUrl} alt={key} style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none', opacity: 0.85 }} />}
                     </div>
                   );
                 }
 
-                // Render Scan TTD Cabang & Komisariat (zIndex di bawah stempel, yaitu 6)
-                if (key === 'scanTtdCabang') {
-                  const imgUrl = fileScanTtdCabang ? URL.createObjectURL(fileScanTtdCabang) : scanTtdCabangUrl;
-                  if (!imgUrl) return null;
+                // Render Scan TTD (Cabang, Komisariat, Rayon)
+                if (['scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) {
+                  let imgUrl = '';
+                  if (key === 'scanTtdCabang') imgUrl = fileScanTtdCabang ? URL.createObjectURL(fileScanTtdCabang) : scanTtdCabangUrl;
+                  if (key === 'scanTtdKomisariat') imgUrl = fileScanTtdKomisariat ? URL.createObjectURL(fileScanTtdKomisariat) : scanTtdKomisariatUrl;
+                  if (key === 'scanTtdRayon') imgUrl = ''; // Placeholder TTD Rayon preview
+
+                  if (key !== 'scanTtdRayon' && !imgUrl) return null;
                   return (
                     <div key={key} onMouseDown={e => handleMouseDown(e, key)} style={{ position: 'absolute', zIndex: 6, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`, cursor: 'grab', border: '1.5px dashed #e67e22', background: 'rgba(230, 126, 34, 0.1)', padding: '2px' }}>
-                      <img src={imgUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                    </div>
-                  );
-                }
-                if (key === 'scanTtdKomisariat') {
-                  const imgUrl = fileScanTtdKomisariat ? URL.createObjectURL(fileScanTtdKomisariat) : scanTtdKomisariatUrl;
-                  if (!imgUrl) return null;
-                  return (
-                    <div key={key} onMouseDown={e => handleMouseDown(e, key)} style={{ position: 'absolute', zIndex: 6, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`, cursor: 'grab', border: '1.5px dashed #e67e22', background: 'rgba(230, 126, 34, 0.1)', padding: '2px' }}>
-                      <img src={imgUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                      <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#e67e22', textAlign: 'center' }}>{key}</div>
+                      {imgUrl && <img src={imgUrl} alt={key} style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />}
                     </div>
                   );
                 }
 
                 let renderContent = null;
                 if (key === 'nomor') renderContent = '10/MAPABA-X/2026';
-                else if (key === 'teksPembuka') renderContent = 'Yang bertanda tangan di bawah ini PR. PMII "KAWAH" Chondrodimuko Komisariat Sunan Ampel Malang masa khidmat 2024-2025 memberikan status <b>ANGGOTA PMII</b> kepada :';
+                else if (key === 'teksPembuka') renderContent = 'Yang bertanda tangan di bawah ini Pengurus Rayon Pergerakan Mahawasiswa Islam Indonesia "KAWAH" Chondrodimuko Komisariat Sunan Ampel Malang masa khidmat 2024-2025 memberikan status <b>ANGGOTA PMII</b> kepada :';
                 else if (key === 'nama') renderContent = 'AHMAD ALBERT AFRILSYAH';
                 else if (key === 'nik') renderContent = '35730123456789';
                 else if (key === 'ttl') renderContent = 'MALANG, 10 AGUSTUS 2002';
                 else if (key === 'jurusan') renderContent = 'TEKNIK INFORMATIKA';
                 else if (key === 'pt') renderContent = 'UNIVERSITAS ISLAM NEGERI MAULANA MALIK IBRAHIM MALANG';
-                else if (key === 'teksKelulusan') renderContent = 'Bahwa nama yang disebutkan diatas telah Lulus Masa Penerimaan Anggota Baru (MAPABA) pada tanggal 16 - 20 Oktober 2026 yang dilaksanakan di MTs Ma\'arif NU Kota Malang oleh PR. PMII "KAWAH" Chondrodimuko.';
+                else if (key === 'teksKelulusan') renderContent = 'Bahwa nama yang disebutkan diatas telah Lulus Masa Penerimaan Anggota Baru (MAPABA) pada tanggal 16 - 20 Oktober 2026 yang dilaksanakan di MTs Ma\'arif NU Kota Malang oleh Pengurus Rayon Pergerakan Mahawasiswa Islam Indonesia "KAWAH" Chondrodimuko.';
                 
                 else if (key === 'penetapan') {
                   return (
@@ -430,7 +424,7 @@ export default function PagePengaturanSertifikatKomisariat() {
                       position: 'absolute', zIndex: 2, 
                       top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`,
                       textAlign: p.align || 'left', cursor: 'grab',
-                      fontFamily: '"Arial Narrow", Arial, sans-serif',
+                      fontFamily: '"Arial Narrow", sans-serif',
                       fontSize: `${p.fontSize}px`, 
                       fontWeight: p.isBold ? 'bold' : 'normal',
                       fontStyle: p.isItalic ? 'italic' : 'normal',
@@ -456,7 +450,7 @@ export default function PagePengaturanSertifikatKomisariat() {
                     top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`,
                     textAlign: p.align || (isCenter ? 'center' : 'left'),
                     transform: isCenter ? 'translate(-50%, 0)' : 'none', cursor: 'grab',
-                    fontFamily: '"Arial Narrow", Arial, sans-serif',
+                    fontFamily: '"Arial Narrow", sans-serif',
                     fontSize: `${p.fontSize}px`, 
                     fontWeight: p.isBold ? 'bold' : 'normal',
                     fontStyle: p.isItalic ? 'italic' : 'normal',

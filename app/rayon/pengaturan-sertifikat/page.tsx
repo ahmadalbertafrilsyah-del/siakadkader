@@ -251,7 +251,11 @@ export default function PagePengaturanSertifikatRayon() {
     statusKader = 'KADER MUJAHID PMII';
   }
 
-  const posisiMaster = masterTemplate?.posisi || {
+  // Format nama rayon lengkap sesuai permintaan
+  const cleanRayonName = namaRayonAsli ? namaRayonAsli.replace(/^(PR\.?\s*PMII|Pengurus\s*Rayon\s*PMII)\s*/i, '') : adminRayonId;
+  const namaRayonLengkap = `Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia ${cleanRayonName}`;
+
+  const defaultPosisi = {
     nomor: { left: 53, top: 21.4, width: 40, fontSize: 16, isBold: true, isItalic: false, align: 'center' },
     teksPembuka: { left: 10, top: 32.0, width: 80, fontSize: 14, isBold: false, isItalic: false, align: 'justify' },
     nama: { left: 22, top: 38.4, width: 60, fontSize: 16, isBold: true, isItalic: false, align: 'left' },
@@ -266,10 +270,18 @@ export default function PagePengaturanSertifikatRayon() {
     ttdRayon: { left: 80, top: 88.0, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
     stempelCabang: { left: 15, top: 78.0, width: 15 },
     stempelKomisariat: { left: 45, top: 78.0, width: 15 },
-    stempelRayon: { left: 75, top: 78.0, width: 15 },
     scanTtdCabang: { left: 20, top: 82.0, width: 18 },
-    scanTtdKomisariat: { left: 50, top: 82.0, width: 18 },
-    scanTtdRayon: { left: 80, top: 82.0, width: 18 }
+    scanTtdKomisariat: { left: 50, top: 82.0, width: 18 }
+  };
+
+  const rawMasterPosisi = masterTemplate?.posisi || {};
+  const ttdRayonPos = rawMasterPosisi.ttdRayon || defaultPosisi.ttdRayon;
+
+  const posisiMaster = {
+    ...defaultPosisi,
+    ...rawMasterPosisi,
+    stempelRayon: rawMasterPosisi.stempelRayon || { left: ttdRayonPos.left - 5, top: ttdRayonPos.top - 10, width: 15 },
+    scanTtdRayon: rawMasterPosisi.scanTtdRayon || { left: ttdRayonPos.left, top: ttdRayonPos.top - 6, width: 18 }
   };
 
   return (
@@ -488,20 +500,20 @@ export default function PagePengaturanSertifikatRayon() {
 
                     let content = '';
                     if (key === 'nomor') content = `10/${formJenjang}-X/${formAngkatan}`;
-                    else if (key === 'teksPembuka') content = `Yang bertanda tangan di bawah ini ${namaRayonAsli || 'Rayon PMII'} Komisariat Sunan Ampel Malang masa khidmat ${masaKhidmat || '...'} memberikan status <b>${statusKader}</b> kepada :`;
+                    else if (key === 'teksPembuka') content = `Yang bertanda tangan di bawah ini ${namaRayonLengkap} Komisariat Sunan Ampel Malang masa khidmat ${masaKhidmat || '...'} memberikan status <b>${statusKader}</b> kepada :`;
                     else if (key === 'nama') content = 'AHMAD ALBERT AFRILSYAH';
                     else if (key === 'nik') content = '35730123456789';
                     else if (key === 'ttl') content = 'MALANG, 10 AGUSTUS 2002';
                     else if (key === 'jurusan') content = 'TEKNIK INFORMATIKA';
                     else if (key === 'pt') content = 'UNIVERSITAS ISLAM NEGERI MAULANA MALIK IBRAHIM MALANG';
-                    else if (key === 'teksKelulusan') content = `Bahwa nama yang disebutkan diatas telah Lulus ${namaKegiatanFull} pada tanggal ${tanggalPelaksanaan || '...'} yang dilaksanakan di ${tempatPelaksanaan || '...'} oleh ${namaRayonAsli || 'Rayon PMII'}.`;
+                    else if (key === 'teksKelulusan') content = `Bahwa nama yang disebutkan diatas telah Lulus ${namaKegiatanFull} pada tanggal ${tanggalPelaksanaan || '...'} yang dilaksanakan di ${tempatPelaksanaan || '...'} oleh ${namaRayonLengkap}.`;
                     
                     else if (key === 'penetapan') {
                       return (
                         <div key={key} style={{ 
                           position: 'absolute', zIndex: 2, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`,
-                          textAlign: p.align || 'left', fontFamily: '"Arial Narrow", Arial, sans-serif',
-                          fontSize: `${p.fontSize * fontScaleCqw}cqw`, fontWeight: p.isBold ? 'bold' : 'normal',
+                          textAlign: p.align || 'left', fontFamily: '"Arial Narrow", sans-serif',
+                          fontSize: `${(p.fontSize || 14) * fontScaleCqw}cqw`, fontWeight: p.isBold ? 'bold' : 'normal',
                           color: '#000', lineHeight: '1.2', border: '1px dashed rgba(255,0,0,0.4)', background: 'rgba(255,255,255,0.4)', padding: '2px'
                         }}>
                           <div>{tempatDitetapkan || '...'}</div>
@@ -513,7 +525,7 @@ export default function PagePengaturanSertifikatRayon() {
 
                     else if (key === 'ttdCabang') content = `${masterTemplate?.namaKetuaCabang || 'NAMA KETUA PC'}<br/>Ketua PC. PMII Kota Malang`;
                     else if (key === 'ttdKomisariat') content = `${masterTemplate?.namaKetuaKomisariat || 'NAMA KETUA PK'}<br/>Ketua PK. PMII Sunan Ampel`;
-                    else if (key === 'ttdRayon') content = `${namaKetuaRayon || 'NAMA KETUA RAYON'}<br/>Ketua ${namaRayonAsli || 'PR. PMII'}`;
+                    else if (key === 'ttdRayon') content = `${namaKetuaRayon || 'NAMA KETUA RAYON'}<br/>Ketua ${namaRayonAsli}`;
 
                     if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) return null;
 
@@ -521,7 +533,7 @@ export default function PagePengaturanSertifikatRayon() {
                       <div key={key} style={{ 
                         position: 'absolute', zIndex: 2, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width}%`,
                         textAlign: p.align || (isCenter ? 'center' : 'left'), transform: isCenter ? 'translate(-50%, 0)' : 'none', 
-                        fontFamily: '"Arial Narrow", Arial, sans-serif', fontSize: `${p.fontSize * fontScaleCqw}cqw`, 
+                        fontFamily: '"Arial Narrow", sans-serif', fontSize: `${(p.fontSize || 14) * fontScaleCqw}cqw`, 
                         fontWeight: p.isBold ? 'bold' : 'normal', color: '#000', lineHeight: '1.2',
                         border: '1px dashed rgba(255,0,0,0.4)', background: 'rgba(255,255,255,0.4)', padding: '2px'
                       }}>

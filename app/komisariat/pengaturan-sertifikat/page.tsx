@@ -422,7 +422,7 @@ export default function PagePengaturanSertifikatKomisariat() {
                 else if (key === 'ttl') renderContent = 'MALANG, 10 AGUSTUS 2002';
                 else if (key === 'jurusan') renderContent = 'TEKNIK INFORMATIKA';
                 else if (key === 'pt') renderContent = 'UNIVERSITAS ISLAM NEGERI MAULANA MALIK IBRAHIM MALANG';
-                else if (key === 'teksKelulusan') renderContent = 'Bahwa nama yang disebutkan diatas telah <b>LULUS</b> Masa Penerimaan Anggota Baru (MAPABA) pada tanggal 16 - 20 Oktober 2026 yang dilaksanakan di MTs Ma\'arif NU Kota Malang oleh PR. PMII "KAWAH" Chondrodimuko.';
+                else if (key === 'teksKelulusan') renderContent = 'Bahwa nama yang disebutkan diatas telah Lulus Masa Penerimaan Anggota Baru (MAPABA) pada tanggal 16 - 20 Oktober 2026 yang dilaksanakan di MTs Ma\'arif NU Kota Malang oleh PR. PMII "KAWAH" Chondrodimuko.';
                 
                 else if (key === 'penetapan') {
                   return (

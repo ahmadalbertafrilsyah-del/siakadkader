@@ -3,6 +3,19 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* ===== SIAKAD Design System (default theme: PMII Blue/Gold) ===== */
+  --sk-primary: #11118f;
+  --sk-primary-2: #2d2de0;
+  --sk-accent: #f5c518;
+  --sk-ink: #1a1a2e;
+  --sk-bg: #eef1f8;
+  --sk-card: #ffffff;
+  --sk-muted: #6b7280;
+  --sk-border: #e7eaf3;
+  --sk-sidebar-w: 268px;
+  --sk-sidebar-cw: 86px;
+  --sk-appbar-h: 76px;
 }
 
 @theme inline {
@@ -12,15 +25,258 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+html { scroll-behavior: smooth; }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: color-mix(in srgb, var(--sk-accent) 45%, transparent); color: var(--sk-ink); }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(26,26,46,.18); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(26,26,46,.32); }
+
+/* Kompatibilitas util lama yang masih dipakai halaman */
+.mobile-only { display: none; }
+.desktop-only { display: flex; }
+.hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scroll::-webkit-scrollbar { display: none; }
+@media (max-width: 767px) {
+  .mobile-only { display: block; }
+  .desktop-only { display: none; }
+}
+
+/* ============================================================= */
+/*  APP SHELL                                                     */
+/* ============================================================= */
+.siakad-shell {
+  display: flex;
+  height: 100vh;
+  height: 100dvh; /* dynamic viewport: cegah header "loncat" di mobile */
+  overflow: hidden;
+  background: var(--sk-bg);
+  font-family: var(--font-geist-sans), "Segoe UI", system-ui, sans-serif;
+}
+.siakad-shell * { box-sizing: border-box; }
+
+.sk-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--sk-sidebar-w);
+  transition: margin-left .3s cubic-bezier(.4,0,.2,1);
+  overflow-x: hidden;
+}
+.siakad-shell.collapsed .sk-main { margin-left: var(--sk-sidebar-cw); }
+
+/* ============================================================= */
+/*  SIDEBAR (desktop)                                             */
+/* ============================================================= */
+.sk-sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+  width: var(--sk-sidebar-w);
+  display: flex; flex-direction: column;
+  color: #fff;
+  background: linear-gradient(165deg, var(--sk-primary) 0%, var(--sk-primary-2) 100%);
+  box-shadow: 6px 0 30px rgba(17,17,80,.18);
+  transition: width .3s cubic-bezier(.4,0,.2,1);
+}
+.siakad-shell.collapsed .sk-sidebar { width: var(--sk-sidebar-cw); }
+
+.sk-brand {
+  display: flex; align-items: center; gap: 12px;
+  padding: 20px 18px; font-weight: 800; letter-spacing: .4px; font-size: 1.05rem;
+  border-bottom: 1px solid rgba(255,255,255,.10);
+}
+.sk-brand .sk-brand-logo {
+  width: 38px; height: 38px; display: grid; place-items: center; flex: none;
+  background: rgba(255,255,255,.12); border-radius: 12px; font-size: 1.25rem;
+}
+
+.sk-profile {
+  margin: 14px; padding: 14px; display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px; backdrop-filter: blur(6px);
+}
+.sk-profile img {
+  width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none;
+  border: 2px solid var(--sk-accent); background: #fff;
+}
+.sk-profile .sk-pname { font-size: .82rem; font-weight: 700; line-height: 1.25; margin: 0; }
+.sk-profile .sk-prole { font-size: .68rem; font-weight: 700; color: var(--sk-accent); margin: 2px 0 0; }
+
+.sk-nav { list-style: none; margin: 6px 0; padding: 6px 0; overflow-y: auto; flex: 1; }
+.sk-nav::-webkit-scrollbar { width: 5px; }
+.sk-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); }
+
+.sk-nav-link {
+  display: flex; align-items: center; gap: 13px;
+  margin: 3px 12px; padding: 11px 14px; border-radius: 13px;
+  color: rgba(255,255,255,.82); font-size: .88rem; font-weight: 500;
+  text-decoration: none; cursor: pointer; transition: all .2s ease; position: relative;
+}
+.siakad-shell.collapsed .sk-nav-link { justify-content: center; padding: 13px 0; margin: 4px 10px; }
+.sk-nav-link:hover { background: rgba(255,255,255,.12); color: #fff; transform: translateX(3px); }
+.sk-nav-link.active {
+  background: var(--sk-accent); color: var(--sk-ink); font-weight: 700;
+  box-shadow: 0 8px 20px rgba(245,197,24,.35);
+}
+.sk-nav-ic { font-size: 1.2rem; line-height: 1; flex: none; }
+.sk-nav-badge {
+  margin-left: auto; background: #ef4444; color: #fff; font-size: .66rem; font-weight: 800;
+  min-width: 20px; height: 20px; border-radius: 999px; display: grid; place-items: center; padding: 0 6px;
+}
+
+.sk-logout-wrap { padding: 14px; border-top: 1px solid rgba(255,255,255,.1); }
+.sk-logout {
+  width: 100%; padding: 11px; display: flex; align-items: center; justify-content: center; gap: 9px;
+  background: rgba(255,255,255,.06); color: var(--sk-accent);
+  border: 1px solid rgba(245,197,24,.5); border-radius: 12px;
+  font-weight: 700; font-size: .85rem; cursor: pointer; transition: .2s;
+}
+.sk-logout:hover { background: var(--sk-accent); color: var(--sk-ink); }
+
+/* ============================================================= */
+/*  TOP BAR (desktop)                                             */
+/* ============================================================= */
+.sk-topbar {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 26px;
+  background: rgba(255,255,255,.82); backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--sk-border);
+}
+.sk-collapse-btn {
+  width: 34px; height: 34px; flex: none; display: grid; place-items: center;
+  background: var(--sk-bg); border: 1px solid var(--sk-border); border-radius: 10px;
+  color: var(--sk-ink); cursor: pointer; font-size: .85rem; transition: .2s;
+}
+.sk-collapse-btn:hover { background: #fff; border-color: var(--sk-primary); color: var(--sk-primary); }
+.sk-title { font-size: 1.02rem; font-weight: 800; color: var(--sk-ink); margin: 0; letter-spacing: .2px; }
+.sk-chip {
+  font-size: .72rem; font-weight: 700; padding: 7px 14px; border-radius: 999px;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: color-mix(in srgb, var(--sk-primary) 10%, #fff); color: var(--sk-primary);
+  border: 1px solid color-mix(in srgb, var(--sk-primary) 18%, #fff);
+}
+
+/* ============================================================= */
+/*  MOBILE APP BAR (fixed / terkunci)                            */
+/* ============================================================= */
+.sk-appbar { display: none; }
+
+/* ============================================================= */
+/*  CONTENT AREA                                                  */
+/* ============================================================= */
+.sk-content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 26px; -webkit-overflow-scrolling: touch; }
+
+/* ============================================================= */
+/*  BOTTOM NAV (mobile)                                           */
+/* ============================================================= */
+.sk-bottomnav { display: none; }
+.sk-bn-link {
+  position: relative; flex: 1; text-decoration: none;
+  display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 7px 0;
+  color: #9aa1b8; font-size: .62rem; font-weight: 700; transition: .2s;
+}
+.sk-bn-ic { font-size: 1.3rem; line-height: 1; transition: transform .2s ease; filter: grayscale(100%); opacity: .7; }
+.sk-bn-link.active { color: var(--sk-primary); }
+.sk-bn-link.active .sk-bn-ic { transform: translateY(-3px) scale(1.12); filter: none; opacity: 1; }
+.sk-bn-link.active::after {
+  content: ""; position: absolute; top: 2px; width: 5px; height: 5px; border-radius: 999px;
+  background: var(--sk-accent);
+}
+.sk-bn-badge {
+  position: absolute; top: 0; right: 24%; background: #ef4444; color: #fff;
+  font-size: .55rem; font-weight: 800; min-width: 16px; height: 16px; border-radius: 999px;
+  display: grid; place-items: center; padding: 0 4px;
+}
+
+/* ============================================================= */
+/*  MODERN TABLE (dipakai halaman admin: .tabel-utama)           */
+/* ============================================================= */
+.tabel-utama { width: 100%; border-collapse: separate; border-spacing: 0; text-align: left; font-size: .85rem; }
+.tabel-utama thead th {
+  background: linear-gradient(165deg, var(--sk-primary), var(--sk-primary-2));
+  color: #fff; padding: 13px 15px; font-weight: 700; white-space: nowrap;
+  border: none; letter-spacing: .2px;
+}
+.tabel-utama thead th:first-child { border-top-left-radius: 12px; }
+.tabel-utama thead th:last-child { border-top-right-radius: 12px; }
+.tabel-utama tbody td { padding: 12px 15px; border-bottom: 1px solid var(--sk-border); color: #374151; background: #fff; vertical-align: middle; }
+.tabel-utama tbody tr:hover td { background: color-mix(in srgb, var(--sk-primary) 5%, #fff); }
+.tabel-utama tbody tr:last-child td:first-child { border-bottom-left-radius: 12px; }
+.tabel-utama tbody tr:last-child td:last-child { border-bottom-right-radius: 12px; }
+
+/* ============================================================= */
+/*  RESPONSIVE                                                    */
+/* ============================================================= */
+@media (min-width: 768px) {
+  .sk-appbar { display: none !important; }
+  .sk-bottomnav { display: none !important; }
+}
+
+@media (max-width: 767px) {
+  .sk-sidebar { display: none !important; }
+  .sk-topbar { display: none !important; }
+  .sk-main { margin-left: 0 !important; }
+
+  .sk-appbar {
+    display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 70;
+    align-items: center; justify-content: space-between;
+    min-height: var(--sk-appbar-h);
+    padding: 14px 18px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--sk-primary) 0%, var(--sk-primary-2) 100%);
+    border-radius: 0 0 24px 24px;
+    box-shadow: 0 10px 28px rgba(17,17,80,.28);
+  }
+  .sk-ab-profile { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .sk-ab-profile img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex: none; border: 2px solid var(--sk-accent); background: #fff; }
+  .sk-ab-sub { font-size: .72rem; opacity: .9; }
+  .sk-ab-title { font-size: 1.02rem; font-weight: 800; color: var(--sk-accent); line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sk-ab-action { position: relative; width: 42px; height: 42px; flex: none; display: grid; place-items: center; background: rgba(255,255,255,.15); border-radius: 13px; cursor: pointer; font-size: 1.3rem; }
+  .sk-ab-badge { position: absolute; top: -3px; right: -3px; background: #ef4444; color: #fff; font-size: .6rem; font-weight: 800; min-width: 18px; height: 18px; border-radius: 999px; display: grid; place-items: center; padding: 0 4px; border: 2px solid var(--sk-primary); }
+
+  /* ruang untuk app bar (atas) & bottom nav (bawah) */
+  .sk-content { padding: calc(var(--sk-appbar-h) + 16px) 14px 104px 14px; }
+
+  .sk-bottomnav {
+    display: flex; position: fixed; bottom: 14px; left: 14px; right: 14px; z-index: 70;
+    justify-content: space-around; align-items: center;
+    padding: 8px 6px;
+    background: rgba(255,255,255,.96); backdrop-filter: blur(14px);
+    border: 1px solid rgba(17,17,80,.06); border-radius: 24px;
+    box-shadow: 0 12px 34px rgba(17,17,80,.20);
+  }
+
+  .tabel-utama { font-size: .76rem; }
+  .tabel-utama thead th { padding: 10px 8px; }
+  .tabel-utama tbody td { padding: 10px 8px; }
+}
+
+/* iPad / tablet: sedikit rapatkan sidebar agar konten lebih lega */
+@media (min-width: 768px) and (max-width: 1024px) {
+  :root { --sk-sidebar-w: 236px; }
+  .sk-content { padding: 22px; }
+}
+
+@media print {
+  .sk-sidebar, .sk-topbar, .sk-appbar, .sk-bottomnav { display: none !important; }
+  .sk-main { margin-left: 0 !important; }
+  .sk-content { padding: 0 !important; overflow: visible !important; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* UI aplikasi tetap terang (light) demi konsistensi brand; hanya token dasar */
+  }
 }

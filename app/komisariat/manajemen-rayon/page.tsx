@@ -52,6 +52,19 @@ export default function PageManajemenRayon() {
     return rayon ? rayon.nama : idRayon;
   };
 
+  // Mengubah input asal rayon (bisa berupa nama, username, atau id) menjadi ID rayon kanonik (username)
+  // agar kader yang diplot benar-benar masuk ke database rayon yang bersangkutan.
+  const resolveAsalRayonId = (input: string) => {
+    const val = (input || '').trim();
+    if (!val || val === 'Luar Komisariat') return val;
+    const matched = dataRayon.find((r: any) =>
+      (r.nama && r.nama.toLowerCase() === val.toLowerCase()) ||
+      (r.username && r.username.toLowerCase() === val.toLowerCase()) ||
+      r.id_rayon === val || r.id === val
+    );
+    return matched ? (matched.username || matched.id_rayon || matched.id) : val;
+  };
+
   const catatLogAktivitas = async (aksi: string) => {
     try {
       await addDoc(collection(db, "log_aktivitas"), {
@@ -117,14 +130,17 @@ export default function PageManajemenRayon() {
       const safeNim = formKaderSKP.nim.trim(); const emailBaru = `${safeNim}@pmii-uinmalang.or.id`.toLowerCase();
       
       // LOGIKA PENENTUAN NAMA ASAL RAYON FINAL
-      let finalAsalRayon = formKaderSKP.id_rayon || "Luar Komisariat";
+      let finalAsalRayon = resolveAsalRayonId(formKaderSKP.id_rayon) || "Luar Komisariat";
       if (formKaderSKP.id_rayon === "Luar Komisariat" && formKaderSKP.nama_rayon_luar.trim() !== "") {
          finalAsalRayon = formKaderSKP.nama_rayon_luar.trim();
       }
 
       const existingKader = databaseKader.find(k => k.nim === safeNim);
       if (existingKader) {
-        await updateDoc(doc(db, "users", existingKader.id), { jenjang: "SKP", pendamping_skp_id: formKaderSKP.pendampingId });
+        // Pastikan kader tetap terdaftar di rayon asalnya meski diplot ke SKP
+        const existingTerdaftar: string[] = (Array.isArray(existingKader.terdaftar_di) && existingKader.terdaftar_di.length > 0) ? [...existingKader.terdaftar_di] : [existingKader.id_rayon].filter(Boolean);
+        if (finalAsalRayon && finalAsalRayon !== "Luar Komisariat" && !existingTerdaftar.includes(finalAsalRayon)) existingTerdaftar.push(finalAsalRayon);
+        await updateDoc(doc(db, "users", existingKader.id), { jenjang: "SKP", pendamping_skp_id: formKaderSKP.pendampingId, terdaftar_di: existingTerdaftar });
         catatLogAktivitas(`Menghubungkan Kader Lama ke SKP: ${existingKader.nama}`);
         alert(`Kader dengan NIM ${safeNim} sudah terdaftar di sistem. Data berhasil diperbarui dan dihubungkan ke SKP!`);
       } else {
@@ -132,7 +148,8 @@ export default function PageManajemenRayon() {
         const tanggalBuatModif = new Date(); tanggalBuatModif.setFullYear(parseInt(formKaderSKP.angkatan));
         await setDoc(doc(db, "users", safeNim), {
           nim: safeNim, nama: formKaderSKP.nama, email: emailBaru, role: "kader",
-          id_rayon: finalAsalRayon, jenjang: "SKP", pendamping_skp_id: formKaderSKP.pendampingId, status: "Aktif", createdAt: tanggalBuatModif.getTime()
+          id_rayon: finalAsalRayon, jenjang: "SKP", pendamping_skp_id: formKaderSKP.pendampingId, status: "Aktif", createdAt: tanggalBuatModif.getTime(),
+          terdaftar_di: Array.from(new Set([finalAsalRayon].filter(Boolean)))
         });
         await signOutSecondary(secondaryAuth); catatLogAktivitas(`Mendaftarkan Akun Kader SKP Baru: ${formKaderSKP.nama}`); alert(`Sukses! Akun Kader SKP baru berhasil dibuat.`);
       }
@@ -150,7 +167,7 @@ export default function PageManajemenRayon() {
         
         for (let i = 0; i < data.length; i++) {
           const row: any = data[i]; 
-          const nim = String(row['NIM'] || row['nim'] || '').trim(); const nama = row['Nama'] || row['nama'] || ''; const asalRayon = row['Asal Rayon'] || row['asal rayon'] || row['Rayon'] || 'Luar Komisariat';
+          const nim = String(row['NIM'] || row['nim'] || '').trim(); const nama = row['Nama'] || row['nama'] || ''; const asalRayonRaw = String(row['Asal Rayon'] || row['asal rayon'] || row['Rayon'] || 'Luar Komisariat').trim(); const asalRayon = resolveAsalRayonId(asalRayonRaw) || 'Luar Komisariat';
           const angkatan = String(row['Angkatan'] || row['angkatan'] || new Date().getFullYear()).trim(); const password = String(row['Password'] || row['password'] || '').trim() || nim; 
           let pendampingInput = String(row['Pendamping'] || row['pendamping'] || '').trim(); let pendampingArray: string[] = [];
           if (pendampingInput) {
@@ -164,13 +181,16 @@ export default function PageManajemenRayon() {
           setImportProgress(`Memproses: ${nama} (${i + 1}/${data.length})`);
           const existingKader = databaseKader.find(k => k.nim === nim);
           if (existingKader) {
-              await updateDoc(doc(db, "users", existingKader.id), { jenjang: "SKP", pendamping_skp_id: pendampingArray }); updateCount++;
+              // Pastikan kader tetap terdaftar di rayon asalnya meski diplot ke SKP
+              const existingTerdaftar: string[] = (Array.isArray(existingKader.terdaftar_di) && existingKader.terdaftar_di.length > 0) ? [...existingKader.terdaftar_di] : [existingKader.id_rayon].filter(Boolean);
+              if (asalRayon && asalRayon !== 'Luar Komisariat' && !existingTerdaftar.includes(asalRayon)) existingTerdaftar.push(asalRayon);
+              await updateDoc(doc(db, "users", existingKader.id), { jenjang: "SKP", pendamping_skp_id: pendampingArray, terdaftar_di: existingTerdaftar }); updateCount++;
           } else {
               const emailBaru = `${nim}@pmii-uinmalang.or.id`.toLowerCase();
               try {
                 await createUserWithEmailAndPassword(secondaryAuth, emailBaru, password);
                 const tanggalBuatModif = new Date(); tanggalBuatModif.setFullYear(parseInt(angkatan));
-                await setDoc(doc(db, "users", nim), { nim: nim, nama: nama, email: emailBaru, role: "kader", id_rayon: asalRayon, jenjang: "SKP", pendamping_skp_id: pendampingArray, angkatan: angkatan, status: "Aktif", createdAt: tanggalBuatModif.getTime() }); 
+                await setDoc(doc(db, "users", nim), { nim: nim, nama: nama, email: emailBaru, role: "kader", id_rayon: asalRayon, jenjang: "SKP", pendamping_skp_id: pendampingArray, angkatan: angkatan, status: "Aktif", createdAt: tanggalBuatModif.getTime(), terdaftar_di: Array.from(new Set([asalRayon].filter(Boolean))) });
                 successCount++;
               } catch(err: any) { errorCount++; }
           }

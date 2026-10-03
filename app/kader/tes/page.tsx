@@ -7,7 +7,16 @@ import { auth, db } from '@/lib/firebase';
 
 export default function PageTesPemahamanKader() {
   const [profilKader, setProfilKader] = useState({ nama: '', nim: '', id_rayon: '', jenjang: 'MAPABA' });
-  const [listTesTersedia, setListTesTersedia] = useState<any[]>([]);
+  const [tesRayon, setTesRayon] = useState<any[]>([]);
+  const [tesPusat, setTesPusat] = useState<any[]>([]);
+  // Gabungan tes dari Rayon (master_tes) dan dari Komisariat/Pusat (master_tes_pusat).
+  // Kader SKP maupun jenjang lain kini bisa menerima tes yang dibuka admin Komisariat.
+  const listTesTersedia = React.useMemo(() => {
+    const gabungan = [...tesRayon, ...tesPusat];
+    const terlihat = new Map<string, any>();
+    gabungan.forEach(t => { if (t && t.id) terlihat.set(t.id, t); });
+    return Array.from(terlihat.values());
+  }, [tesRayon, tesPusat]);
   const [jawabanRiwayatKader, setJawabanRiwayatKader] = useState<string[]>([]);
   const [selectedTes, setSelectedTes] = useState<any>(null);
   const [formJawaban, setFormJawaban] = useState<string[]>([]);
@@ -24,16 +33,24 @@ export default function PageTesPemahamanKader() {
             const jenjangAktif = p.jenjang || 'MAPABA';
             setProfilKader({ nama: p.nama, nim: p.nim, id_rayon: p.id_rayon, jenjang: jenjangAktif });
 
-            if (p.id_rayon === 'Komisariat' || p.id_rayon === 'Pusat Komisariat') {
-              const unsubTesPusat = onSnapshot(query(collection(db, "master_tes_pusat"), where("jenjang", "==", jenjangAktif), where("status", "==", "Buka")), (snap) => {
-                const dataGabungan: any[] = []; snap.forEach(doc => dataGabungan.push({ id: doc.id, ...doc.data() })); setListTesTersedia(dataGabungan);
+            // 1. Tes dari Rayon asal kader (jenjang non-SKP: MAPABA/PKD/SIG dikelola Rayon)
+            if (jenjangAktif !== 'SKP' && p.id_rayon && p.id_rayon !== 'Komisariat' && p.id_rayon !== 'Pusat Komisariat') {
+              const unsubTesRayon = onSnapshot(query(collection(db, "master_tes"), where("id_rayon", "==", p.id_rayon), where("jenjang", "==", jenjangAktif), where("status", "==", "Buka")), (snap) => {
+                setTesRayon(snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
+              });
+              unsubs.push(unsubTesRayon);
+            } else {
+              setTesRayon([]);
+            }
+
+            // 2. Tes dari Komisariat/Pusat HANYA untuk peserta jenjang SKP
+            if (jenjangAktif === 'SKP') {
+              const unsubTesPusat = onSnapshot(query(collection(db, "master_tes_pusat"), where("jenjang", "==", "SKP"), where("status", "==", "Buka")), (snap) => {
+                setTesPusat(snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
               });
               unsubs.push(unsubTesPusat);
             } else {
-              const unsubTesRayon = onSnapshot(query(collection(db, "master_tes"), where("id_rayon", "==", p.id_rayon), where("jenjang", "==", jenjangAktif), where("status", "==", "Buka")), (snap) => {
-                const dataGabungan: any[] = []; snap.forEach(doc => dataGabungan.push({ id: doc.id, ...doc.data() })); setListTesTersedia(dataGabungan);
-              });
-              unsubs.push(unsubTesRayon);
+              setTesPusat([]);
             }
 
             const unsubRiwayat = onSnapshot(query(collection(db, "jawaban_tes"), where("nim", "==", p.nim)), (snap) => {

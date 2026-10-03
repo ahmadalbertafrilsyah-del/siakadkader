@@ -31,7 +31,9 @@ export default function PagePengumpulanTugasKader() {
               const list: any[] = [];
               snap.forEach(doc => {
                 const d = doc.data();
-                if (d.id_rayon === p.id_rayon || d.id_rayon === 'Komisariat') list.push({ id: doc.id, ...d });
+                // Tugas dari Komisariat hanya untuk peserta jenjang SKP; selain itu dari Rayon masing-masing
+                const isSKP = (p.jenjang || 'MAPABA') === 'SKP';
+                if (isSKP ? d.id_rayon === 'Komisariat' : d.id_rayon === p.id_rayon) list.push({ id: doc.id, ...d });
               });
               setListMasterTugas(list);
             });

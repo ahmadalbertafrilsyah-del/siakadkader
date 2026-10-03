@@ -260,7 +260,29 @@ export default function PageManajemenAkunRayon() {
   const handleHapusAkun = async (idAkun: string, nama: string) => { if (!window.confirm(`Hapus permanen akun pendamping "${nama}"?`)) return; try { await deleteDoc(doc(db, "users", idAkun)); alert(`Dihapus.`); } catch (error) {} };
   
   const handleHapusKaderTotal = async (kader: any) => {
-    if(!window.confirm(`PERINGATAN KERAS!\nYakin ingin menghapus permanen akun "${kader.nama}"?`)) return;
+    // Tentukan di rayon mana saja kader ini terdaftar
+    const terdaftarSekarang: string[] = (Array.isArray(kader.terdaftar_di) && kader.terdaftar_di.length > 0)
+      ? kader.terdaftar_di
+      : [kader.id_rayon].filter(Boolean);
+    const sisaRayon = terdaftarSekarang.filter((r: string) => r && r !== adminRayonId);
+
+    // KASUS 1: Kader juga terdaftar di rayon lain (mis. peserta MAPABA dari rayon lain).
+    // Jangan hapus total — cukup lepaskan dari rayon ini agar datanya tetap ada di rayon asalnya.
+    if (sisaRayon.length > 0) {
+      if (!window.confirm(`Kader "${kader.nama}" juga terdaftar di rayon lain.\n\nTindakan ini hanya akan MELEPAS kader dari Rayon Anda. Data, nilai, dan akunnya TETAP AMAN di rayon asalnya. Lanjutkan?`)) return;
+      try {
+        const updatePayload: any = { terdaftar_di: sisaRayon };
+        // Jika rayon ini kebetulan tercatat sebagai asal rayon, alihkan asal ke rayon tersisa agar tetap valid
+        if (kader.id_rayon === adminRayonId) updatePayload.id_rayon = sisaRayon[0];
+        await updateDoc(doc(db, "users", kader.id), updatePayload);
+        catatLogAktivitas(`Melepas kader dari rayon: ${kader.nama}`);
+        alert("Kader berhasil dilepas dari Rayon Anda. Data aslinya tetap tersimpan di rayon asalnya.");
+      } catch (error) { alert("Gagal melepas kader dari rayon."); }
+      return;
+    }
+
+    // KASUS 2: Rayon ini adalah satu-satunya pemilik kader → hapus total beserta seluruh riwayat.
+    if(!window.confirm(`PERINGATAN KERAS!\nKader "${kader.nama}" hanya terdaftar di Rayon Anda.\nYakin ingin menghapus PERMANEN seluruh akun dan datanya?`)) return;
     try {
       await deleteDoc(doc(db, "users", kader.id)); await deleteDoc(doc(db, "nilai_khs", kader.nim)); await deleteDoc(doc(db, "evaluasi_kader", kader.nim));
       if (kader.email) { const qBerkas = query(collection(db, "berkas_kader"), where("email_kader", "==", kader.email)); const snapBerkas = await getDocs(qBerkas); snapBerkas.forEach(d => deleteDoc(d.ref)); }

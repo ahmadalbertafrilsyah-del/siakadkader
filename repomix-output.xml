@@ -9842,6 +9842,71 @@ export default function PageMasterTugasRayon() {
 }
 </file>
 
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "@/app/globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: {
+    default: "SIAKAD PMII Sunan Ampel Malang",
+    template: "%s | SIAKAD PMII"
+  },
+  description: "Sistem Informasi Akademik dan Kaderisasi (SIAKAD) PK. PMII Sunan Ampel Malang. Platform digitalisasi untuk manajemen kader, raport, kurikulum, dan administrasi persuratan.",
+  keywords: [
+    "PMII", 
+    "SIAKAD PMII", 
+    "Kaderisasi PMII", 
+    "PK PMII Sunan Ampel Malang", 
+    "PMII UIN Malang",
+    "Aplikasi Kaderisasi", 
+    "Manajemen Kader"
+  ],
+  authors: [{ name: "PK. PMII Sunan Ampel Malang" }],
+  openGraph: {
+    title: "SIAKAD PMII Sunan Ampel Malang",
+    description: "Platform digital manajemen kader PMII yang adaptif dan cakap digital untuk PK. PMII Sunan Ampel Malang.",
+    url: "https://siakad.pmii-uinmalang.or.id",
+    siteName: "SIAKAD PMII",
+    locale: "id_ID",
+    type: "website",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  verification: {
+    google: "9WAeDKwCccLxdpW0BAlYJmDJOg-hwNzAqkiSs0PL9WI",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="id">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {children}
+      </body>
+    </html>
+  );
+}
+</file>
+
 <file path="app/komisariat/pengaturan-sertifikat/page.tsx">
 'use client';
 
@@ -9948,9 +10013,7 @@ export default function PagePengaturanSertifikatKomisariat() {
           setPosisi(defaultPosisi);
         }
       } else {
-        setTemplateUrl('');
-        setOrientasi('portrait');
-        setPosisi(defaultPosisi);
+        setTemplateUrl(''); setOrientasi('portrait'); setPosisi(defaultPosisi);
         setNamaKetuaCabang(''); setStempelCabangUrl(''); setScanTtdCabangUrl('');
         setNamaKetuaKomisariat(''); setStempelKomisariatUrl(''); setScanTtdKomisariatUrl('');
       }
@@ -9970,11 +10033,8 @@ export default function PagePengaturanSertifikatKomisariat() {
   const handleSimpanPengaturan = async () => {
     setIsSavingSetting(true);
     try {
-      let finalTemplate = templateUrl;
-      let finalStempelCab = stempelCabangUrl;
-      let finalScanTtdCab = scanTtdCabangUrl;
-      let finalStempelKom = stempelKomisariatUrl;
-      let finalScanTtdKom = scanTtdKomisariatUrl;
+      let finalTemplate = templateUrl; let finalStempelCab = stempelCabangUrl; let finalScanTtdCab = scanTtdCabangUrl;
+      let finalStempelKom = stempelKomisariatUrl; let finalScanTtdKom = scanTtdKomisariatUrl;
 
       if (fileTemplate) finalTemplate = await uploadToCloudinary(fileTemplate);
       if (fileStempelCabang) finalStempelCab = await uploadToCloudinary(fileStempelCabang);
@@ -9984,13 +10044,8 @@ export default function PagePengaturanSertifikatKomisariat() {
       
       const docId = `${adminKomisariatId}_${formJenjang}_${formAngkatan}`;
       await setDoc(doc(db, "master_template_sertifikat", docId), {
-        id_komisariat: adminKomisariatId,
-        jenjang: formJenjang,
-        angkatan: formAngkatan,
-        orientasi, 
-        posisi,
-        templateUrl: finalTemplate, 
-        namaKetuaCabang, stempelCabangUrl: finalStempelCab, scanTtdCabangUrl: finalScanTtdCab,
+        id_komisariat: adminKomisariatId, jenjang: formJenjang, angkatan: formAngkatan, orientasi, posisi,
+        templateUrl: finalTemplate, namaKetuaCabang, stempelCabangUrl: finalStempelCab, scanTtdCabangUrl: finalScanTtdCab,
         namaKetuaKomisariat, stempelKomisariatUrl: finalStempelKom, scanTtdKomisariatUrl: finalScanTtdKom,
         updatedAt: Date.now()
       }, { merge: true });
@@ -10007,14 +10062,10 @@ export default function PagePengaturanSertifikatKomisariat() {
     const sourceSnap = await getDoc(sourceRef);
     if (sourceSnap.exists()) {
       const data = sourceSnap.data();
-      if (data.posisi) setPosisi(data.posisi);
-      if (data.orientasi) setOrientasi(data.orientasi);
-      if (data.namaKetuaCabang) setNamaKetuaCabang(data.namaKetuaCabang);
-      if (data.namaKetuaKomisariat) setNamaKetuaKomisariat(data.namaKetuaKomisariat);
-      if (data.stempelCabangUrl) setStempelCabangUrl(data.stempelCabangUrl);
-      if (data.scanTtdCabangUrl) setScanTtdCabangUrl(data.scanTtdCabangUrl);
-      if (data.stempelKomisariatUrl) setStempelKomisariatUrl(data.stempelKomisariatUrl);
-      if (data.scanTtdKomisariatUrl) setScanTtdKomisariatUrl(data.scanTtdKomisariatUrl);
+      if (data.posisi) setPosisi(data.posisi); if (data.orientasi) setOrientasi(data.orientasi);
+      if (data.namaKetuaCabang) setNamaKetuaCabang(data.namaKetuaCabang); if (data.namaKetuaKomisariat) setNamaKetuaKomisariat(data.namaKetuaKomisariat);
+      if (data.stempelCabangUrl) setStempelCabangUrl(data.stempelCabangUrl); if (data.scanTtdCabangUrl) setScanTtdCabangUrl(data.scanTtdCabangUrl);
+      if (data.stempelKomisariatUrl) setStempelKomisariatUrl(data.stempelKomisariatUrl); if (data.scanTtdKomisariatUrl) setScanTtdKomisariatUrl(data.scanTtdKomisariatUrl);
       if (data.templateUrl) setTemplateUrl(data.templateUrl);
       alert(`Berhasil menyalin seluruh koordinat & pengaturan dari ${copyJenjang} (${copyAngkatan})!`);
     } else {
@@ -10026,36 +10077,26 @@ export default function PagePengaturanSertifikatKomisariat() {
     setPosisi({ ...posisi, [field]: { ...posisi[field as keyof typeof posisi], [prop]: value } });
   };
 
-  const handleMouseDown = (e: React.MouseEvent, key: string) => {
-    e.stopPropagation();
-    setDraggingKey(key);
-  };
-
+  const handleMouseDown = (e: React.MouseEvent, key: string) => { e.stopPropagation(); setDraggingKey(key); };
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!draggingKey) return;
     const canvasEl = document.getElementById('preview-canvas-box');
     if (!canvasEl) return;
     const rect = canvasEl.getBoundingClientRect();
-
     const xPx = e.clientX - rect.left;
     const yPx = e.clientY - rect.top;
 
     let newLeft = (xPx / rect.width) * 100;
     let newTop = (yPx / rect.height) * 100;
-
-    newLeft = Math.max(0, Math.min(95, newLeft));
-    newTop = Math.max(0, Math.min(95, newTop));
+    newLeft = Math.max(0, Math.min(95, newLeft)); newTop = Math.max(0, Math.min(95, newTop));
 
     updatePosisi(draggingKey, 'left', Number(newLeft.toFixed(1)));
     updatePosisi(draggingKey, 'top', Number(newTop.toFixed(1)));
   };
+  const handleMouseUp = () => { setDraggingKey(null); };
 
-  const handleMouseUp = () => {
-    setDraggingKey(null);
-  };
-
-  const isPortrait = orientasi === 'portrait';
-  const aspectRatio = isPortrait ? '1 / 1.414' : '1.414 / 1';
+  const canvasWidth = orientasi === 'portrait' ? 794 : 1123;
+  const canvasHeight = orientasi === 'portrait' ? 1123 : 794;
 
   return (
     <>
@@ -10069,11 +10110,14 @@ export default function PagePengaturanSertifikatKomisariat() {
         .form-input:focus { border-color: #0000af; background-color: #fff; }
         .section-title { font-size: 1rem; color: #0d1b2a; margin: 0 0 15px 0; font-weight: bold; padding-bottom: 10px; border-bottom: 2px solid #f0f4f8; }
         .kordinat-row { display: grid; grid-template-columns: 130px 1fr 1fr 1fr 1fr 1fr 60px; gap: 6px; align-items: center; background-color: #fff; padding: 8px; border: 1px solid #eaeaea; border-radius: 8px; font-size: 0.72rem; margin-bottom: 8px; }
+        
+        /* Container khusus pratinjau absolut */
+        .preview-scroll-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+
         @media (max-width: 1000px) { .kordinat-row { grid-template-columns: 1fr; gap: 6px; } }
       `}</style>
 
       <div className="pengaturan-komisariat-wrapper">
-        
         <div className="card-panel">
           <h3 className="section-title">📂 Target Template Master Sertifikat</h3>
           <div className="form-grid">
@@ -10108,7 +10152,6 @@ export default function PagePengaturanSertifikatKomisariat() {
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-          
           <div className="card-panel" style={{ flex: '1 1 540px', display: 'flex', flexDirection: 'column' }}>
             
             <h3 className="section-title">🖼️ Upload Blanko, Stempel & Scan TTD</h3>
@@ -10152,22 +10195,10 @@ export default function PagePengaturanSertifikatKomisariat() {
                 return (
                   <div key={key} className="kordinat-row">
                     <strong style={{ textTransform: 'capitalize', color: '#0d1b2a' }}>{key}</strong>
-                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                      <span style={{ color: '#777', fontWeight: 'bold' }}>X:</span>
-                      <input type="number" step="0.1" value={p.left ?? ''} onChange={e => updatePosisi(key, 'left', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%
-                    </div>
-                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                      <span style={{ color: '#777', fontWeight: 'bold' }}>Y:</span>
-                      <input type="number" step="0.1" value={p.top ?? ''} onChange={e => updatePosisi(key, 'top', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%
-                    </div>
-                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                      <span style={{ color: '#777', fontWeight: 'bold' }}>W:</span>
-                      <input type="number" step="1" value={p.width ?? ''} onChange={e => updatePosisi(key, 'width', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%
-                    </div>
-                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
-                      <span style={{ color: '#777', fontWeight: 'bold' }}>Sz:</span>
-                      <input type="number" value={p.fontSize ?? ''} onChange={e => updatePosisi(key, 'fontSize', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />
-                    </div>
+                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}><span style={{ color: '#777', fontWeight: 'bold' }}>X:</span><input type="number" step="0.1" value={p.left ?? ''} onChange={e => updatePosisi(key, 'left', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%</div>
+                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}><span style={{ color: '#777', fontWeight: 'bold' }}>Y:</span><input type="number" step="0.1" value={p.top ?? ''} onChange={e => updatePosisi(key, 'top', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%</div>
+                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}><span style={{ color: '#777', fontWeight: 'bold' }}>W:</span><input type="number" step="1" value={p.width ?? ''} onChange={e => updatePosisi(key, 'width', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} />%</div>
+                    <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}><span style={{ color: '#777', fontWeight: 'bold' }}>Sz:</span><input type="number" value={p.fontSize ?? ''} onChange={e => updatePosisi(key, 'fontSize', Number(e.target.value))} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px' }} /></div>
                     <div>
                       <select value={p.align || 'left'} onChange={e => updatePosisi(key, 'align', e.target.value)} style={{ width: '100%', padding: '4px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.7rem' }}>
                         <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option><option value="justify">Justify</option>
@@ -10188,833 +10219,107 @@ export default function PagePengaturanSertifikatKomisariat() {
             </button>
           </div>
 
-          {/* LIVE PREVIEW KOMISARIAT - MENGGUNAKAN CONTAINER QUERY CQW AGAR 100% SINKRON DENGAN KADER */}
+          {/* LIVE PREVIEW KOMISARIAT WADAH ABSOLUT */}
           <div className="card-panel" style={{ flex: '1 1 450px', backgroundColor: '#ecf0f1', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <h3 className="section-title" style={{ width: '100%', borderBottom: 'none', textAlign: 'center' }}>👀 Live Preview Master (Bisa Diseret)</h3>
             <p style={{ fontSize: '0.75rem', color: '#777', marginBottom: '15px', textAlign: 'center' }}>Klik dan seret teks, stempel, maupun scan TTD langsung pada kanvas untuk mengatur posisinya.</p>
             
-            <div 
-              id="preview-canvas-box"
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              style={{ 
-                position: 'relative', width: '100%', maxWidth: '550px', 
-                aspectRatio: aspectRatio,
-                backgroundColor: 'white', border: '2px solid #ccc', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', overflow: 'hidden', cursor: draggingKey ? 'grabbing' : 'default',
-                containerType: 'inline-size'
-              }}
-            >
-              
-              {(templateUrl || fileTemplate) ? (
-                <img src={fileTemplate ? URL.createObjectURL(fileTemplate) : templateUrl} alt="Template" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1, pointerEvents: 'none' }} />
-              ) : (
-                <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', zIndex: 1, pointerEvents: 'none' }}>
-                  - Belum ada blanko kosong diupload -
-                </div>
-              )}
-              
-              {/* Stempel Cabang */}
-              {(fileStempelCabang ? URL.createObjectURL(fileStempelCabang) : stempelCabangUrl) && (posisi as any).stempelCabang && (
-                <div onMouseDown={e => handleMouseDown(e, 'stempelCabang')} style={{ position: 'absolute', zIndex: 7, top: `${(posisi as any).stempelCabang.top}%`, left: `${(posisi as any).stempelCabang.left}%`, width: `${(posisi as any).stempelCabang.width}%`, cursor: 'grab', padding: '2px 4px' }}>
-                  <img src={fileStempelCabang ? URL.createObjectURL(fileStempelCabang) : stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none', opacity: 0.85 }} />
-                </div>
-              )}
-              {/* Stempel Komisariat */}
-              {(fileStempelKomisariat ? URL.createObjectURL(fileStempelKomisariat) : stempelKomisariatUrl) && (posisi as any).stempelKomisariat && (
-                <div onMouseDown={e => handleMouseDown(e, 'stempelKomisariat')} style={{ position: 'absolute', zIndex: 7, top: `${(posisi as any).stempelKomisariat.top}%`, left: `${(posisi as any).stempelKomisariat.left}%`, width: `${(posisi as any).stempelKomisariat.width}%`, cursor: 'grab', padding: '2px 4px' }}>
-                  <img src={fileStempelKomisariat ? URL.createObjectURL(fileStempelKomisariat) : stempelKomisariatUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none', opacity: 0.85 }} />
-                </div>
-              )}
-              {/* Stempel Rayon Placeholder */}
-              {(posisi as any).stempelRayon && (
-                <div onMouseDown={e => handleMouseDown(e, 'stempelRayon')} style={{ position: 'absolute', zIndex: 7, top: `${(posisi as any).stempelRayon.top}%`, left: `${(posisi as any).stempelRayon.left}%`, width: `${(posisi as any).stempelRayon.width}%`, cursor: 'grab', padding: '2px 4px', textAlign: 'center', fontSize: '0.65rem', color: '#2980b9' }}>
-                  [Stempel Rayon]
-                </div>
-              )}
-
-              {/* Scan TTD Cabang */}
-              {(fileScanTtdCabang ? URL.createObjectURL(fileScanTtdCabang) : scanTtdCabangUrl) && (posisi as any).scanTtdCabang && (
-                <div onMouseDown={e => handleMouseDown(e, 'scanTtdCabang')} style={{ position: 'absolute', zIndex: 6, top: `${(posisi as any).scanTtdCabang.top}%`, left: `${(posisi as any).scanTtdCabang.left}%`, width: `${(posisi as any).scanTtdCabang.width}%`, cursor: 'grab', padding: '2px 4px' }}>
-                  <img src={fileScanTtdCabang ? URL.createObjectURL(fileScanTtdCabang) : scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                </div>
-              )}
-              {/* Scan TTD Komisariat */}
-              {(fileScanTtdKomisariat ? URL.createObjectURL(fileScanTtdKomisariat) : scanTtdKomisariatUrl) && (posisi as any).scanTtdKomisariat && (
-                <div onMouseDown={e => handleMouseDown(e, 'scanTtdKomisariat')} style={{ position: 'absolute', zIndex: 6, top: `${(posisi as any).scanTtdKomisariat.top}%`, left: `${(posisi as any).scanTtdKomisariat.left}%`, width: `${(posisi as any).scanTtdKomisariat.width}%`, cursor: 'grab', padding: '2px 4px' }}>
-                  <img src={fileScanTtdKomisariat ? URL.createObjectURL(fileScanTtdKomisariat) : scanTtdKomisariatUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                </div>
-              )}
-              {/* Scan TTD Rayon Placeholder */}
-              {(posisi as any).scanTtdRayon && (
-                <div onMouseDown={e => handleMouseDown(e, 'scanTtdRayon')} style={{ position: 'absolute', zIndex: 6, top: `${(posisi as any).scanTtdRayon.top}%`, left: `${(posisi as any).scanTtdRayon.left}%`, width: `${(posisi as any).scanTtdRayon.width}%`, cursor: 'grab', padding: '2px 4px', textAlign: 'center', fontSize: '0.65rem', color: '#e67e22' }}>
-                  [Scan TTD Rayon]
-                </div>
-              )}
-
-              {/* Render Teks Master dengan Skala CQW */}
-              {Object.keys(posisi).map(key => {
-                if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) return null;
-                const p = (posisi as any)[key];
-                if (!p) return null;
-                const isCenter = key === 'nomor';
-
-                let renderContent = '';
-                if (key === 'nomor') renderContent = `10/${formJenjang}-X/${formAngkatan}`;
-                else if (key === 'teksPembuka') renderContent = `Yang bertanda tangan di bawah ini Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia "KAWAH" Chondrodimuko Komisariat Sunan Ampel Malang masa khidmat 2024-2025 memberikan status <b>ANGGOTA PMII</b> kepada :`;
-                else if (key === 'nama') renderContent = 'AHMAD ALBERT AFRILSYAH';
-                else if (key === 'nik') renderContent = '35730123456789';
-                else if (key === 'ttl') renderContent = 'MALANG, 10 AGUSTUS 2002';
-                else if (key === 'jurusan') renderContent = 'TEKNIK INFORMATIKA';
-                else if (key === 'pt') renderContent = 'UNIVERSITAS ISLAM NEGERI MAULANA MALIK IBRAHIM MALANG';
-                else if (key === 'teksKelulusan') renderContent = `Bahwa nama yang disebutkan diatas telah Lulus ${formJenjang === 'PKD' ? 'Pelatihan Kader Dasar (PKD)' : 'Masa Penerimaan Anggota Baru (MAPABA)'} pada tanggal 16 - 20 Oktober 2026 yang dilaksanakan di MTs Ma'arif NU Kota Malang oleh Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia "KAWAH" Chondrodimuko.`;
-                else if (key === 'penetapan') renderContent = `<div>Kota Malang</div><div style="border-bottom: 1.2px solid #000; padding-bottom: 1px; margin-bottom: 1px">12 Desember 2026 M</div><div>12 Jumadil Awal 1449 H</div>`;
+            <div className="preview-scroll-container">
+              <div 
+                id="preview-canvas-box"
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                style={{ 
+                  position: 'relative', width: `${canvasWidth}px`, minWidth: `${canvasWidth}px`, height: `${canvasHeight}px`,
+                  margin: '0 auto', backgroundColor: 'white', border: '2px solid #ccc', boxShadow: '0 5px 15px rgba(0,0,0,0.1)', 
+                  overflow: 'hidden', cursor: draggingKey ? 'grabbing' : 'default'
+                }}
+              >
                 
-                else if (key === 'ttdCabang') renderContent = `<span style="font-weight: bold;">${namaKetuaCabang || 'NAMA KETUA PC'}</span><br/><span style="font-weight: normal;">Ketua PC. PMII Kota Malang</span>`;
-                else if (key === 'ttdKomisariat') renderContent = `<span style="font-weight: bold;">${namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel Malang</span>`;
-                else if (key === 'ttdRayon') renderContent = `<span style="font-weight: bold;">NAMA KETUA RAYON</span><br/><span style="font-weight: normal;">Ketua Rayon PMII</span>`;
-
-                return (
-                  <div key={key} onMouseDown={e => handleMouseDown(e, key)} style={{ 
-                    position: 'absolute', zIndex: 2, 
-                    top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`,
-                    textAlign: p.align || (isCenter ? 'center' : 'left'),
-                    transform: isCenter ? 'translate(-50%, 0)' : 'none', cursor: 'grab',
-                    fontFamily: '"Arial Narrow", sans-serif',
-                    fontSize: `${(p.fontSize || 14) / 6.5}cqw`, 
-                    fontWeight: p.isBold ? 'bold' : 'normal',
-                    fontStyle: p.isItalic ? 'italic' : 'normal',
-                    color: '#000', lineHeight: '1.3',
-                    border: '1px dashed rgba(255,0,0,0.5)', background: 'rgba(255,255,255,0.6)', padding: '2px 4px', margin: 0
-                  }}>
-                    <div dangerouslySetInnerHTML={{ __html: renderContent }} />
+                {(templateUrl || fileTemplate) ? (
+                  <img src={fileTemplate ? URL.createObjectURL(fileTemplate) : templateUrl} alt="Template" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1, pointerEvents: 'none' }} />
+                ) : (
+                  <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', zIndex: 1, pointerEvents: 'none' }}>
+                    - Belum ada blanko kosong diupload -
                   </div>
-                );
-              })}
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </>
-  );
-}
-</file>
-
-<file path="app/rayon/pengaturan-sertifikat/page.tsx">
-'use client';
-
-import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, doc, setDoc, query, where, writeBatch, deleteDoc } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
-import * as XLSX from 'xlsx';
-
-export default function PagePengaturanSertifikatRayon() {
-  const [adminRayonId, setAdminRayonId] = useState('');
-  const [namaRayonAsli, setNamaRayonAsli] = useState('');
-  
-  const [activeTab, setActiveTab] = useState<'pengaturan' | 'database'>('pengaturan');
-
-  const [formJenjang, setFormJenjang] = useState('MAPABA');
-  const [formAngkatan, setFormAngkatan] = useState(new Date().getFullYear().toString());
-  const [orientasi, setOrientasi] = useState('portrait');
-
-  const [masterTemplate, setMasterTemplate] = useState<any>(null);
-  
-  const [masaKhidmat, setMasaKhidmat] = useState('2024-2025');
-  const [tempatDitetapkan, setTempatDitetapkan] = useState('Kota Malang');
-  const [tanggalMasehi, setTanggalMasehi] = useState('');
-  const [tanggalHijriyah, setTanggalHijriyah] = useState('');
-  const [tanggalPelaksanaan, setTanggalPelaksanaan] = useState('');
-  const [tempatPelaksanaan, setTempatPelaksanaan] = useState('');
-  
-  const [namaKetuaRayon, setNamaKetuaRayon] = useState('');
-  
-  const [stempelUrl, setStempelUrl] = useState('');
-  const [fileStempel, setFileStempel] = useState<File | null>(null);
-  const [scanTtdRayonUrl, setScanTtdRayonUrl] = useState('');
-  const [fileTtdRayon, setFileTtdRayon] = useState<File | null>(null);
-  
-  const [isSavingSetting, setIsSavingSetting] = useState(false);
-  const [fileExcel, setFileExcel] = useState<File | null>(null);
-  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
-
-  const [listKaderSertifikat, setListKaderSertifikat] = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [modalEditOpen, setModalEditOpen] = useState(false);
-  const [selectedKaderEdit, setSelectedKaderEdit] = useState<any>(null);
-
-  useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        const qRole = query(collection(db, "users"), where("email", "==", user.email));
-        onSnapshot(qRole, (snapRole: any) => {
-          if (!snapRole.empty) {
-            const data = snapRole.docs[0].data();
-            setAdminRayonId(data.username);
-            setNamaRayonAsli(data.nama || data.username);
-          }
-        });
-      }
-    });
-    return () => unsubscribeAuth();
-  }, []);
-
-  useEffect(() => {
-    const qMaster = query(
-      collection(db, "master_template_sertifikat"),
-      where("jenjang", "==", formJenjang),
-      where("angkatan", "==", formAngkatan)
-    );
-    const unsubMaster = onSnapshot(qMaster, (snapshot) => {
-      if (!snapshot.empty) {
-        const masterData = snapshot.docs[0].data();
-        setMasterTemplate(masterData);
-        setOrientasi(masterData.orientasi || 'portrait');
-      } else {
-        setMasterTemplate(null);
-      }
-    });
-    return () => unsubMaster();
-  }, [formJenjang, formAngkatan]);
-
-  useEffect(() => {
-    if (!adminRayonId) return;
-    const docId = `${adminRayonId}_${formJenjang}_${formAngkatan}`;
-    const unsub = onSnapshot(doc(db, "pengaturan_sertifikat", docId), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.orientasi) setOrientasi(data.orientasi);
-        setMasaKhidmat(data.masaKhidmat || '2024-2025');
-        setTempatDitetapkan(data.tempatDitetapkan || 'Kota Malang');
-        setTanggalMasehi(data.tanggalMasehi || '');
-        setTanggalHijriyah(data.tanggalHijriyah || '');
-        setTanggalPelaksanaan(data.tanggalPelaksanaan || '');
-        setTempatPelaksanaan(data.tempatPelaksanaan || '');
-        setNamaKetuaRayon(data.namaKetuaRayon || '');
-        setStempelUrl(data.stempelUrl || '');
-        setScanTtdRayonUrl(data.scanTtdRayonUrl || '');
-      } else {
-        setMasaKhidmat('2024-2025');
-        setTempatDitetapkan('Kota Malang');
-        setTanggalMasehi(''); setTanggalHijriyah('');
-        setTanggalPelaksanaan(''); setTempatPelaksanaan('');
-        setNamaKetuaRayon(''); setStempelUrl(''); setScanTtdRayonUrl('');
-      }
-    });
-    return () => unsub();
-  }, [adminRayonId, formJenjang, formAngkatan]);
-
-  useEffect(() => {
-    if (!adminRayonId) return;
-    const qKaderCert = query(
-      collection(db, "kader_sertifikat"),
-      where("id_rayon", "==", adminRayonId),
-      where("jenjang", "==", formJenjang),
-      where("angkatan", "==", formAngkatan)
-    );
-    const unsubKader = onSnapshot(qKaderCert, (snapshot) => {
-      const dataList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setListKaderSertifikat(dataList);
-    });
-    return () => unsubKader();
-  }, [adminRayonId, formJenjang, formAngkatan]);
-
-  const uploadToCloudinary = async (file: File) => {
-    const formData = new FormData();
-    formData.append("file", file); formData.append("upload_preset", "siakad_upload"); 
-    const res = await fetch(`https://api.cloudinary.com/v1_1/dcmdaghbq/image/upload`, { method: "POST", body: formData });
-    const data = await res.json();
-    if (!data.secure_url) throw new Error("Gagal upload");
-    return data.secure_url.replace("http://", "https://");
-  };
-
-  const handleSimpanPengaturan = async () => {
-    setIsSavingSetting(true);
-    try {
-      let finalStempelUrl = stempelUrl;
-      if (fileStempel) finalStempelUrl = await uploadToCloudinary(fileStempel);
-
-      let finalTtdRayonUrl = scanTtdRayonUrl;
-      if (fileTtdRayon) finalTtdRayonUrl = await uploadToCloudinary(fileTtdRayon);
-      
-      const docId = `${adminRayonId}_${formJenjang}_${formAngkatan}`;
-      await setDoc(doc(db, "pengaturan_sertifikat", docId), {
-        orientasi, masaKhidmat, tempatDitetapkan, tanggalMasehi, tanggalHijriyah, 
-        tanggalPelaksanaan, tempatPelaksanaan, namaKetuaRayon, 
-        stempelUrl: finalStempelUrl, 
-        scanTtdRayonUrl: finalTtdRayonUrl,
-        updatedAt: Date.now()
-      }, { merge: true });
-      
-      alert("Pengaturan Data Sertifikat Rayon berhasil disimpan!");
-      setFileStempel(null);
-      setFileTtdRayon(null);
-    } catch (error) { alert("Gagal menyimpan pengaturan."); } finally { setIsSavingSetting(false); }
-  };
-
-  const handleUploadExcelData = async () => {
-    if (!fileExcel) return alert("Pilih file Excel terlebih dahulu!");
-    setIsUploadingExcel(true);
-    
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const json: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-
-        const batch = writeBatch(db);
-        let count = 0;
-
-        for (const row of json) {
-          if (!row.NIM && !row.Nama) continue;
-          const nimKader = row.NIM ? row.NIM.toString() : '';
-          const certDocId = `${adminRayonId}_${nimKader}_${formJenjang}_${formAngkatan}`;
-          const docRef = doc(db, "kader_sertifikat", certDocId);
-
-          batch.set(docRef, {
-            id_rayon: adminRayonId,
-            jenjang: formJenjang,
-            angkatan: formAngkatan,
-            nama: row.Nama || '',
-            nim: nimKader,
-            nik: row.NIK ? row.NIK.toString() : '',
-            ttl: row['Tempat, Tanggal Lahir'] || '',
-            jurusan: row.Jurusan || '',
-            pt: row['Perguruan Tinggi'] || '',
-            nomor_sertifikat: row['Nomor Sertifikat'] || '',
-            nia: row.NIA ? row.NIA.toString() : '',
-            updatedAt: Date.now()
-          }, { merge: true });
-          count++;
-        }
-
-        await batch.commit();
-        alert(`Berhasil mengimpor data sertifikat untuk ${count} kader pada jenjang ${formJenjang}!`);
-        setFileExcel(null);
-      } catch (error) { 
-        console.error(error);
-        alert("Gagal memproses file Excel."); 
-      } finally { 
-        setIsUploadingExcel(false); 
-      }
-    };
-    reader.readAsBinaryString(fileExcel);
-  };
-
-  const handleSimpanEditKader = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedKaderEdit) return;
-    try {
-      const docRef = doc(db, "kader_sertifikat", selectedKaderEdit.id);
-      await setDoc(docRef, { ...selectedKaderEdit, updatedAt: Date.now() }, { merge: true });
-      alert("Data kader berhasil diperbarui!");
-      setModalEditOpen(false);
-      setSelectedKaderEdit(null);
-    } catch (err) {
-      alert("Gagal memperbarui data kader.");
-    }
-  };
-
-  const handleHapusKader = async (id: string) => {
-    if (!confirm("Yakin ingin menghapus data kader ini dari daftar penerbitan sertifikat?")) return;
-    try {
-      await deleteDoc(doc(db, "kader_sertifikat", id));
-      alert("Data berhasil dihapus.");
-    } catch (err) {
-      alert("Gagal menghapus data.");
-    }
-  };
-
-  const filteredKader = listKaderSertifikat.filter(k => 
-    k.nama?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    k.nim?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    k.nomor_sertifikat?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const isPortrait = orientasi === 'portrait';
-  const aspectRatio = isPortrait ? '1 / 1.414' : '1.414 / 1';
-
-  let namaKegiatanFull = formJenjang === 'PKD' ? 'Pelatihan Kader Dasar (PKD)' : (formJenjang === 'SIG' ? 'Sekolah Islam Gender (SIG)' : 'Masa Penerimaan Anggota Baru (MAPABA)');
-  let statusKader = formJenjang === 'PKD' ? 'KADER MUJAHID PMII' : 'ANGGOTA PMII';
-
-  const cleanRayonName = namaRayonAsli ? namaRayonAsli.replace(/^(PR\.?\s*PMII|Pengurus\s*Rayon\s*PMII)\s*/i, '') : adminRayonId;
-  const namaRayonLengkap = `Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia ${cleanRayonName}`;
-
-  const defaultPosisi = {
-    nomor: { top: 30, left: 50, width: 40, fontSize: 16, isBold: true, isItalic: false, align: 'center' }, 
-    teksPembuka: { top: 32, left: 10, width: 80, fontSize: 14, isBold: false, isItalic: false, align: 'justify' },
-    nama: { top: 38.4, left: 22, width: 60, fontSize: 16, isBold: true, isItalic: false, align: 'left' }, 
-    nik: { top: 41.2, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' },
-    ttl: { top: 44, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' }, 
-    jurusan: { top: 47, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' }, 
-    pt: { top: 49.8, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' },
-    teksKelulusan: { top: 54.5, left: 10, width: 80, fontSize: 14, isBold: false, isItalic: false, align: 'justify' },
-    penetapan: { top: 72, left: 60, width: 35, fontSize: 14, isBold: false, isItalic: false, align: 'left' },
-    ttdCabang: { top: 88, left: 20, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
-    ttdKomisariat: { top: 88, left: 50, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
-    ttdRayon: { top: 88, left: 80, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
-    stempelCabang: { top: 78, left: 15, width: 15, fontSize: 12 },
-    stempelKomisariat: { top: 78, left: 45, width: 15, fontSize: 12 },
-    stempelRayon: { top: 78, left: 75, width: 15, fontSize: 12 },
-    scanTtdCabang: { top: 82, left: 20, width: 18, fontSize: 12 },
-    scanTtdKomisariat: { top: 82, left: 50, width: 18, fontSize: 12 },
-    scanTtdRayon: { top: 82, left: 80, width: 18, fontSize: 12 }
-  };
-
-  const rawMasterPosisi = masterTemplate?.posisi || defaultPosisi;
-  const ttdRayonPos = rawMasterPosisi.ttdRayon || defaultPosisi.ttdRayon;
-
-  const posisiMaster = {
-    ...defaultPosisi,
-    ...rawMasterPosisi,
-    stempelRayon: rawMasterPosisi.stempelRayon || { left: ttdRayonPos.left - 5, top: ttdRayonPos.top - 10, width: 15 },
-    scanTtdRayon: rawMasterPosisi.scanTtdRayon || { left: ttdRayonPos.left, top: ttdRayonPos.top - 6, width: 18 }
-  };
-
-  const getRayonDataTeks = (key: string) => {
-    if (key === 'nomor') return `10/${formJenjang}-X/${formAngkatan}`;
-    if (key === 'teksPembuka') return `Yang bertanda tangan di bawah ini ${namaRayonLengkap} Komisariat Sunan Ampel Malang masa khidmat ${masaKhidmat || '...'} memberikan status <b>${statusKader}</b> kepada :`;
-    if (key === 'nama') return 'AHMAD ALBERT AFRILSYAH';
-    if (key === 'nik') return '35730123456789';
-    if (key === 'ttl') return 'MALANG, 10 AGUSTUS 2002';
-    if (key === 'jurusan') return 'TEKNIK INFORMATIKA';
-    if (key === 'pt') return 'UNIVERSITAS ISLAM NEGERI MAULANA MALIK IBRAHIM MALANG';
-    if (key === 'teksKelulusan') return `Bahwa nama yang disebutkan diatas telah Lulus ${namaKegiatanFull} pada tanggal ${tanggalPelaksanaan || '...'} yang dilaksanakan di ${tempatPelaksanaan || '...'} oleh ${namaRayonLengkap}.`;
-    if (key === 'penetapan') return `<div>${tempatDitetapkan || '...'}</div><div style="border-bottom: 1.2px solid #000; padding-bottom: 1px; margin-bottom: 1px">${tanggalMasehi || '...'}</div><div>${tanggalHijriyah || '...'}</div>`;
-    
-    if (key === 'ttdCabang') return `<span style="font-weight: bold;">${masterTemplate?.namaKetuaCabang || 'NAMA KETUA PC'}</span><br/><span style="font-weight: normal;">Ketua PC. PMII Kota Malang</span>`;
-    if (key === 'ttdKomisariat') return `<span style="font-weight: bold;">${masterTemplate?.namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel Malang</span>`;
-    if (key === 'ttdRayon') return `<span style="font-weight: bold;">${namaKetuaRayon || 'NAMA KETUA RAYON'}</span><br/><span style="font-weight: normal;">Ketua ${namaRayonAsli || 'Rayon PMII'}</span>`;
-    return '';
-  };
-
-  return (
-    <>
-      <style>{`
-        :root { --text-main: #111827; --border-color: #e5e7eb; --bg-card: #ffffff; }
-        .pengaturan-sertifikat-wrapper { display: flex; flex-direction: column; gap: 16px; width: 100%; box-sizing: border-box; padding: 10px 10px 90px 10px; max-width: 1400px; margin: 0 auto; overflow-x: hidden; }
-        .card-panel { background: var(--bg-card); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 2px 10px rgba(0,0,0,0.02); box-sizing: border-box; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
-        .form-group { display: flex; flex-direction: column; gap: 6px; }
-        .form-label { font-size: 0.75rem; font-weight: bold; color: #555; text-transform: uppercase; }
-        .form-input { padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; color: #333; outline: none; background-color: #fafafa; width: 100%; box-sizing: border-box; }
-        .form-input:focus { border-color: #0000af; background-color: #fff; }
-        .section-title { font-size: 0.95rem; color: #0d1b2a; margin: 0 0 12px 0; font-weight: bold; padding-bottom: 8px; border-bottom: 2px solid #f0f4f8; }
-        .tab-btn { padding: 8px 14px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer; border: 1px solid #ddd; background: #f8f9fa; color: #555; transition: all 0.2s; white-space: nowrap; }
-        .tab-btn.active { background: #0000af; color: #fff; border-color: #0000af; }
-        .data-table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
-        .data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 650px; }
-        .data-table th, .data-table td { border-bottom: 1px solid #e2e8f0; padding: 10px 12px; text-align: left; }
-        .data-table th { background: #f8fafc; color: #334155; font-weight: bold; }
-        .action-btn { padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; cursor: pointer; border: none; white-space: nowrap; }
-        
-        @media (max-width: 768px) {
-          body, html { overflow-x: hidden; }
-          .pengaturan-sertifikat-wrapper { padding: 6px 6px 90px 6px; gap: 12px; width: 100%; max-width: 100vw; }
-          .card-panel { padding: 12px; border-radius: 8px; width: 100%; }
-          .form-grid { grid-template-columns: 1fr; gap: 10px; }
-        }
-      `}</style>
-
-      <div className="pengaturan-sertifikat-wrapper">
-        
-        <div className="card-panel" style={{ padding: '12px 16px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#0d1b2a', marginRight: '6px' }}>📁 Menu:</span>
-          <button className={`tab-btn ${activeTab === 'pengaturan' ? 'active' : ''}`} onClick={() => setActiveTab('pengaturan')}>
-            Pengaturan
-          </button>
-          <button className={`tab-btn ${activeTab === 'database' ? 'active' : ''}`} onClick={() => setActiveTab('database')}>
-            Data Kader ({listKaderSertifikat.length})
-          </button>
-        </div>
-
-        <div className="card-panel" style={{ padding: '12px 16px', backgroundColor: '#fdfdfe' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-            <div className="form-group">
-              <label className="form-label">Jenjang Kaderisasi Aktif</label>
-              <select value={formJenjang} onChange={e => setFormJenjang(e.target.value)} className="form-input" style={{ fontWeight: 'bold', color: '#0000af' }}>
-                <option value="MAPABA">MAPABA</option>
-                <option value="PKD">PKD</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Tahun Angkatan</label>
-              <input type="number" value={formAngkatan} onChange={e => setFormAngkatan(e.target.value)} className="form-input" style={{ fontWeight: 'bold' }} />
-            </div>
-          </div>
-        </div>
-
-        {activeTab === 'pengaturan' ? (
-          <>
-            <div className="card-panel">
-              <h3 className="section-title">📥 Upload Data Kelengkapan (Excel) - {formJenjang} ({formAngkatan})</h3>
-              <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: '12px', lineHeight: '1.4' }}>Header kolom wajib: <b>Nama, NIM, NIK, Tempat, Tanggal Lahir, Jurusan, Perguruan Tinggi, Nomor Sertifikat, NIA</b>.</p>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input type="file" accept=".xlsx, .xls" onChange={(e) => setFileExcel(e.target.files ? e.target.files[0] : null)} style={{ padding: '6px', border: '1px dashed #bbb', borderRadius: '8px', backgroundColor: '#fafafa', fontSize: '0.8rem', flex: '1 1 220px', width: '100%', boxSizing: 'border-box' }} />
-                <button onClick={handleUploadExcelData} disabled={isUploadingExcel} style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: isUploadingExcel ? 'not-allowed' : 'pointer', fontSize: '0.82rem', width: '100%', boxSizing: 'border-box' }}>
-                  {isUploadingExcel ? 'Memproses...' : '📤 Proses & Simpan'}
-                </button>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-              
-              <div className="card-panel" style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column' }}>
+                )}
                 
-                <h3 className="section-title">⚙️ Konfigurasi Teks & Kegiatan</h3>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Orientasi Kertas A4</label>
-                    <select value={orientasi} onChange={e => setOrientasi(e.target.value)} disabled className="form-input" style={{ backgroundColor: '#eee', cursor: 'not-allowed' }}>
-                      <option value="portrait">A4 Portrait (Berdiri)</option><option value="landscape">A4 Landscape (Mendatar)</option>
-                    </select>
-                    <span style={{ fontSize: '0.68rem', color: '#888' }}>*Diatur oleh Komisariat</span>
+                {/* Stempel Drag */}
+                {(fileStempelCabang ? URL.createObjectURL(fileStempelCabang) : stempelCabangUrl) && (posisi as any).stempelCabang && (
+                  <div onMouseDown={e => handleMouseDown(e, 'stempelCabang')} style={{ position: 'absolute', zIndex: 7, top: `${(posisi as any).stempelCabang.top}%`, left: `${(posisi as any).stempelCabang.left}%`, width: `${(posisi as any).stempelCabang.width}%`, cursor: 'grab', padding: '2px 4px' }}>
+                    <img src={fileStempelCabang ? URL.createObjectURL(fileStempelCabang) : stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none', opacity: 0.85 }} />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Masa Khidmat Rayon</label>
-                    <input type="text" placeholder="Misal: 2024-2025" value={masaKhidmat} onChange={e => setMasaKhidmat(e.target.value)} className="form-input" />
+                )}
+                {(fileStempelKomisariat ? URL.createObjectURL(fileStempelKomisariat) : stempelKomisariatUrl) && (posisi as any).stempelKomisariat && (
+                  <div onMouseDown={e => handleMouseDown(e, 'stempelKomisariat')} style={{ position: 'absolute', zIndex: 7, top: `${(posisi as any).stempelKomisariat.top}%`, left: `${(posisi as any).stempelKomisariat.left}%`, width: `${(posisi as any).stempelKomisariat.width}%`, cursor: 'grab', padding: '2px 4px' }}>
+                    <img src={fileStempelKomisariat ? URL.createObjectURL(fileStempelKomisariat) : stempelKomisariatUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none', opacity: 0.85 }} />
                   </div>
-                </div>
+                )}
+                {(posisi as any).stempelRayon && (
+                  <div onMouseDown={e => handleMouseDown(e, 'stempelRayon')} style={{ position: 'absolute', zIndex: 7, top: `${(posisi as any).stempelRayon.top}%`, left: `${(posisi as any).stempelRayon.left}%`, width: `${(posisi as any).stempelRayon.width}%`, cursor: 'grab', padding: '2px 4px', textAlign: 'center', fontSize: '0.65rem', color: '#2980b9' }}>
+                    [Stempel Rayon]
+                  </div>
+                )}
 
-                <h3 className="section-title">📅 Data Pelaksanaan & Penetapan</h3>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Tanggal Pelaksanaan Kegiatan</label>
-                    <input type="text" placeholder="Misal: 16 - 17 Nov 2024" value={tanggalPelaksanaan} onChange={e => setTanggalPelaksanaan(e.target.value)} className="form-input" />
+                {/* Scan TTD Drag */}
+                {(fileScanTtdCabang ? URL.createObjectURL(fileScanTtdCabang) : scanTtdCabangUrl) && (posisi as any).scanTtdCabang && (
+                  <div onMouseDown={e => handleMouseDown(e, 'scanTtdCabang')} style={{ position: 'absolute', zIndex: 6, top: `${(posisi as any).scanTtdCabang.top}%`, left: `${(posisi as any).scanTtdCabang.left}%`, width: `${(posisi as any).scanTtdCabang.width}%`, cursor: 'grab', padding: '2px 4px' }}>
+                    <img src={fileScanTtdCabang ? URL.createObjectURL(fileScanTtdCabang) : scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Tempat Pelaksanaan Kegiatan</label>
-                    <input type="text" placeholder="Misal: SMP Ma'arif 3 Batu" value={tempatPelaksanaan} onChange={e => setTempatPelaksanaan(e.target.value)} className="form-input" />
+                )}
+                {(fileScanTtdKomisariat ? URL.createObjectURL(fileScanTtdKomisariat) : scanTtdKomisariatUrl) && (posisi as any).scanTtdKomisariat && (
+                  <div onMouseDown={e => handleMouseDown(e, 'scanTtdKomisariat')} style={{ position: 'absolute', zIndex: 6, top: `${(posisi as any).scanTtdKomisariat.top}%`, left: `${(posisi as any).scanTtdKomisariat.left}%`, width: `${(posisi as any).scanTtdKomisariat.width}%`, cursor: 'grab', padding: '2px 4px' }}>
+                    <img src={fileScanTtdKomisariat ? URL.createObjectURL(fileScanTtdKomisariat) : scanTtdKomisariatUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Tempat Ditetapkan</label>
-                    <input type="text" placeholder="Misal: Kota Malang" value={tempatDitetapkan} onChange={e => setTempatDitetapkan(e.target.value)} className="form-input" />
+                )}
+                {(posisi as any).scanTtdRayon && (
+                  <div onMouseDown={e => handleMouseDown(e, 'scanTtdRayon')} style={{ position: 'absolute', zIndex: 6, top: `${(posisi as any).scanTtdRayon.top}%`, left: `${(posisi as any).scanTtdRayon.left}%`, width: `${(posisi as any).scanTtdRayon.width}%`, cursor: 'grab', padding: '2px 4px', textAlign: 'center', fontSize: '0.65rem', color: '#e67e22' }}>
+                    [Scan TTD Rayon]
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Tgl Ditetapkan (Masehi)</label>
-                    <input type="text" placeholder="Misal: 12 Desember 2024 M" value={tanggalMasehi} onChange={e => setTanggalMasehi(e.target.value)} className="form-input" />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Tgl Ditetapkan (Hijriyah)</label>
-                    <input type="text" placeholder="Misal: 10 Jumadil Akhir 1446 H" value={tanggalHijriyah} onChange={e => setTanggalHijriyah(e.target.value)} className="form-input" />
-                  </div>
-                </div>
+                )}
 
-                <h3 className="section-title">✍️ Pengesahan Rayon</h3>
-                <div className="form-grid">
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">Nama Ketua Rayon (Kapital)</label>
-                    <input type="text" placeholder="Misal: ALFIAN FAHMI" value={namaKetuaRayon} onChange={e => setNamaKetuaRayon(e.target.value)} className="form-input" />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Upload Stempel Rayon (PNG)</label>
-                    <input type="file" accept="image/png" onChange={(e) => setFileStempel(e.target.files ? e.target.files[0] : null)} style={{ padding: '6px', border: '1px dashed #3498db', borderRadius: '8px', fontSize: '0.75rem', backgroundColor: '#f4f9fd', width: '100%', boxSizing: 'border-box' }} />
-                    {(stempelUrl || fileStempel) && (
-                      <div style={{ marginTop: '5px', padding: '5px', backgroundColor: '#eee', borderRadius: '6px', width: 'fit-content' }}>
-                        <img src={fileStempel ? URL.createObjectURL(fileStempel) : stempelUrl} alt="Stempel" style={{ height: '35px', objectFit: 'contain' }} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Upload Scan TTD Ketua Rayon (PNG)</label>
-                    <input type="file" accept="image/png" onChange={(e) => setFileTtdRayon(e.target.files ? e.target.files[0] : null)} style={{ padding: '6px', border: '1px dashed #3498db', borderRadius: '8px', fontSize: '0.75rem', backgroundColor: '#f4f9fd', width: '100%', boxSizing: 'border-box' }} />
-                    {(scanTtdRayonUrl || fileTtdRayon) && (
-                      <div style={{ marginTop: '5px', padding: '5px', backgroundColor: '#eee', borderRadius: '6px', width: 'fit-content' }}>
-                        <img src={fileTtdRayon ? URL.createObjectURL(fileTtdRayon) : scanTtdRayonUrl} alt="TTD Rayon" style={{ height: '35px', objectFit: 'contain' }} />
-                      </div>
-                    )}
-                  </div>
-                </div>
+                {/* Teks Dinamis Master dengan Arial Font */}
+                {Object.keys(posisi).map(key => {
+                  if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) return null;
+                  const p = (posisi as any)[key];
+                  if (!p) return null;
+                  const isCenter = key === 'nomor';
 
-                <button onClick={handleSimpanPengaturan} disabled={isSavingSetting} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: isSavingSetting ? 'not-allowed' : 'pointer', fontSize: '0.85rem', marginTop: '10px', width: '100%', boxSizing: 'border-box' }}>
-                  {isSavingSetting ? 'Menyimpan...' : '💾 Simpan Data Sertifikat'}
-                </button>
-              </div>
-
-              {/* LIVE PREVIEW RAYON - SINKRON DENGAN KADER MENGGUNAKAN CONTAINER QUERY CQW */}
-              <div className="card-panel" style={{ flex: '1 1 320px', backgroundColor: '#ecf0f1', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <h3 className="section-title" style={{ width: '100%', borderBottom: 'none', marginBottom: '5px', textAlign: 'center' }}>👀 Live Preview Sertifikat</h3>
-                <p style={{ fontSize: '0.75rem', color: '#777', marginBottom: '12px', textAlign: 'center' }}>Tata letak ditarik otomatis dari Master Komisariat.</p>
-                
-                <div style={{ 
-                  position: 'relative', width: '100%', maxWidth: '550px', 
-                  aspectRatio: aspectRatio,
-                  backgroundColor: 'white', border: '2px solid #ccc', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', overflow: 'hidden',
-                  containerType: 'inline-size'
-                }}>
+                  let renderContent = '';
+                  if (key === 'nomor') renderContent = `10/${formJenjang}-X/${formAngkatan}`;
+                  else if (key === 'teksPembuka') renderContent = `Yang bertanda tangan di bawah ini Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia "KAWAH" Chondrodimuko Komisariat Sunan Ampel Malang masa khidmat 2024-2025 memberikan status <b>ANGGOTA/KADER MUJAHID PMII</b> kepada :`;
+                  else if (key === 'nama') renderContent = 'Ahmad Albert Afrilsyah';
+                  else if (key === 'nik') renderContent = '35730123456789';
+                  else if (key === 'ttl') renderContent = 'Malang, 10 Agustus 2002';
+                  else if (key === 'jurusan') renderContent = 'Teknik Informatika';
+                  else if (key === 'pt') renderContent = 'Universitas Islam Negeri Maulana Malik Ibrahim Malang';
+                  else if (key === 'teksKelulusan') renderContent = `Bahwa nama yang disebutkan diatas telah Lulus ${formJenjang === 'PKD' ? 'Pelatihan Kader Dasar (PKD)' : 'Masa Penerimaan Anggota Baru (MAPABA)'} pada tanggal 16 - 20 Oktober 2026 yang dilaksanakan di MTs Ma'arif NU Kota Malang oleh Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia "KAWAH" Chondrodimuko.`;
+                  else if (key === 'penetapan') renderContent = `<div>Kota Malang</div><div style="border-bottom: 1.2px solid #000; padding-bottom: 1px; margin-bottom: 1px">12 Desember 2026 M</div><div>12 Jumadil Awal 1449 H</div>`;
                   
-                  {masterTemplate?.templateUrl ? (
-                    <img src={masterTemplate.templateUrl} alt="Blanko Komisariat" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1, pointerEvents: 'none' }} />
-                  ) : (
-                    <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '0.8rem', zIndex: 1, padding: '15px', textAlign: 'center' }}>
-                      ⚠️ Blanko kosong untuk {formJenjang} ({formAngkatan}) belum diatur oleh Komisariat.
-                    </div>
-                  )}
+                  else if (key === 'ttdCabang') renderContent = `<span style="font-weight: bold;">${namaKetuaCabang || 'NAMA KETUA PC'}</span><br/><span style="font-weight: normal;">Ketua PC. PMII Kota Malang</span>`;
+                  else if (key === 'ttdKomisariat') renderContent = `<span style="font-weight: bold;">${namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel Malang</span>`;
+                  else if (key === 'ttdRayon') renderContent = `<span style="font-weight: bold;">NAMA KETUA RAYON</span><br/><span style="font-weight: normal;">Ketua Rayon PMII</span>`;
 
-                  {/* Stempel Cabang */}
-                  {masterTemplate?.stempelCabangUrl && (posisiMaster as any).stempelCabang && (
-                    <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelCabang.top}%`, left: `${(posisiMaster as any).stempelCabang.left}%`, width: `${(posisiMaster as any).stempelCabang.width}%`, padding: '2px 4px' }}>
-                      <img src={masterTemplate.stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+                  return (
+                    <div key={key} onMouseDown={e => handleMouseDown(e, key)} style={{ 
+                      position: 'absolute', zIndex: 2, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`,
+                      textAlign: p.align || (isCenter ? 'center' : 'left'), transform: isCenter ? 'translate(-50%, 0)' : 'none', cursor: 'grab',
+                      fontFamily: '"Arial", Helvetica, sans-serif', fontSize: `${((p.fontSize || 14) / 650) * canvasWidth}px`, 
+                      fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
+                      color: '#000', lineHeight: '1.3', border: '1px dashed rgba(255,0,0,0.5)', background: 'rgba(255,255,255,0.6)', padding: '2px 4px', margin: 0
+                    }}>
+                      <div dangerouslySetInnerHTML={{ __html: renderContent }} />
                     </div>
-                  )}
-                  {/* Stempel Komisariat */}
-                  {masterTemplate?.stempelKomisariatUrl && (posisiMaster as any).stempelKomisariat && (
-                    <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelKomisariat.top}%`, left: `${(posisiMaster as any).stempelKomisariat.left}%`, width: `${(posisiMaster as any).stempelKomisariat.width}%`, padding: '2px 4px' }}>
-                      <img src={masterTemplate.stempelKomisariatUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
-                    </div>
-                  )}
-                  {/* Stempel Rayon */}
-                  {(stempelUrl || masterTemplate?.posisi?.stempelRayon) && (posisiMaster as any).stempelRayon && (
-                    <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelRayon.top}%`, left: `${(posisiMaster as any).stempelRayon.left}%`, width: `${(posisiMaster as any).stempelRayon.width}%`, padding: '2px 4px' }}>
-                      {stempelUrl ? (
-                        <img src={stempelUrl} alt="Stempel Rayon" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
-                      ) : (
-                        <div style={{ textAlign: 'center', fontSize: '0.65rem', color: '#2980b9' }}>[Stempel Rayon]</div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Scan TTD Cabang */}
-                  {masterTemplate?.scanTtdCabangUrl && (posisiMaster as any).scanTtdCabang && (
-                    <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdCabang.top}%`, left: `${(posisiMaster as any).scanTtdCabang.left}%`, width: `${(posisiMaster as any).scanTtdCabang.width}%`, padding: '2px 4px' }}>
-                      <img src={masterTemplate.scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                    </div>
-                  )}
-                  {/* Scan TTD Komisariat */}
-                  {masterTemplate?.scanTtdKomisariatUrl && (posisiMaster as any).scanTtdKomisariat && (
-                    <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdKomisariat.top}%`, left: `${(posisiMaster as any).scanTtdKomisariat.left}%`, width: `${(posisiMaster as any).scanTtdKomisariat.width}%`, padding: '2px 4px' }}>
-                      <img src={masterTemplate.scanTtdKomisariatUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                    </div>
-                  )}
-                  {/* Scan TTD Rayon */}
-                  {(scanTtdRayonUrl || masterTemplate?.posisi?.scanTtdRayon) && (posisiMaster as any).scanTtdRayon && (
-                    <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdRayon.top}%`, left: `${(posisiMaster as any).scanTtdRayon.left}%`, width: `${(posisiMaster as any).scanTtdRayon.width}%`, padding: '2px 4px' }}>
-                      {scanTtdRayonUrl ? (
-                        <img src={scanTtdRayonUrl} alt="Scan TTD Rayon" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-                      ) : (
-                        <div style={{ textAlign: 'center', fontSize: '0.65rem', color: '#e67e22' }}>[Scan TTD Rayon]</div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Render Teks Dinamis dengan Skala CQW */}
-                  {Object.keys(posisiMaster).map(key => {
-                    if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) return null;
-                    const p = (posisiMaster as any)[key];
-                    if (!p) return null;
-                    const isCenter = key === 'nomor';
-
-                    return (
-                      <div key={key} style={{ 
-                        position: 'absolute', zIndex: 2, 
-                        top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`, 
-                        textAlign: p.align || (isCenter ? 'center' : 'left'), 
-                        transform: isCenter ? 'translate(-50%, 0)' : 'none', 
-                        fontFamily: '"Arial Narrow", sans-serif', 
-                        fontSize: `${(p.fontSize || 14) / 6.5}cqw`, 
-                        fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
-                        color: '#000', lineHeight: '1.3',
-                        padding: '2px 4px', border: '1px solid transparent', margin: 0
-                      }}>
-                        <div dangerouslySetInnerHTML={{ __html: getRayonDataTeks(key) }} />
-                      </div>
-                    );
-                  })}
-
-                </div>
+                  );
+                })}
               </div>
-
-            </div>
-          </>
-        ) : (
-          <div className="card-panel">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
-              <h3 className="section-title" style={{ margin: 0, borderBottom: 'none' }}>
-                📋 Daftar Kader ({formJenjang} - {formAngkatan})
-              </h3>
-              <input 
-                type="text" 
-                placeholder="Cari Nama / NIM / No Sertifikat..." 
-                value={searchTerm} 
-                onChange={e => setSearchTerm(e.target.value)} 
-                className="form-input" 
-                style={{ width: '100%', maxWidth: '260px', padding: '8px 12px' }} 
-              />
-            </div>
-
-            <div className="data-table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>No</th>
-                    <th>Nama Kader</th>
-                    <th>NIM / NIA</th>
-                    <th>No. Sertifikat</th>
-                    <th>NIK</th>
-                    <th>Jurusan / PT</th>
-                    <th style={{ textAlign: 'center' }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredKader.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', color: '#777', padding: '20px' }}>
-                        Belum ada data kader untuk jenjang <b>{formJenjang}</b> angkatan <b>{formAngkatan}</b>.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredKader.map((k, idx) => (
-                      <tr key={k.id}>
-                        <td>{idx + 1}</td>
-                        <td style={{ fontWeight: 'bold' }}>{k.nama}</td>
-                        <td>{k.nim} / {k.nia || '-'}</td>
-                        <td><span style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{k.nomor_sertifikat || 'Belum Ada'}</span></td>
-                        <td>{k.nik}</td>
-                        <td>{k.jurusan} <br/><span style={{ color: '#666', fontSize: '0.75rem' }}>{k.pt}</span></td>
-                        <td style={{ textAlign: 'center', display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                          <button onClick={() => { setSelectedKaderEdit(k); setModalEditOpen(true); }} className="action-btn" style={{ background: '#f59e0b', color: '#fff' }}>
-                            ✏️ Edit
-                          </button>
-                          <button onClick={() => handleHapusKader(k.id)} className="action-btn" style={{ background: '#ef4444', color: '#fff' }}>
-                            🗑️ Hapus
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
             </div>
           </div>
-        )}
 
-      </div>
-
-      {modalEditOpen && selectedKaderEdit && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '15px', boxSizing: 'border-box' }}>
-          <div style={{ background: '#fff', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '1rem', color: '#0d1b2a', borderBottom: '2px solid #f0f4f8', paddingBottom: '8px' }}>
-              ✏️ Edit Kelengkapan Sertifikat Kader
-            </h3>
-            
-            <form onSubmit={handleSimpanEditKader} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div className="form-group">
-                <label className="form-label">Nama Kader</label>
-                <input type="text" value={selectedKaderEdit.nama || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nama: e.target.value})} className="form-input" required />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <div className="form-group">
-                  <label className="form-label">NIM</label>
-                  <input type="text" value={selectedKaderEdit.nim || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nim: e.target.value})} className="form-input" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">NIA</label>
-                  <input type="text" value={selectedKaderEdit.nia || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nia: e.target.value})} className="form-input" />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Nomor Sertifikat</label>
-                <input type="text" value={selectedKaderEdit.nomor_sertifikat || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nomor_sertifikat: e.target.value})} className="form-input" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">NIK</label>
-                <input type="text" value={selectedKaderEdit.nik || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nik: e.target.value})} className="form-input" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tempat, Tanggal Lahir</label>
-                <input type="text" value={selectedKaderEdit.ttl || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, ttl: e.target.value})} className="form-input" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Jurusan</label>
-                <input type="text" value={selectedKaderEdit.jurusan || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, jurusan: e.target.value})} className="form-input" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Perguruan Tinggi</label>
-                <input type="text" value={selectedKaderEdit.pt || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, pt: e.target.value})} className="form-input" />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
-                <button type="button" onClick={() => { setModalEditOpen(false); setSelectedKaderEdit(null); }} style={{ padding: '8px 14px', borderRadius: '6px', background: '#cbd5e1', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
-                  Batal
-                </button>
-                <button type="submit" style={{ padding: '8px 16px', borderRadius: '6px', background: '#0000af', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>
-                  Simpan
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
-      )}
+      </div>
     </>
-  );
-}
-</file>
-
-<file path="app/layout.tsx">
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "@/app/globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: {
-    default: "SIAKAD PMII Sunan Ampel Malang",
-    template: "%s | SIAKAD PMII"
-  },
-  description: "Sistem Informasi Akademik dan Kaderisasi (SIAKAD) PK. PMII Sunan Ampel Malang. Platform digitalisasi untuk manajemen kader, raport, kurikulum, dan administrasi persuratan.",
-  keywords: [
-    "PMII", 
-    "SIAKAD PMII", 
-    "Kaderisasi PMII", 
-    "PK PMII Sunan Ampel Malang", 
-    "PMII UIN Malang",
-    "Aplikasi Kaderisasi", 
-    "Manajemen Kader"
-  ],
-  authors: [{ name: "PK. PMII Sunan Ampel Malang" }],
-  openGraph: {
-    title: "SIAKAD PMII Sunan Ampel Malang",
-    description: "Platform digital manajemen kader PMII yang adaptif dan cakap digital untuk PK. PMII Sunan Ampel Malang.",
-    url: "https://siakad.pmii-uinmalang.or.id",
-    siteName: "SIAKAD PMII",
-    locale: "id_ID",
-    type: "website",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-  verification: {
-    google: "9WAeDKwCccLxdpW0BAlYJmDJOg-hwNzAqkiSs0PL9WI",
-  },
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="id">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
-    </html>
   );
 }
 </file>
@@ -11326,6 +10631,566 @@ export default function PintuMasukSiKader() {
 }
 </file>
 
+<file path="app/rayon/pengaturan-sertifikat/page.tsx">
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { collection, onSnapshot, doc, setDoc, query, where, writeBatch, deleteDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import * as XLSX from 'xlsx';
+
+export default function PagePengaturanSertifikatRayon() {
+  const [adminRayonId, setAdminRayonId] = useState('');
+  const [namaRayonAsli, setNamaRayonAsli] = useState('');
+  
+  const [activeTab, setActiveTab] = useState<'pengaturan' | 'database'>('pengaturan');
+
+  const [formJenjang, setFormJenjang] = useState('MAPABA');
+  const [formAngkatan, setFormAngkatan] = useState(new Date().getFullYear().toString());
+  const [orientasi, setOrientasi] = useState('portrait');
+
+  const [masterTemplate, setMasterTemplate] = useState<any>(null);
+  
+  const [masaKhidmat, setMasaKhidmat] = useState('2024-2025');
+  const [tempatDitetapkan, setTempatDitetapkan] = useState('Kota Malang');
+  const [tanggalMasehi, setTanggalMasehi] = useState('');
+  const [tanggalHijriyah, setTanggalHijriyah] = useState('');
+  const [tanggalPelaksanaan, setTanggalPelaksanaan] = useState('');
+  const [tempatPelaksanaan, setTempatPelaksanaan] = useState('');
+  
+  const [namaKetuaRayon, setNamaKetuaRayon] = useState('');
+  
+  const [stempelUrl, setStempelUrl] = useState('');
+  const [fileStempel, setFileStempel] = useState<File | null>(null);
+  const [scanTtdRayonUrl, setScanTtdRayonUrl] = useState('');
+  const [fileTtdRayon, setFileTtdRayon] = useState<File | null>(null);
+  
+  const [isSavingSetting, setIsSavingSetting] = useState(false);
+  const [fileExcel, setFileExcel] = useState<File | null>(null);
+  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
+
+  const [listKaderSertifikat, setListKaderSertifikat] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [modalEditOpen, setModalEditOpen] = useState(false);
+  const [selectedKaderEdit, setSelectedKaderEdit] = useState<any>(null);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        const qRole = query(collection(db, "users"), where("email", "==", user.email));
+        onSnapshot(qRole, (snapRole: any) => {
+          if (!snapRole.empty) {
+            const data = snapRole.docs[0].data();
+            setAdminRayonId(data.username);
+            setNamaRayonAsli(data.nama || data.username);
+          }
+        });
+      }
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  useEffect(() => {
+    const qMaster = query(
+      collection(db, "master_template_sertifikat"),
+      where("jenjang", "==", formJenjang),
+      where("angkatan", "==", formAngkatan)
+    );
+    const unsubMaster = onSnapshot(qMaster, (snapshot) => {
+      if (!snapshot.empty) {
+        const masterData = snapshot.docs[0].data();
+        setMasterTemplate(masterData);
+        setOrientasi(masterData.orientasi || 'portrait');
+      } else {
+        setMasterTemplate(null);
+      }
+    });
+    return () => unsubMaster();
+  }, [formJenjang, formAngkatan]);
+
+  useEffect(() => {
+    if (!adminRayonId) return;
+    const docId = `${adminRayonId}_${formJenjang}_${formAngkatan}`;
+    const unsub = onSnapshot(doc(db, "pengaturan_sertifikat", docId), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.orientasi) setOrientasi(data.orientasi);
+        setMasaKhidmat(data.masaKhidmat || '2024-2025');
+        setTempatDitetapkan(data.tempatDitetapkan || 'Kota Malang');
+        setTanggalMasehi(data.tanggalMasehi || '');
+        setTanggalHijriyah(data.tanggalHijriyah || '');
+        setTanggalPelaksanaan(data.tanggalPelaksanaan || '');
+        setTempatPelaksanaan(data.tempatPelaksanaan || '');
+        setNamaKetuaRayon(data.namaKetuaRayon || '');
+        setStempelUrl(data.stempelUrl || '');
+        setScanTtdRayonUrl(data.scanTtdRayonUrl || '');
+      } else {
+        setMasaKhidmat('2024-2025'); setTempatDitetapkan('Kota Malang');
+        setTanggalMasehi(''); setTanggalHijriyah('');
+        setTanggalPelaksanaan(''); setTempatPelaksanaan('');
+        setNamaKetuaRayon(''); setStempelUrl(''); setScanTtdRayonUrl('');
+      }
+    });
+    return () => unsub();
+  }, [adminRayonId, formJenjang, formAngkatan]);
+
+  useEffect(() => {
+    if (!adminRayonId) return;
+    const qKaderCert = query(
+      collection(db, "kader_sertifikat"),
+      where("id_rayon", "==", adminRayonId),
+      where("jenjang", "==", formJenjang),
+      where("angkatan", "==", formAngkatan)
+    );
+    const unsubKader = onSnapshot(qKaderCert, (snapshot) => {
+      const dataList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setListKaderSertifikat(dataList);
+    });
+    return () => unsubKader();
+  }, [adminRayonId, formJenjang, formAngkatan]);
+
+  const uploadToCloudinary = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file); formData.append("upload_preset", "siakad_upload"); 
+    const res = await fetch(`https://api.cloudinary.com/v1_1/dcmdaghbq/image/upload`, { method: "POST", body: formData });
+    const data = await res.json();
+    if (!data.secure_url) throw new Error("Gagal upload");
+    return data.secure_url.replace("http://", "https://");
+  };
+
+  const handleSimpanPengaturan = async () => {
+    setIsSavingSetting(true);
+    try {
+      let finalStempelUrl = stempelUrl;
+      if (fileStempel) finalStempelUrl = await uploadToCloudinary(fileStempel);
+
+      let finalTtdRayonUrl = scanTtdRayonUrl;
+      if (fileTtdRayon) finalTtdRayonUrl = await uploadToCloudinary(fileTtdRayon);
+      
+      const docId = `${adminRayonId}_${formJenjang}_${formAngkatan}`;
+      await setDoc(doc(db, "pengaturan_sertifikat", docId), {
+        orientasi, masaKhidmat, tempatDitetapkan, tanggalMasehi, tanggalHijriyah, 
+        tanggalPelaksanaan, tempatPelaksanaan, namaKetuaRayon, 
+        stempelUrl: finalStempelUrl, scanTtdRayonUrl: finalTtdRayonUrl,
+        updatedAt: Date.now()
+      }, { merge: true });
+      
+      alert("Pengaturan Data Sertifikat Rayon berhasil disimpan!");
+      setFileStempel(null); setFileTtdRayon(null);
+    } catch (error) { alert("Gagal menyimpan pengaturan."); } finally { setIsSavingSetting(false); }
+  };
+
+  const handleUploadExcelData = async () => {
+    if (!fileExcel) return alert("Pilih file Excel terlebih dahulu!");
+    setIsUploadingExcel(true);
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const json: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+        const batch = writeBatch(db);
+        let count = 0;
+
+        for (const row of json) {
+          if (!row.NIM && !row.Nama) continue;
+          const nimKader = row.NIM ? row.NIM.toString() : '';
+          const certDocId = `${adminRayonId}_${nimKader}_${formJenjang}_${formAngkatan}`;
+          const docRef = doc(db, "kader_sertifikat", certDocId);
+
+          batch.set(docRef, {
+            id_rayon: adminRayonId, jenjang: formJenjang, angkatan: formAngkatan,
+            nama: row.Nama || '', nim: nimKader, nik: row.NIK ? row.NIK.toString() : '',
+            ttl: row['Tempat, Tanggal Lahir'] || '', jurusan: row.Jurusan || '',
+            pt: row['Perguruan Tinggi'] || '', nomor_sertifikat: row['Nomor Sertifikat'] || '',
+            nia: row.NIA ? row.NIA.toString() : '', updatedAt: Date.now()
+          }, { merge: true });
+          count++;
+        }
+        await batch.commit();
+        alert(`Berhasil mengimpor data sertifikat untuk ${count} kader pada jenjang ${formJenjang}!`);
+        setFileExcel(null);
+      } catch (error) { alert("Gagal memproses file Excel."); } finally { setIsUploadingExcel(false); }
+    };
+    reader.readAsBinaryString(fileExcel);
+  };
+
+  const handleSimpanEditKader = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedKaderEdit) return;
+    try {
+      const docRef = doc(db, "kader_sertifikat", selectedKaderEdit.id);
+      await setDoc(docRef, { ...selectedKaderEdit, updatedAt: Date.now() }, { merge: true });
+      alert("Data kader berhasil diperbarui!");
+      setModalEditOpen(false); setSelectedKaderEdit(null);
+    } catch (err) { alert("Gagal memperbarui data kader."); }
+  };
+
+  const handleHapusKader = async (id: string) => {
+    if (!confirm("Yakin ingin menghapus data kader ini dari daftar penerbitan sertifikat?")) return;
+    try {
+      await deleteDoc(doc(db, "kader_sertifikat", id));
+      alert("Data berhasil dihapus.");
+    } catch (err) { alert("Gagal menghapus data."); }
+  };
+
+  const filteredKader = listKaderSertifikat.filter(k => 
+    k.nama?.toLowerCase().includes(searchTerm.toLowerCase()) || k.nim?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    k.nomor_sertifikat?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const canvasWidth = orientasi === 'portrait' ? 794 : 1123;
+  const canvasHeight = orientasi === 'portrait' ? 1123 : 794;
+
+  let namaKegiatanFull = formJenjang === 'PKD' ? 'Pelatihan Kader Dasar (PKD)' : (formJenjang === 'SIG' ? 'Sekolah Islam Gender (SIG)' : 'Masa Penerimaan Anggota Baru (MAPABA)');
+  let statusKader = formJenjang === 'PKD' ? 'KADER MUJAHID PMII' : 'ANGGOTA PMII';
+  const cleanRayonName = namaRayonAsli ? namaRayonAsli.replace(/^(PR\.?\s*PMII|Pengurus\s*Rayon\s*PMII)\s*/i, '') : adminRayonId;
+  const namaRayonLengkap = `Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia ${cleanRayonName}`;
+
+  const defaultPosisi = {
+    nomor: { top: 30, left: 50, width: 40, fontSize: 16, isBold: true, isItalic: false, align: 'center' }, 
+    teksPembuka: { top: 32, left: 10, width: 80, fontSize: 14, isBold: false, isItalic: false, align: 'justify' },
+    nama: { top: 38.4, left: 22, width: 60, fontSize: 16, isBold: true, isItalic: false, align: 'left' }, 
+    nik: { top: 41.2, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' },
+    ttl: { top: 44, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' }, 
+    jurusan: { top: 47, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' }, 
+    pt: { top: 49.8, left: 22, width: 60, fontSize: 14, isBold: false, isItalic: false, align: 'left' },
+    teksKelulusan: { top: 54.5, left: 10, width: 80, fontSize: 14, isBold: false, isItalic: false, align: 'justify' },
+    penetapan: { top: 72, left: 60, width: 35, fontSize: 14, isBold: false, isItalic: false, align: 'left' },
+    ttdCabang: { top: 88, left: 20, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
+    ttdKomisariat: { top: 88, left: 50, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
+    ttdRayon: { top: 88, left: 80, width: 25, fontSize: 14, isBold: true, isItalic: false, align: 'center' },
+    stempelCabang: { top: 78, left: 15, width: 15, fontSize: 12 },
+    stempelKomisariat: { top: 78, left: 45, width: 15, fontSize: 12 },
+    stempelRayon: { top: 78, left: 75, width: 15, fontSize: 12 },
+    scanTtdCabang: { top: 82, left: 20, width: 18, fontSize: 12 },
+    scanTtdKomisariat: { top: 82, left: 50, width: 18, fontSize: 12 },
+    scanTtdRayon: { top: 82, left: 80, width: 18, fontSize: 12 }
+  };
+
+  const rawMasterPosisi = masterTemplate?.posisi || defaultPosisi;
+  const ttdRayonPos = rawMasterPosisi.ttdRayon || defaultPosisi.ttdRayon;
+  const posisiMaster = {
+    ...defaultPosisi, ...rawMasterPosisi,
+    stempelRayon: rawMasterPosisi.stempelRayon || { left: ttdRayonPos.left - 5, top: ttdRayonPos.top - 10, width: 15 },
+    scanTtdRayon: rawMasterPosisi.scanTtdRayon || { left: ttdRayonPos.left, top: ttdRayonPos.top - 6, width: 18 }
+  };
+
+  const getRayonDataTeks = (key: string) => {
+    if (key === 'nomor') return `10/${formJenjang}-X/${formAngkatan}`;
+    if (key === 'teksPembuka') return `Yang bertanda tangan di bawah ini ${namaRayonLengkap} Komisariat Sunan Ampel Malang masa khidmat ${masaKhidmat || '...'} memberikan status <b>${statusKader}</b> kepada :`;
+    if (key === 'nama') return 'Ahmad Albert Afrilsyah';
+    if (key === 'nik') return '35730123456789';
+    if (key === 'ttl') return 'Malang, 10 Agustus 2002';
+    if (key === 'jurusan') return 'Teknik Informatika';
+    if (key === 'pt') return 'Universitas Islam Negeri Maulana Malik Ibrahim Malang';
+    if (key === 'teksKelulusan') return `Bahwa nama yang disebutkan diatas telah Lulus ${namaKegiatanFull} pada tanggal ${tanggalPelaksanaan || '...'} yang dilaksanakan di ${tempatPelaksanaan || '...'} oleh ${namaRayonLengkap}.`;
+    if (key === 'penetapan') return `<div>${tempatDitetapkan || '...'}</div><div style="border-bottom: 1.2px solid #000; padding-bottom: 1px; margin-bottom: 1px">${tanggalMasehi || '...'}</div><div>${tanggalHijriyah || '...'}</div>`;
+    if (key === 'ttdCabang') return `<span style="font-weight: bold;">${masterTemplate?.namaKetuaCabang || 'NAMA KETUA PC'}</span><br/><span style="font-weight: normal;">Ketua PC. PMII Kota Malang</span>`;
+    if (key === 'ttdKomisariat') return `<span style="font-weight: bold;">${masterTemplate?.namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel Malang</span>`;
+    if (key === 'ttdRayon') return `<span style="font-weight: bold;">${namaKetuaRayon || 'NAMA KETUA RAYON'}</span><br/><span style="font-weight: normal;">Ketua ${namaRayonAsli || 'Rayon PMII'}</span>`;
+    return '';
+  };
+
+  return (
+    <>
+      <style>{`
+        :root { --text-main: #111827; --border-color: #e5e7eb; --bg-card: #ffffff; }
+        .pengaturan-sertifikat-wrapper { display: flex; flex-direction: column; gap: 16px; width: 100%; box-sizing: border-box; padding: 10px 10px 90px 10px; max-width: 1400px; margin: 0 auto; overflow-x: hidden; }
+        .card-panel { background: var(--bg-card); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 2px 10px rgba(0,0,0,0.02); box-sizing: border-box; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-label { font-size: 0.75rem; font-weight: bold; color: #555; text-transform: uppercase; }
+        .form-input { padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem; color: #333; outline: none; background-color: #fafafa; width: 100%; box-sizing: border-box; }
+        .form-input:focus { border-color: #0000af; background-color: #fff; }
+        .section-title { font-size: 0.95rem; color: #0d1b2a; margin: 0 0 12px 0; font-weight: bold; padding-bottom: 8px; border-bottom: 2px solid #f0f4f8; }
+        .tab-btn { padding: 8px 14px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; cursor: pointer; border: 1px solid #ddd; background: #f8f9fa; color: #555; transition: all 0.2s; white-space: nowrap; }
+        .tab-btn.active { background: #0000af; color: #fff; border-color: #0000af; }
+        .data-table-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 650px; }
+        .data-table th, .data-table td { border-bottom: 1px solid #e2e8f0; padding: 10px 12px; text-align: left; }
+        .data-table th { background: #f8fafc; color: #334155; font-weight: bold; }
+        .action-btn { padding: 5px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; cursor: pointer; border: none; white-space: nowrap; }
+        
+        /* Wadah scroll absolut */
+        .preview-scroll-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+
+        @media (max-width: 768px) {
+          body, html { overflow-x: hidden; }
+          .pengaturan-sertifikat-wrapper { padding: 6px 6px 90px 6px; gap: 12px; width: 100%; max-width: 100vw; }
+          .card-panel { padding: 12px; border-radius: 8px; width: 100%; }
+          .form-grid { grid-template-columns: 1fr; gap: 10px; }
+        }
+      `}</style>
+
+      <div className="pengaturan-sertifikat-wrapper">
+        <div className="card-panel" style={{ padding: '12px 16px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#0d1b2a', marginRight: '6px' }}>📁 Menu:</span>
+          <button className={`tab-btn ${activeTab === 'pengaturan' ? 'active' : ''}`} onClick={() => setActiveTab('pengaturan')}>Pengaturan</button>
+          <button className={`tab-btn ${activeTab === 'database' ? 'active' : ''}`} onClick={() => setActiveTab('database')}>Data Kader ({listKaderSertifikat.length})</button>
+        </div>
+
+        <div className="card-panel" style={{ padding: '12px 16px', backgroundColor: '#fdfdfe' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+            <div className="form-group">
+              <label className="form-label">Jenjang Kaderisasi Aktif</label>
+              <select value={formJenjang} onChange={e => setFormJenjang(e.target.value)} className="form-input" style={{ fontWeight: 'bold', color: '#0000af' }}>
+                <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Tahun Angkatan</label>
+              <input type="number" value={formAngkatan} onChange={e => setFormAngkatan(e.target.value)} className="form-input" style={{ fontWeight: 'bold' }} />
+            </div>
+          </div>
+        </div>
+
+        {activeTab === 'pengaturan' ? (
+          <>
+            <div className="card-panel">
+              <h3 className="section-title">📥 Upload Data Kelengkapan (Excel) - {formJenjang} ({formAngkatan})</h3>
+              <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: '12px', lineHeight: '1.4' }}>Header kolom wajib: <b>Nama, NIM, NIK, Tempat, Tanggal Lahir, Jurusan, Perguruan Tinggi, Nomor Sertifikat, NIA</b>.</p>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input type="file" accept=".xlsx, .xls" onChange={(e) => setFileExcel(e.target.files ? e.target.files[0] : null)} style={{ padding: '6px', border: '1px dashed #bbb', borderRadius: '8px', backgroundColor: '#fafafa', fontSize: '0.8rem', flex: '1 1 220px', width: '100%', boxSizing: 'border-box' }} />
+                <button onClick={handleUploadExcelData} disabled={isUploadingExcel} style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: isUploadingExcel ? 'not-allowed' : 'pointer', fontSize: '0.82rem', width: '100%', boxSizing: 'border-box' }}>
+                  {isUploadingExcel ? 'Memproses...' : '📤 Proses & Simpan'}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+              <div className="card-panel" style={{ flex: '1 1 320px', display: 'flex', flexDirection: 'column' }}>
+                
+                <h3 className="section-title">⚙️ Konfigurasi Teks & Kegiatan</h3>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Orientasi Kertas A4</label>
+                    <select value={orientasi} onChange={e => setOrientasi(e.target.value)} disabled className="form-input" style={{ backgroundColor: '#eee', cursor: 'not-allowed' }}>
+                      <option value="portrait">A4 Portrait (Berdiri)</option><option value="landscape">A4 Landscape (Mendatar)</option>
+                    </select>
+                    <span style={{ fontSize: '0.68rem', color: '#888' }}>*Diatur oleh Komisariat</span>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Masa Khidmat Rayon</label>
+                    <input type="text" placeholder="Misal: 2024-2025" value={masaKhidmat} onChange={e => setMasaKhidmat(e.target.value)} className="form-input" />
+                  </div>
+                </div>
+
+                <h3 className="section-title">📅 Data Pelaksanaan & Penetapan</h3>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Tanggal Pelaksanaan Kegiatan</label>
+                    <input type="text" placeholder="Misal: 16 - 17 Nov 2024" value={tanggalPelaksanaan} onChange={e => setTanggalPelaksanaan(e.target.value)} className="form-input" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Tempat Pelaksanaan Kegiatan</label>
+                    <input type="text" placeholder="Misal: SMP Ma'arif 3 Batu" value={tempatPelaksanaan} onChange={e => setTempatPelaksanaan(e.target.value)} className="form-input" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Tempat Ditetapkan</label>
+                    <input type="text" placeholder="Misal: Kota Malang" value={tempatDitetapkan} onChange={e => setTempatDitetapkan(e.target.value)} className="form-input" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Tgl Ditetapkan (Masehi)</label>
+                    <input type="text" placeholder="Misal: 12 Desember 2024 M" value={tanggalMasehi} onChange={e => setTanggalMasehi(e.target.value)} className="form-input" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Tgl Ditetapkan (Hijriyah)</label>
+                    <input type="text" placeholder="Misal: 10 Jumadil Akhir 1446 H" value={tanggalHijriyah} onChange={e => setTanggalHijriyah(e.target.value)} className="form-input" />
+                  </div>
+                </div>
+
+                <h3 className="section-title">✍️ Pengesahan Rayon</h3>
+                <div className="form-grid">
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Nama Ketua Rayon (Kapital)</label>
+                    <input type="text" placeholder="Misal: ALFIAN FAHMI" value={namaKetuaRayon} onChange={e => setNamaKetuaRayon(e.target.value)} className="form-input" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Upload Stempel Rayon (PNG)</label>
+                    <input type="file" accept="image/png" onChange={(e) => setFileStempel(e.target.files ? e.target.files[0] : null)} style={{ padding: '6px', border: '1px dashed #3498db', borderRadius: '8px', fontSize: '0.75rem', backgroundColor: '#f4f9fd', width: '100%', boxSizing: 'border-box' }} />
+                    {(stempelUrl || fileStempel) && (
+                      <div style={{ marginTop: '5px', padding: '5px', backgroundColor: '#eee', borderRadius: '6px', width: 'fit-content' }}>
+                        <img src={fileStempel ? URL.createObjectURL(fileStempel) : stempelUrl} alt="Stempel" style={{ height: '35px', objectFit: 'contain' }} />
+                      </div>
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Upload Scan TTD Ketua Rayon (PNG)</label>
+                    <input type="file" accept="image/png" onChange={(e) => setFileTtdRayon(e.target.files ? e.target.files[0] : null)} style={{ padding: '6px', border: '1px dashed #3498db', borderRadius: '8px', fontSize: '0.75rem', backgroundColor: '#f4f9fd', width: '100%', boxSizing: 'border-box' }} />
+                    {(scanTtdRayonUrl || fileTtdRayon) && (
+                      <div style={{ marginTop: '5px', padding: '5px', backgroundColor: '#eee', borderRadius: '6px', width: 'fit-content' }}>
+                        <img src={fileTtdRayon ? URL.createObjectURL(fileTtdRayon) : scanTtdRayonUrl} alt="TTD Rayon" style={{ height: '35px', objectFit: 'contain' }} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <button onClick={handleSimpanPengaturan} disabled={isSavingSetting} style={{ backgroundColor: '#0000af', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: isSavingSetting ? 'not-allowed' : 'pointer', fontSize: '0.85rem', marginTop: '10px', width: '100%', boxSizing: 'border-box' }}>
+                  {isSavingSetting ? 'Menyimpan...' : '💾 Simpan Data Sertifikat'}
+                </button>
+              </div>
+
+              {/* LIVE PREVIEW RAYON ABSOLUT CONTAINER */}
+              <div className="card-panel" style={{ flex: '1 1 320px', backgroundColor: '#ecf0f1', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <h3 className="section-title" style={{ width: '100%', borderBottom: 'none', marginBottom: '5px', textAlign: 'center' }}>👀 Live Preview Sertifikat</h3>
+                <p style={{ fontSize: '0.75rem', color: '#777', marginBottom: '12px', textAlign: 'center' }}>Tata letak ditarik otomatis dari Master Komisariat.</p>
+                
+                <div className="preview-scroll-container">
+                  <div style={{ 
+                    position: 'relative', width: `${canvasWidth}px`, minWidth: `${canvasWidth}px`, height: `${canvasHeight}px`,
+                    margin: '0 auto', backgroundColor: 'white', border: '1px solid #ccc', borderRadius: '6px', 
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.1)', overflow: 'hidden'
+                  }}>
+                    
+                    {masterTemplate?.templateUrl ? (
+                      <img src={masterTemplate.templateUrl} alt="Blanko Komisariat" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1, pointerEvents: 'none' }} />
+                    ) : (
+                      <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '0.8rem', zIndex: 1, padding: '15px', textAlign: 'center' }}>
+                        ⚠️ Blanko kosong untuk {formJenjang} ({formAngkatan}) belum diatur oleh Komisariat.
+                      </div>
+                    )}
+
+                    {/* Stempel */}
+                    {masterTemplate?.stempelCabangUrl && (posisiMaster as any).stempelCabang && (
+                      <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelCabang.top}%`, left: `${(posisiMaster as any).stempelCabang.left}%`, width: `${(posisiMaster as any).stempelCabang.width}%`, padding: '2px 4px' }}>
+                        <img src={masterTemplate.stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+                      </div>
+                    )}
+                    {masterTemplate?.stempelKomisariatUrl && (posisiMaster as any).stempelKomisariat && (
+                      <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelKomisariat.top}%`, left: `${(posisiMaster as any).stempelKomisariat.left}%`, width: `${(posisiMaster as any).stempelKomisariat.width}%`, padding: '2px 4px' }}>
+                        <img src={masterTemplate.stempelKomisariatUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+                      </div>
+                    )}
+                    {(stempelUrl || masterTemplate?.posisi?.stempelRayon) && (posisiMaster as any).stempelRayon && (
+                      <div style={{ position: 'absolute', zIndex: 7, top: `${(posisiMaster as any).stempelRayon.top}%`, left: `${(posisiMaster as any).stempelRayon.left}%`, width: `${(posisiMaster as any).stempelRayon.width}%`, padding: '2px 4px' }}>
+                        {stempelUrl ? (
+                          <img src={stempelUrl} alt="Stempel Rayon" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+                        ) : (
+                          <div style={{ textAlign: 'center', fontSize: '0.65rem', color: '#2980b9' }}>[Stempel Rayon]</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Scan TTD */}
+                    {masterTemplate?.scanTtdCabangUrl && (posisiMaster as any).scanTtdCabang && (
+                      <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdCabang.top}%`, left: `${(posisiMaster as any).scanTtdCabang.left}%`, width: `${(posisiMaster as any).scanTtdCabang.width}%`, padding: '2px 4px' }}>
+                        <img src={masterTemplate.scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                      </div>
+                    )}
+                    {masterTemplate?.scanTtdKomisariatUrl && (posisiMaster as any).scanTtdKomisariat && (
+                      <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdKomisariat.top}%`, left: `${(posisiMaster as any).scanTtdKomisariat.left}%`, width: `${(posisiMaster as any).scanTtdKomisariat.width}%`, padding: '2px 4px' }}>
+                        <img src={masterTemplate.scanTtdKomisariatUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                      </div>
+                    )}
+                    {(scanTtdRayonUrl || masterTemplate?.posisi?.scanTtdRayon) && (posisiMaster as any).scanTtdRayon && (
+                      <div style={{ position: 'absolute', zIndex: 6, top: `${(posisiMaster as any).scanTtdRayon.top}%`, left: `${(posisiMaster as any).scanTtdRayon.left}%`, width: `${(posisiMaster as any).scanTtdRayon.width}%`, padding: '2px 4px' }}>
+                        {scanTtdRayonUrl ? (
+                          <img src={scanTtdRayonUrl} alt="Scan TTD Rayon" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                        ) : (
+                          <div style={{ textAlign: 'center', fontSize: '0.65rem', color: '#e67e22' }}>[Scan TTD Rayon]</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Teks Dinamis */}
+                    {Object.keys(posisiMaster).map(key => {
+                      if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) return null;
+                      const p = (posisiMaster as any)[key];
+                      if (!p) return null;
+                      const isCenter = key === 'nomor';
+
+                      return (
+                        <div key={key} style={{ 
+                          position: 'absolute', zIndex: 2, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`, 
+                          textAlign: p.align || (isCenter ? 'center' : 'left'), transform: isCenter ? 'translate(-50%, 0)' : 'none', 
+                          fontFamily: '"Arial", Helvetica, sans-serif', fontSize: `${((p.fontSize || 14) / 650) * canvasWidth}px`, 
+                          fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
+                          color: '#000', lineHeight: '1.3', padding: '2px 4px', border: '1px solid transparent', margin: 0
+                        }}>
+                          <div dangerouslySetInnerHTML={{ __html: getRayonDataTeks(key) }} />
+                        </div>
+                      );
+                    })}
+
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </>
+        ) : (
+          <div className="card-panel">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+              <h3 className="section-title" style={{ margin: 0, borderBottom: 'none' }}>📋 Daftar Kader ({formJenjang} - {formAngkatan})</h3>
+              <input type="text" placeholder="Cari Nama / NIM / No Sertifikat..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="form-input" style={{ width: '100%', maxWidth: '260px', padding: '8px 12px' }} />
+            </div>
+
+            <div className="data-table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>No</th><th>Nama Kader</th><th>NIM / NIA</th><th>No. Sertifikat</th><th>NIK</th><th>Jurusan / PT</th><th style={{ textAlign: 'center' }}>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredKader.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', color: '#777', padding: '20px' }}>Belum ada data kader untuk jenjang <b>{formJenjang}</b> angkatan <b>{formAngkatan}</b>.</td></tr>
+                  ) : (
+                    filteredKader.map((k, idx) => (
+                      <tr key={k.id}>
+                        <td>{idx + 1}</td>
+                        <td style={{ fontWeight: 'bold' }}>{k.nama}</td>
+                        <td>{k.nim} / {k.nia || '-'}</td>
+                        <td><span style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>{k.nomor_sertifikat || 'Belum Ada'}</span></td>
+                        <td>{k.nik}</td>
+                        <td>{k.jurusan} <br/><span style={{ color: '#666', fontSize: '0.75rem' }}>{k.pt}</span></td>
+                        <td style={{ textAlign: 'center', display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                          <button onClick={() => { setSelectedKaderEdit(k); setModalEditOpen(true); }} className="action-btn" style={{ background: '#f59e0b', color: '#fff' }}>✏️ Edit</button>
+                          <button onClick={() => handleHapusKader(k.id)} className="action-btn" style={{ background: '#ef4444', color: '#fff' }}>🗑️ Hapus</button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {modalEditOpen && selectedKaderEdit && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '15px', boxSizing: 'border-box' }}>
+          <div style={{ background: '#fff', padding: '20px', borderRadius: '12px', width: '100%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '1rem', color: '#0d1b2a', borderBottom: '2px solid #f0f4f8', paddingBottom: '8px' }}>✏️ Edit Kelengkapan Sertifikat Kader</h3>
+            <form onSubmit={handleSimpanEditKader} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div className="form-group"><label className="form-label">Nama Kader</label><input type="text" value={selectedKaderEdit.nama || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nama: e.target.value})} className="form-input" required /></div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="form-group"><label className="form-label">NIM</label><input type="text" value={selectedKaderEdit.nim || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nim: e.target.value})} className="form-input" /></div>
+                <div className="form-group"><label className="form-label">NIA</label><input type="text" value={selectedKaderEdit.nia || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nia: e.target.value})} className="form-input" /></div>
+              </div>
+              <div className="form-group"><label className="form-label">Nomor Sertifikat</label><input type="text" value={selectedKaderEdit.nomor_sertifikat || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nomor_sertifikat: e.target.value})} className="form-input" /></div>
+              <div className="form-group"><label className="form-label">NIK</label><input type="text" value={selectedKaderEdit.nik || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, nik: e.target.value})} className="form-input" /></div>
+              <div className="form-group"><label className="form-label">Tempat, Tanggal Lahir</label><input type="text" value={selectedKaderEdit.ttl || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, ttl: e.target.value})} className="form-input" /></div>
+              <div className="form-group"><label className="form-label">Jurusan</label><input type="text" value={selectedKaderEdit.jurusan || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, jurusan: e.target.value})} className="form-input" /></div>
+              <div className="form-group"><label className="form-label">Perguruan Tinggi</label><input type="text" value={selectedKaderEdit.pt || ''} onChange={e => setSelectedKaderEdit({...selectedKaderEdit, pt: e.target.value})} className="form-input" /></div>
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button type="button" onClick={() => { setModalEditOpen(false); setSelectedKaderEdit(null); }} style={{ padding: '8px 14px', borderRadius: '6px', background: '#cbd5e1', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>Batal</button>
+                <button type="submit" style={{ padding: '8px 16px', borderRadius: '6px', background: '#0000af', color: '#fff', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem' }}>Simpan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+</file>
+
 <file path="app/kader/sertifikat/page.tsx">
 'use client';
 
@@ -11383,10 +11248,8 @@ export default function PageSertifikatKader() {
 
   const [selectedJenjang, setSelectedJenjang] = useState('MAPABA');
 
-  // 1. Ambil Data Profil Kader yang sedang Login
   useEffect(() => {
     let unsubs: (() => void)[] = [];
-
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const qRole = query(collection(db, "users"), where("email", "==", user.email));
@@ -11394,11 +11257,8 @@ export default function PageSertifikatKader() {
           if (!snapRole.empty) {
             const p = snapRole.docs[0].data();
             setProfilKader({ 
-              nama: p.nama || '', 
-              nim: p.nim || '', 
-              nia: p.nia || '', 
-              id_rayon: p.id_rayon || '', 
-              angkatan: p.angkatan || new Date().getFullYear().toString()
+              nama: p.nama || '', nim: p.nim || '', nia: p.nia || '', 
+              id_rayon: p.id_rayon || '', angkatan: p.angkatan || new Date().getFullYear().toString()
             });
             if (p.jenjang) setSelectedJenjang(p.jenjang);
           }
@@ -11406,16 +11266,13 @@ export default function PageSertifikatKader() {
         unsubs.push(unsubRole);
       }
     });
-
     return () => { unsubscribeAuth(); unsubs.forEach(u => u()); };
   }, []);
 
-  // 2. Ambil Master Template Komisariat, Pengaturan Rayon, & Data Spesifik Kader Berdasarkan Jenjang Aktif
   useEffect(() => {
     if (!profilKader.angkatan) return;
     let unsubs: (() => void)[] = [];
-
-    // A. Ambil Koordinat Master Komisariat berdasarkan Jenjang & Angkatan
+    
     const qMaster = query(
       collection(db, "master_template_sertifikat"), 
       where("jenjang", "==", selectedJenjang), 
@@ -11426,15 +11283,10 @@ export default function PageSertifikatKader() {
         const masterData = snapshot.docs[0].data();
         let loadedPosisi = masterData.posisi || defaultPosisi;
         setSettings(prev => ({
-          ...prev,
-          templateUrl: masterData.templateUrl || '',
-          orientasi: masterData.orientasi || 'portrait',
-          posisi: loadedPosisi,
-          namaKetuaCabang: masterData.namaKetuaCabang || '',
-          stempelCabangUrl: masterData.stempelCabangUrl || '',
-          scanTtdCabangUrl: masterData.scanTtdCabangUrl || '',
-          namaKetuaKomisariat: masterData.namaKetuaKomisariat || '',
-          stempelKomisariatUrl: masterData.stempelKomisariatUrl || '',
+          ...prev, templateUrl: masterData.templateUrl || '', orientasi: masterData.orientasi || 'portrait',
+          posisi: loadedPosisi, namaKetuaCabang: masterData.namaKetuaCabang || '',
+          stempelCabangUrl: masterData.stempelCabangUrl || '', scanTtdCabangUrl: masterData.scanTtdCabangUrl || '',
+          namaKetuaKomisariat: masterData.namaKetuaKomisariat || '', stempelKomisariatUrl: masterData.stempelKomisariatUrl || '',
           scanTtdKomisariatUrl: masterData.scanTtdKomisariatUrl || ''
         }));
       } else {
@@ -11443,7 +11295,6 @@ export default function PageSertifikatKader() {
     });
     unsubs.push(unsubMaster);
 
-    // B. Ambil Data Kelengkapan Sertifikat Kader spesifik untuk Jenjang ini (Filter NIM / NIA)
     if (profilKader.id_rayon) {
       const fetchKaderSertifikatData = async () => {
         try {
@@ -11457,10 +11308,7 @@ export default function PageSertifikatKader() {
           let foundData = null;
           snap.forEach(d => {
             const data = d.data();
-            if (
-              (profilKader.nim && data.nim === profilKader.nim) || 
-              (profilKader.nia && data.nia === profilKader.nia)
-            ) {
+            if ((profilKader.nim && data.nim === profilKader.nim) || (profilKader.nia && data.nia === profilKader.nia)) {
               foundData = data;
             }
           });
@@ -11472,7 +11320,6 @@ export default function PageSertifikatKader() {
       fetchKaderSertifikatData();
     }
 
-    // C. Ambil Pengaturan Tanggal & TTD Rayon
     if (profilKader.id_rayon) {
       const qRayon = query(collection(db, "users"), where("username", "==", profilKader.id_rayon));
       const unsubRayonProfile = onSnapshot(qRayon, (snap) => {
@@ -11491,45 +11338,33 @@ export default function PageSertifikatKader() {
           const rayonData = docSnap.data();
           setSettings(prev => ({
             ...prev,
-            namaKetuaRayon: rayonData.namaKetuaRayon || '',
-            stempelRayonUrl: rayonData.stempelUrl || '',
-            scanTtdRayonUrl: rayonData.scanTtdRayonUrl || '',
-            masaKhidmat: rayonData.masaKhidmat || '',
-            tempatDitetapkan: rayonData.tempatDitetapkan || '',
-            tanggalMasehi: rayonData.tanggalMasehi || '',
-            tanggalHijriyah: rayonData.tanggalHijriyah || '',
-            tanggalPelaksanaan: rayonData.tanggalPelaksanaan || '',
+            namaKetuaRayon: rayonData.namaKetuaRayon || '', stempelRayonUrl: rayonData.stempelUrl || '',
+            scanTtdRayonUrl: rayonData.scanTtdRayonUrl || '', masaKhidmat: rayonData.masaKhidmat || '',
+            tempatDitetapkan: rayonData.tempatDitetapkan || '', tanggalMasehi: rayonData.tanggalMasehi || '',
+            tanggalHijriyah: rayonData.tanggalHijriyah || '', tanggalPelaksanaan: rayonData.tanggalPelaksanaan || '',
             tempatPelaksanaan: rayonData.tempatPelaksanaan || ''
           }));
         } else {
           setSettings(prev => ({
             ...prev,
-            namaKetuaRayon: '',
-            stempelRayonUrl: '',
-            scanTtdRayonUrl: '',
-            masaKhidmat: '',
-            tempatDitetapkan: '',
-            tanggalMasehi: '',
-            tanggalHijriyah: '',
-            tanggalPelaksanaan: '',
-            tempatPelaksanaan: ''
+            namaKetuaRayon: '', stempelRayonUrl: '', scanTtdRayonUrl: '', masaKhidmat: '', tempatDitetapkan: '',
+            tanggalMasehi: '', tanggalHijriyah: '', tanggalPelaksanaan: '', tempatPelaksanaan: ''
           }));
         }
       });
       unsubs.push(unsubRayonConf);
     }
-
     return () => { unsubs.forEach(u => u()); };
   }, [selectedJenjang, profilKader.angkatan, profilKader.id_rayon, profilKader.nim, profilKader.nia]);
 
   const nomorDitampilkan = dataSertifikatKader?.nia && dataSertifikatKader.nia !== '-' ? dataSertifikatKader.nia : (dataSertifikatKader?.nomor_sertifikat ? dataSertifikatKader.nomor_sertifikat : '- Belum Ada Nomor -');
-  const aspectRatio = settings.orientasi === 'portrait' ? '1 / 1.414' : '1.414 / 1';
   const printWidthPt = settings.orientasi === 'portrait' ? 595.28 : 841.89;
+  const canvasWidth = settings.orientasi === 'portrait' ? 794 : 1123;
+  const canvasHeight = settings.orientasi === 'portrait' ? 1123 : 794;
 
   let namaKegiatanFull = selectedJenjang === 'PKD' ? 'Pelatihan Kader Dasar (PKD)' : (selectedJenjang === 'SIG' ? 'Sekolah Islam Gender (SIG)' : 'Masa Penerimaan Anggota Baru (MAPABA)');
   let statusKader = selectedJenjang === 'PKD' ? 'KADER MUJAHID PMII' : 'ANGGOTA PMII';
   
-  // Format nama rayon lengkap sesuai permintaan
   const cleanRayonName = profilRayon.nama ? profilRayon.nama.replace(/^(PR\.?\s*PMII|Pengurus\s*Rayon\s*PMII)\s*/i, '') : profilKader.id_rayon;
   const namaRayonLengkap = `Pengurus Rayon Pergerakan Mahasiswa Islam Indonesia ${cleanRayonName}`;
 
@@ -11544,12 +11379,9 @@ export default function PageSertifikatKader() {
     if (key === 'pt') return dataSertifikatKader.pt || '-';
     if (key === 'teksKelulusan') return `Bahwa nama yang disebutkan diatas telah Lulus ${namaKegiatanFull} pada tanggal ${settings.tanggalPelaksanaan || '...'} yang dilaksanakan di ${settings.tempatPelaksanaan || '...'} oleh ${namaRayonLengkap}.`;
     if (key === 'penetapan') return `<div>${settings.tempatDitetapkan || '...'}</div><div style="border-bottom: 1.2px solid #000; padding-bottom: 1px; margin-bottom: 1px">${settings.tanggalMasehi || '...'}</div><div>${settings.tanggalHijriyah || '...'}</div>`;
-    
-    // Nama Ketua Bold, Jabatan di bawahnya Normal
     if (key === 'ttdCabang') return `<span style="font-weight: bold;">${settings.namaKetuaCabang || 'NAMA KETUA PC'}</span><br/><span style="font-weight: normal;">Ketua PC. PMII Kota Malang</span>`;
     if (key === 'ttdKomisariat') return `<span style="font-weight: bold;">${settings.namaKetuaKomisariat || 'NAMA KETUA PK'}</span><br/><span style="font-weight: normal;">Ketua PK. PMII Sunan Ampel Malang</span>`;
     if (key === 'ttdRayon') return `<span style="font-weight: bold;">${settings.namaKetuaRayon || 'NAMA KETUA RAYON'}</span><br/><span style="font-weight: normal;">Ketua ${profilRayon.nama || 'Rayon PMII'}</span>`;
-    
     return '';
   };
 
@@ -11562,16 +11394,19 @@ export default function PageSertifikatKader() {
         .header-title-container { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
         .header-icon { color: #2563eb; display: flex; align-items: center; justify-content: center; }
         .preview-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 24px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05); display: flex; flex-direction: column; gap: 20px; text-align: center; }
+        
+        /* Container khusus pratinjau responsif absolut */
+        .preview-scroll-container { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+        
         .select-jenjang { padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; outline: none; font-weight: 600; color: var(--text-main); background-color: #fff; cursor: pointer; font-size: 0.85rem; transition: border-color 0.2s; }
         .select-jenjang:focus { border-color: #2563eb; }
         .btn-print { background-color: #2563eb; color: white; border: none; padding: 9px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; transition: background-color 0.2s; }
         .btn-print:hover { background-color: #1d4ed8; }
 
         @media (max-width: 767px) {
-           body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
-           ::-webkit-scrollbar { display: none; }
            .page-wrapper { padding: 8px; gap: 16px; }
            .header-card, .preview-card { padding: 12px; }
+           .web-ui-container { overflow: visible !important; }
         }
         
         @media print {
@@ -11582,23 +11417,19 @@ export default function PageSertifikatKader() {
           .print-layout-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: ${settings.orientasi === 'portrait' ? '210mm' : '297mm'} !important; height: ${settings.orientasi === 'portrait' ? '297mm' : '210mm'} !important; z-index: 9999 !important; background: white !important; }
           .bg-sertifikat { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
           .bg-sertifikat img { width: 100%; height: 100%; object-fit: fill; display: block; }
-          .isian-data { position: absolute; z-index: 10; font-family: "Arial Narrow", sans-serif; color: black !important; line-height: 1.3; margin: 0; }
+          .isian-data { position: absolute; z-index: 10; font-family: "Arial", Helvetica, sans-serif; color: black !important; line-height: 1.3; margin: 0; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen { .print-layout-container { display: none !important; } }
       `}</style>
 
-      {/* WEB UI CONTAINER */}
       <div className="web-ui-container page-wrapper">
         <div className="header-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <div className="header-title-container">
                 <div className="header-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="8" r="6"></circle>
-                    <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path>
-                  </svg>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="6"></circle><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"></path></svg>
                 </div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--text-main)' }}>Cetak Piagam & Sertifikat Digital</h3>
               </div>
@@ -11607,8 +11438,7 @@ export default function PageSertifikatKader() {
             
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
               <select value={selectedJenjang} onChange={e => setSelectedJenjang(e.target.value)} className="select-jenjang">
-                <option value="MAPABA">MAPABA</option>
-                <option value="PKD">PKD</option>
+                <option value="MAPABA">MAPABA</option><option value="PKD">PKD</option>
               </select>
               {dataSertifikatKader && (
                 <button onClick={() => window.print()} className="btn-print">
@@ -11620,7 +11450,6 @@ export default function PageSertifikatKader() {
           </div>
         </div>
 
-        {/* PRATINJAU SERTIFIKAT DI WEB */}
         <div className="preview-card">
           <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)', textAlign: 'left', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <span>Pratinjau Sertifikat ({settings.orientasi}) - Jenjang: {selectedJenjang}</span>
@@ -11631,86 +11460,84 @@ export default function PageSertifikatKader() {
             )}
           </div>
           
-          <div style={{ 
-            position: 'relative', width: '100%', maxWidth: '850px', margin: '0 auto', 
-            aspectRatio: aspectRatio, border: '1px solid var(--border-color)', borderRadius: '6px', 
-            overflow: 'hidden', backgroundColor: '#fdfdfd', containerType: 'inline-size',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
-          }}>
-            {settings.templateUrl ? (
-              <img src={settings.templateUrl} alt="Template Sertifikat" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1 }} />
-            ) : (
-              <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '0.85rem', zIndex: 1, padding: '20px', textAlign: 'center' }}>
-                ⚠️ Template sertifikat untuk {selectedJenjang} belum diatur oleh Admin Komisariat.
-              </div>
-            )}
-
-            {!dataSertifikatKader && settings.templateUrl && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.85)', zIndex: 15, padding: '20px', textAlign: 'center' }}>
-                <div style={{ background: '#fff', padding: '20px 30px', borderRadius: '8px', border: '1px solid #f87171', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                  <h4 style={{ color: '#dc2626', margin: '0 0 8px 0' }}>Sertifikat Belum Tersedia</h4>
-                  <p style={{ fontSize: '0.85rem', color: '#4b5563', margin: 0 }}>Nama Anda belum terdaftar pada database kelengkapan sertifikat jenjang <b>{selectedJenjang}</b> oleh Admin Rayon.</p>
+          {/* Scroll Container mencegah responsif hancur di HP */}
+          <div className="preview-scroll-container">
+            <div style={{ 
+              position: 'relative', width: `${canvasWidth}px`, minWidth: `${canvasWidth}px`, height: `${canvasHeight}px`,
+              margin: '0 auto', border: '1px solid var(--border-color)', borderRadius: '6px', 
+              overflow: 'hidden', backgroundColor: '#fdfdfd', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
+            }}>
+              {settings.templateUrl ? (
+                <img src={settings.templateUrl} alt="Template Sertifikat" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'fill', zIndex: 1 }} />
+              ) : (
+                <div style={{ position: 'absolute', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '0.85rem', zIndex: 1, padding: '20px', textAlign: 'center' }}>
+                  ⚠️ Template sertifikat untuk {selectedJenjang} belum diatur oleh Admin Komisariat.
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Render Stempel (Cabang, Komisariat, Rayon) */}
-            {settings.stempelCabangUrl && (settings.posisi as any).stempelCabang && (
-              <div style={{ position: 'absolute', zIndex: 7, top: `${(settings.posisi as any).stempelCabang.top}%`, left: `${(settings.posisi as any).stempelCabang.left}%`, width: `${(settings.posisi as any).stempelCabang.width}%`, padding: '2px 4px' }}>
-                <img src={settings.stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
-              </div>
-            )}
-            {settings.stempelKomisariatUrl && (settings.posisi as any).stempelKomisariat && (
-              <div style={{ position: 'absolute', zIndex: 7, top: `${(settings.posisi as any).stempelKomisariat.top}%`, left: `${(settings.posisi as any).stempelKomisariat.left}%`, width: `${(settings.posisi as any).stempelKomisariat.width}%`, padding: '2px 4px' }}>
-                <img src={settings.stempelKomisariatUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
-              </div>
-            )}
-            {settings.stempelRayonUrl && (settings.posisi as any).stempelRayon && (
-              <div style={{ position: 'absolute', zIndex: 7, top: `${(settings.posisi as any).stempelRayon.top}%`, left: `${(settings.posisi as any).stempelRayon.left}%`, width: `${(settings.posisi as any).stempelRayon.width}%`, padding: '2px 4px' }}>
-                <img src={settings.stempelRayonUrl} alt="Stempel Rayon" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
-              </div>
-            )}
-
-            {/* Render Scan TTD (Cabang, Komisariat, Rayon) */}
-            {settings.scanTtdCabangUrl && (settings.posisi as any).scanTtdCabang && (
-              <div style={{ position: 'absolute', zIndex: 6, top: `${(settings.posisi as any).scanTtdCabang.top}%`, left: `${(settings.posisi as any).scanTtdCabang.left}%`, width: `${(settings.posisi as any).scanTtdCabang.width}%`, padding: '2px 4px' }}>
-                <img src={settings.scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-              </div>
-            )}
-            {settings.scanTtdKomisariatUrl && (settings.posisi as any).scanTtdKomisariat && (
-              <div style={{ position: 'absolute', zIndex: 6, top: `${(settings.posisi as any).scanTtdKomisariat.top}%`, left: `${(settings.posisi as any).scanTtdKomisariat.left}%`, width: `${(settings.posisi as any).scanTtdKomisariat.width}%`, padding: '2px 4px' }}>
-                <img src={settings.scanTtdKomisariatUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-              </div>
-            )}
-            {settings.scanTtdRayonUrl && (settings.posisi as any).scanTtdRayon && (
-              <div style={{ position: 'absolute', zIndex: 6, top: `${(settings.posisi as any).scanTtdRayon.top}%`, left: `${(settings.posisi as any).scanTtdRayon.left}%`, width: `${(settings.posisi as any).scanTtdRayon.width}%`, padding: '2px 4px' }}>
-                <img src={settings.scanTtdRayonUrl} alt="Scan TTD Rayon" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
-              </div>
-            )}
-            
-            {/* Render Teks Dinamis */}
-            {dataSertifikatKader && Object.keys(settings.posisi).map(key => {
-              if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) return null;
-              const p = (settings.posisi as any)[key];
-              if (!p) return null;
-              const isCenter = key === 'nomor';
-
-              return (
-                <div key={key} style={{ 
-                  position: 'absolute', zIndex: 2, 
-                  top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`, 
-                  textAlign: p.align || (isCenter ? 'center' : 'left'), 
-                  transform: isCenter ? 'translate(-50%, 0)' : 'none', 
-                  fontFamily: '"Arial Narrow", sans-serif', 
-                  fontSize: `${p.fontSize / 6.5}cqw`, 
-                  fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
-                  color: '#000', lineHeight: '1.3',
-                  padding: '2px 4px', border: '1px solid transparent', margin: 0
-                }}>
-                  <div dangerouslySetInnerHTML={{ __html: getDataTeks(key) }} />
+              {!dataSertifikatKader && settings.templateUrl && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.85)', zIndex: 15, padding: '20px', textAlign: 'center' }}>
+                  <div style={{ background: '#fff', padding: '20px 30px', borderRadius: '8px', border: '1px solid #f87171', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                    <h4 style={{ color: '#dc2626', margin: '0 0 8px 0' }}>Sertifikat Belum Tersedia</h4>
+                    <p style={{ fontSize: '0.85rem', color: '#4b5563', margin: 0 }}>Nama Anda belum terdaftar pada database kelengkapan sertifikat jenjang <b>{selectedJenjang}</b> oleh Admin Rayon.</p>
+                  </div>
                 </div>
-              );
-            })}
+              )}
+
+              {/* Render Stempel */}
+              {settings.stempelCabangUrl && (settings.posisi as any).stempelCabang && (
+                <div style={{ position: 'absolute', zIndex: 7, top: `${(settings.posisi as any).stempelCabang.top}%`, left: `${(settings.posisi as any).stempelCabang.left}%`, width: `${(settings.posisi as any).stempelCabang.width}%`, padding: '2px 4px' }}>
+                  <img src={settings.stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+                </div>
+              )}
+              {settings.stempelKomisariatUrl && (settings.posisi as any).stempelKomisariat && (
+                <div style={{ position: 'absolute', zIndex: 7, top: `${(settings.posisi as any).stempelKomisariat.top}%`, left: `${(settings.posisi as any).stempelKomisariat.left}%`, width: `${(settings.posisi as any).stempelKomisariat.width}%`, padding: '2px 4px' }}>
+                  <img src={settings.stempelKomisariatUrl} alt="Stempel Komisariat" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+                </div>
+              )}
+              {settings.stempelRayonUrl && (settings.posisi as any).stempelRayon && (
+                <div style={{ position: 'absolute', zIndex: 7, top: `${(settings.posisi as any).stempelRayon.top}%`, left: `${(settings.posisi as any).stempelRayon.left}%`, width: `${(settings.posisi as any).stempelRayon.width}%`, padding: '2px 4px' }}>
+                  <img src={settings.stempelRayonUrl} alt="Stempel Rayon" style={{ width: '100%', objectFit: 'contain', opacity: 0.85, pointerEvents: 'none' }} />
+                </div>
+              )}
+
+              {/* Render Scan TTD */}
+              {settings.scanTtdCabangUrl && (settings.posisi as any).scanTtdCabang && (
+                <div style={{ position: 'absolute', zIndex: 6, top: `${(settings.posisi as any).scanTtdCabang.top}%`, left: `${(settings.posisi as any).scanTtdCabang.left}%`, width: `${(settings.posisi as any).scanTtdCabang.width}%`, padding: '2px 4px' }}>
+                  <img src={settings.scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                </div>
+              )}
+              {settings.scanTtdKomisariatUrl && (settings.posisi as any).scanTtdKomisariat && (
+                <div style={{ position: 'absolute', zIndex: 6, top: `${(settings.posisi as any).scanTtdKomisariat.top}%`, left: `${(settings.posisi as any).scanTtdKomisariat.left}%`, width: `${(settings.posisi as any).scanTtdKomisariat.width}%`, padding: '2px 4px' }}>
+                  <img src={settings.scanTtdKomisariatUrl} alt="Scan TTD Komisariat" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                </div>
+              )}
+              {settings.scanTtdRayonUrl && (settings.posisi as any).scanTtdRayon && (
+                <div style={{ position: 'absolute', zIndex: 6, top: `${(settings.posisi as any).scanTtdRayon.top}%`, left: `${(settings.posisi as any).scanTtdRayon.left}%`, width: `${(settings.posisi as any).scanTtdRayon.width}%`, padding: '2px 4px' }}>
+                  <img src={settings.scanTtdRayonUrl} alt="Scan TTD Rayon" style={{ width: '100%', objectFit: 'contain', pointerEvents: 'none' }} />
+                </div>
+              )}
+              
+              {/* Render Teks Dinamis dengan Font Arial */}
+              {dataSertifikatKader && Object.keys(settings.posisi).map(key => {
+                if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) return null;
+                const p = (settings.posisi as any)[key];
+                if (!p) return null;
+                const isCenter = key === 'nomor';
+
+                return (
+                  <div key={key} style={{ 
+                    position: 'absolute', zIndex: 2, top: `${p.top}%`, left: `${p.left}%`, width: `${p.width || 60}%`, 
+                    textAlign: p.align || (isCenter ? 'center' : 'left'), transform: isCenter ? 'translate(-50%, 0)' : 'none', 
+                    fontFamily: '"Arial", Helvetica, sans-serif', fontSize: `${(p.fontSize / 650) * canvasWidth}px`, 
+                    fontWeight: p.isBold ? 'bold' : 'normal', fontStyle: p.isItalic ? 'italic' : 'normal',
+                    color: '#000', lineHeight: '1.3', padding: '2px 4px', border: '1px solid transparent', margin: 0
+                  }}>
+                    <div dangerouslySetInnerHTML={{ __html: getDataTeks(key) }} />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
         <div style={{ height: '50px' }} className="mobile-only"></div>
@@ -11723,6 +11550,7 @@ export default function PageSertifikatKader() {
             {settings.templateUrl && <img src={settings.templateUrl} alt="Background" />}
           </div>
 
+          {/* Stempel PDF */}
           {settings.stempelCabangUrl && (settings.posisi as any).stempelCabang && (
             <div className="isian-data" style={{ zIndex: 7, top: `${(settings.posisi as any).stempelCabang.top}%`, left: `${(settings.posisi as any).stempelCabang.left}%`, width: `${(settings.posisi as any).stempelCabang.width}%`, padding: `${(2 / 650) * printWidthPt}pt ${(4 / 650) * printWidthPt}pt` }}>
               <img src={settings.stempelCabangUrl} alt="Stempel Cabang" style={{ width: '100%', objectFit: 'contain', opacity: 0.85 }} />
@@ -11739,6 +11567,7 @@ export default function PageSertifikatKader() {
             </div>
           )}
 
+          {/* Scan TTD PDF */}
           {settings.scanTtdCabangUrl && (settings.posisi as any).scanTtdCabang && (
             <div className="isian-data" style={{ zIndex: 6, top: `${(settings.posisi as any).scanTtdCabang.top}%`, left: `${(settings.posisi as any).scanTtdCabang.left}%`, width: `${(settings.posisi as any).scanTtdCabang.width}%`, padding: `${(2 / 650) * printWidthPt}pt ${(4 / 650) * printWidthPt}pt` }}>
               <img src={settings.scanTtdCabangUrl} alt="Scan TTD Cabang" style={{ width: '100%', objectFit: 'contain' }} />
@@ -11755,6 +11584,7 @@ export default function PageSertifikatKader() {
             </div>
           )}
 
+          {/* Teks PDF */}
           {Object.keys(settings.posisi).map(key => {
              if (['stempelCabang', 'stempelKomisariat', 'stempelRayon', 'scanTtdCabang', 'scanTtdKomisariat', 'scanTtdRayon'].includes(key)) return null;
              const p = (settings.posisi as any)[key];

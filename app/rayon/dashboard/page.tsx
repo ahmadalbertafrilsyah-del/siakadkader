@@ -10,7 +10,7 @@ export default function PageDashboardBerandaRayon() {
   const router = useRouter();
 
   const [dataPendamping, setDataPendamping] = useState<any[]>([]);
-  const [dataKader, setDataKader] = useState<any[]>([]);
+  const [semuaKader, setSemuaKader] = useState<any[]>([]);
   const [dataRayon, setDataRayon] = useState<any[]>([]);
   const [listMasterTugas, setListMasterTugas] = useState<any[]>([]);
   
@@ -45,15 +45,9 @@ export default function PageDashboardBerandaRayon() {
               setDataPendamping(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             });
 
-            // Data Kader Rayon Ini
+            // Semua kader (penyaringan kepemilikan rayon dilakukan di bawah)
             onSnapshot(query(collection(db, "users"), where("role", "==", "kader")), (snap) => {
-              const list: any[] = [];
-              snap.docs.forEach(doc => {
-                 const data = doc.data();
-                 const terdaftarDi = data.terdaftar_di || [data.id_rayon];
-                 if (terdaftarDi.includes(currentRayonId)) { list.push({ id: doc.id, ...data }); }
-              });
-              setDataKader(list);
+              setSemuaKader(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             });
 
             // Data Master Tugas Rayon Ini
@@ -76,16 +70,36 @@ export default function PageDashboardBerandaRayon() {
     return dataPendamping.find(p => p.username === idData || p.id === idData)?.nama || idData;
   };
 
+  // Kader milik rayon ini: cocokkan terdaftar_di / id_rayon terhadap username MAUPUN nama rayon
+  // (data lama kadang menyimpan nama rayon, bukan username-nya).
+  const targetRayon = [adminRayonId, namaRayonAsli].filter(Boolean).map(x => String(x).toLowerCase());
+  const dataKader = semuaKader.filter((k: any) => {
+    if (targetRayon.length === 0) return false;
+    const terdaftar = (Array.isArray(k.terdaftar_di) && k.terdaftar_di.length > 0) ? k.terdaftar_di : [k.id_rayon];
+    return terdaftar.some((r: any) => r && targetRayon.includes(String(r).toLowerCase()));
+  });
+
+  // Nama asal rayon. Untuk delegasi luar komisariat, id_rayon berisi nama rayon
+  // yang diketik manual saat pembuatan akun, jadi ditampilkan apa adanya.
+  const getAsalRayon = (k: any) => {
+    const asal = k?.id_rayon;
+    if (!asal) return '-';
+    const cocok = dataRayon.find((r: any) =>
+      r.username === asal || r.id_rayon === asal || r.id === asal ||
+      (r.nama && String(r.nama).toLowerCase() === String(asal).toLowerCase())
+    );
+    return cocok ? (cocok.nama || asal) : asal;
+  };
+
   const dataKaderDifilterTahun = dataKader.filter(k => {
     if (filterTahunBeranda === 'Semua') return true;
     const tahunKader = k.angkatan || (k.createdAt ? new Date(k.createdAt).getFullYear().toString() : '');
     return tahunKader === filterTahunBeranda;
   });
 
-  const skpKaderTerdata = dataKaderDifilterTahun.filter((k: any) => 
-     k.jenjang === 'SKP' && 
-     (k.id_rayon === adminRayonId || k.id_rayon === namaRayonAsli || (k.terdaftar_di && k.terdaftar_di.includes(adminRayonId)))
-  );
+  // Delegasi SKP sengaja TIDAK difilter angkatan: pesertanya umumnya dari angkatan lama
+  // sehingga sebelumnya tidak pernah muncul di beranda rayon.
+  const skpKaderTerdata = dataKader.filter((k: any) => k.jenjang === 'SKP');
 
   const daftarTahunUnik = ['Semua'];
   for (let i = 0; i < 3; i++) { daftarTahunUnik.push((currentYear - i).toString()); }
@@ -218,19 +232,21 @@ export default function PageDashboardBerandaRayon() {
               <table className="desktop-table">
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'center', width: '25%' }}>NIM</th>
-                    <th style={{ textAlign: 'left', width: '45%' }}>Nama Delegasi SKP</th>
-                    <th style={{ textAlign: 'center', width: '30%' }}>Pendamping SKP</th>
+                    <th style={{ textAlign: 'center', width: '20%' }}>NIM</th>
+                    <th style={{ textAlign: 'left', width: '32%' }}>Nama Delegasi SKP</th>
+                    <th style={{ textAlign: 'left', width: '25%' }}>Asal Rayon</th>
+                    <th style={{ textAlign: 'center', width: '23%' }}>Pendamping SKP</th>
                   </tr>
                 </thead>
                 <tbody>
                   {skpKaderTerdata.length === 0 ? (
-                    <tr><td colSpan={3} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Belum ada delegasi SKP dari rayon ini.</td></tr>
+                    <tr><td colSpan={4} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Belum ada delegasi SKP dari rayon ini.</td></tr>
                   ) : (
                     skpKaderTerdata.map((k: any) => (
                       <tr key={k.nim}>
                         <td style={{ textAlign: 'center', fontWeight: '500', color: 'var(--text-muted)' }}>{k.nim}</td>
                         <td style={{ fontWeight: '600', color: 'var(--text-main)' }}>{k.nama}</td>
+                        <td style={{ color: 'var(--text-body)', fontSize: '0.8rem' }}>{getAsalRayon(k)}</td>
                         <td style={{ textAlign: 'center', fontWeight: '600', color: '#2563eb', fontSize: '0.8rem' }}>{getNamaPendamping(k.pendamping_skp_id)}</td>
                       </tr>
                     ))
@@ -249,8 +265,8 @@ export default function PageDashboardBerandaRayon() {
       <div className="mobile-view">
         
         {/* Area Header Biru Tua Premium (Edge to Edge) */}
-        <div style={{ 
-           backgroundColor: '#0000af',
+        <div className="sk-bleed" style={{ 
+           background: 'linear-gradient(135deg, #11118f 0%, #2d2de0 100%)',
            padding: '15px 15px 75px 15px', 
            borderBottomLeftRadius: '30px', 
            borderBottomRightRadius: '30px', 

@@ -436,13 +436,12 @@ export default function DashboardKader() {
       {/* ========================================================== */}
       {/* 2. TAMPILAN MOBILE APP ONLY (TETAP SEPERTI SEMULA)        */}
       {/* ========================================================== */}
-      <div className="mobile-view" style={{ padding: '0 15px' }}>
+      <div className="mobile-view">
         
         {/* Area Lengkungan Biru Tua menyambung dengan Header Layout */}
-        <div style={{ 
-           backgroundColor: '#0000af', 
+        <div className="sk-bleed" style={{ 
+           background: 'linear-gradient(135deg, #11118f 0%, #2d2de0 100%)', 
            padding: '15px 20px 65px 20px', 
-           margin: '-15px -15px 0 -15px', 
            borderBottomLeftRadius: '30px', 
            borderBottomRightRadius: '30px', 
            color: 'white',

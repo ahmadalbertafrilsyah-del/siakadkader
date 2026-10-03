@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, where, doc, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 export default function PageDashboardBerandaPendamping() {
+  const router = useRouter();
   const [profilPendamping, setProfilPendamping] = useState({ nama: '', username: '', id_rayon: '' });
   const [namaRayonInduk, setNamaRayonInduk] = useState('');
   
@@ -115,8 +117,48 @@ export default function PageDashboardBerandaPendamping() {
     };
   }, []);
 
+  const tugasMenungguVerifikasi = berkasTugas.filter(s => s.status === 'Menunggu Verifikasi').length;
+
+  const MenuCardMobile = ({ icon, label, onClick }: any) => (
+    <div onClick={onClick} className="hover-card-modern" style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+        cursor: 'pointer', backgroundColor: '#fff', padding: '15px 5px',
+        borderRadius: '16px', transition: 'all 0.3s ease', boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+    }}>
+       <div style={{
+           backgroundColor: '#eaf6f1', width: '50px', height: '50px', borderRadius: '14px',
+           display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '1.5rem',
+           boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.8), 0 2px 8px rgba(11,94,74,0.06)'
+       }}>
+           {icon}
+       </div>
+       <div style={{ fontSize: '0.72rem', color: '#111', textAlign: 'center', fontWeight: 'bold' }}>{label}</div>
+    </div>
+  );
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <>
+      <style>{`
+        /* CSS KHUSUS TOGGLE VIEW HALAMAN BERANDA PENDAMPING */
+        .desktop-view { display: block; }
+        .mobile-view { display: none; }
+
+        @media (max-width: 767px) {
+           .desktop-view { display: none !important; }
+           .mobile-view { display: block !important; }
+           body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
+           ::-webkit-scrollbar { display: none; }
+        }
+
+        .hover-card-modern:active { transform: scale(0.95); opacity: 0.8; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; overflow-x: auto; }
+      `}</style>
+
+      {/* ========================================================== */}
+      {/* 1. TAMPILAN LAPTOP / DESKTOP (TIDAK DIUBAH)                */}
+      {/* ========================================================== */}
+      <div className="desktop-view" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }}>
         <h2 style={{color: '#1e824c', marginTop: 0, fontSize: '1.5rem'}}>Halo, Sahabat/i {profilPendamping.nama.split(' ')[0]}! 👋</h2>
         <p style={{color: '#555', lineHeight: '1.6', margin: 0, fontSize: '0.9rem'}}>Selamat datang di Panel Pendamping. Pantau perkembangan kader binaan Anda dan berikan evaluasi terbaik untuk kemajuan {namaRayonInduk}.</p>
@@ -190,6 +232,148 @@ export default function PageDashboardBerandaPendamping() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+
+      {/* ========================================================== */}
+      {/* 2. TAMPILAN MOBILE APP (HIJAU-TEAL ELEGAN + AKSEN EMAS)    */}
+      {/* ========================================================== */}
+      <div className="mobile-view">
+
+        {/* Area Header Melengkung Edge to Edge */}
+        <div className="sk-bleed" style={{
+           background: 'linear-gradient(135deg, #0b5e4a 0%, #139070 100%)',
+           padding: '18px 18px 80px 18px',
+           borderBottomLeftRadius: '30px',
+           borderBottomRightRadius: '30px',
+           color: '#ffffff',
+           position: 'relative'
+        }}>
+           <div style={{ fontSize: '0.75rem', letterSpacing: '1px', fontWeight: 'bold', color: '#f5c518', opacity: 0.95 }}>PANEL PENDAMPING</div>
+           <h1 style={{ margin: '6px 0 0 0', fontSize: '1.35rem', fontWeight: 'bold', letterSpacing: '0.3px' }}>
+             Halo, Sahabat/i {profilPendamping.nama ? profilPendamping.nama.split(' ')[0] : ''}! 👋
+           </h1>
+           <p style={{ margin: '8px 0 0 0', fontSize: '0.78rem', opacity: 0.9, lineHeight: '1.5' }}>
+             Pantau perkembangan kader binaan Anda dan berikan evaluasi terbaik untuk kemajuan {namaRayonInduk || 'instansi'}.
+           </p>
+        </div>
+
+        {/* Kartu Statistik Mengambang Menimpa Header */}
+        <div style={{ padding: '0 15px', marginTop: '-55px', position: 'relative', zIndex: 10 }}>
+          <div style={{
+             backgroundColor: '#ffffff', borderRadius: '20px', padding: '16px 10px',
+             boxShadow: '0 8px 25px rgba(11,94,74,0.12)',
+             display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px'
+          }}>
+             {[
+               { label: 'Kader Binaan', val: kaderBinaan.length, color: '#0b5e4a' },
+               { label: 'Tugas Menunggu', val: tugasMenungguVerifikasi, color: '#e67e22' },
+               { label: 'Tugas Instansi', val: listMasterTugas.length, color: '#2980b9' }
+             ].map(item => (
+               <div key={item.label} style={{ textAlign: 'center', padding: '4px 2px' }}>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: item.color, lineHeight: 1.1 }}>{item.val}</div>
+                  <div style={{ fontSize: '0.65rem', color: '#777', fontWeight: 'bold', marginTop: '4px' }}>{item.label}</div>
+               </div>
+             ))}
+          </div>
+        </div>
+
+        <div style={{ padding: '0 15px' }}>
+
+          {/* Badge Tugas Menunggu Verifikasi (Menonjol) */}
+          {tugasMenungguVerifikasi > 0 && (
+            <div onClick={() => router.push('/pendamping/berkas-tugas')} className="hover-card-modern" style={{
+               marginTop: '18px', cursor: 'pointer',
+               background: 'linear-gradient(135deg, #f5c518 0%, #f7d75a 100%)',
+               borderRadius: '16px', padding: '16px 18px',
+               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+               boxShadow: '0 6px 15px rgba(245,197,24,0.25)'
+            }}>
+               <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#0b5e4a' }}>Tugas Menunggu Verifikasi</div>
+                  <div style={{ fontSize: '0.72rem', color: '#4a3c00', marginTop: '4px' }}>Ada {tugasMenungguVerifikasi} berkas kader binaan yang perlu Anda periksa.</div>
+               </div>
+               <div style={{
+                  backgroundColor: '#0b5e4a', color: '#f5c518', minWidth: '42px', height: '42px',
+                  borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 900, fontSize: '1.1rem', flexShrink: 0, marginLeft: '12px'
+               }}>{tugasMenungguVerifikasi}</div>
+            </div>
+          )}
+
+          {/* Grid Menu Pintasan */}
+          <div style={{ marginTop: '20px' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#0d1b2a', fontSize: '0.9rem' }}>Menu Pendamping</h4>
+            <div style={{
+               backgroundColor: '#ffffff', borderRadius: '20px', padding: '15px 10px',
+               boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: '1px solid #eef1f0',
+               display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px 8px'
+            }}>
+               <MenuCardMobile icon="👥" label="Daftar Kader" onClick={() => router.push('/pendamping/daftar-kader')} />
+               <MenuCardMobile icon="📋" label="Berkas Tugas" onClick={() => router.push('/pendamping/berkas-tugas')} />
+               <MenuCardMobile icon="📊" label="Input Nilai" onClick={() => router.push('/pendamping/input-nilai')} />
+               <MenuCardMobile icon="📝" label="Tes Pemahaman" onClick={() => router.push('/pendamping/tes-pemahaman')} />
+               <MenuCardMobile icon="📅" label="Kalender" onClick={() => router.push('/pendamping/kalender')} />
+               <MenuCardMobile icon="📢" label="Broadcast" onClick={() => router.push('/pendamping/broadcast')} />
+               <MenuCardMobile icon="👤" label="Profil" onClick={() => router.push('/pendamping/profil')} />
+            </div>
+          </div>
+
+          {/* Pusat Informasi Instansi */}
+          <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '18px', marginTop: '18px', border: '1px solid #eef1f0', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+            <h4 style={{ margin: '0 0 12px 0', color: '#0d1b2a', fontSize: '0.92rem' }}>🔔 Pusat Informasi Instansi</h4>
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {notifikasiGlobal.length === 0 ? (
+                <div style={{ padding: '18px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ddd', borderRadius: '12px', color: '#999', fontSize: '0.8rem' }}>Belum ada informasi/pengumuman terbaru.</div>
+              ) : (
+                notifikasiGlobal.slice(0, 5).map(notif => (
+                  <div key={notif.id} style={{ padding: '13px 14px', backgroundColor: '#f9fbfa', borderRadius: '12px', borderLeft: '4px solid #139070' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginBottom: '5px' }}>
+                      <strong style={{ color: '#0d1b2a', fontSize: '0.84rem' }}>{notif.judul}</strong>
+                      <span style={{ fontSize: '0.65rem', color: '#888', flexShrink: 0 }}>{notif.tanggal}</span>
+                    </div>
+                    <p style={{ margin: '0 0 6px 0', fontSize: '0.78rem', color: '#555', whiteSpace: 'pre-wrap' }}>{notif.pesan}</p>
+                    <div style={{ fontSize: '0.66rem', color: '#0b5e4a', fontWeight: 'bold' }}>Dari: {notif.pengirim}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Jadwal Kegiatan Terdekat */}
+          <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '18px', marginTop: '15px', border: '1px solid #eef1f0', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h4 style={{ margin: 0, color: '#0d1b2a', fontSize: '0.92rem' }}>📅 Jadwal Kegiatan Terdekat</h4>
+              <span onClick={() => router.push('/pendamping/kalender')} style={{ fontSize: '0.7rem', color: '#139070', fontWeight: 'bold', cursor: 'pointer' }}>Lihat Semua</span>
+            </div>
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {jadwalKegiatan.length === 0 ? (
+                <div style={{ padding: '18px', textAlign: 'center', backgroundColor: '#fafafa', border: '1px dashed #ddd', borderRadius: '12px', color: '#999', fontSize: '0.8rem' }}>Belum ada agenda kegiatan dalam waktu dekat.</div>
+              ) : (
+                jadwalKegiatan.slice(0, 5).map(jadwal => {
+                  const isKomisariat = jadwal.pembuat === 'Komisariat';
+                  const isPendamping = jadwal.pembuat.includes('Pendamping');
+                  const isMine = jadwal.pendamping_id === profilPendamping.username;
+                  const borderColor = isKomisariat ? '#f5c518' : isMine ? '#139070' : isPendamping ? '#2980b9' : '#e74c3c';
+                  const labelPembuat = isKomisariat ? 'Pusat Komisariat' : isMine ? 'Jadwal Anda' : isPendamping ? 'Jadwal Mentoring' : 'Pengurus Rayon';
+
+                  return (
+                    <div key={jadwal.id} style={{ padding: '13px 14px', backgroundColor: '#f9fbfa', borderRadius: '12px', borderLeft: `4px solid ${borderColor}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '5px' }}>
+                        <strong style={{ color: '#0d1b2a', fontSize: '0.84rem' }}>{jadwal.judul}</strong>
+                        <span style={{ backgroundColor: '#fff', color: '#555', padding: '2px 7px', borderRadius: '10px', fontSize: '0.6rem', border: '1px solid #e0e0e0', fontWeight: 'bold' }}>{labelPembuat}</span>
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#e67e22', fontWeight: 'bold', marginBottom: '4px' }}>🗓️ {jadwal.tanggal.replace('T', ' - ')} | 📍 {jadwal.lokasi}</div>
+                      <p style={{ margin: 0, fontSize: '0.76rem', color: '#555', fontStyle: 'italic' }}>{jadwal.deskripsi}</p>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          <div style={{ height: '90px' }}></div>
+        </div>
+      </div>
+    </>
   );
 }

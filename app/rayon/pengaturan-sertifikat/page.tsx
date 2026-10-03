@@ -147,6 +147,17 @@ export default function PagePengaturanSertifikatRayon() {
     } catch (error) { alert("Gagal menyimpan pengaturan."); } finally { setIsSavingSetting(false); }
   };
 
+  const handleDownloadTemplateExcel = () => {
+    const contohBaris = [{
+      "Nama": "", "NIM": "", "NIK": "", "Tempat, Tanggal Lahir": "",
+      "Jurusan": "", "Perguruan Tinggi": "", "Nomor Sertifikat": "", "NIA": ""
+    }];
+    const worksheet = XLSX.utils.json_to_sheet(contohBaris);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Data_Sertifikat");
+    XLSX.writeFile(workbook, `Template_Sertifikat_${formJenjang}_${formAngkatan}.xlsx`);
+  };
+
   const handleUploadExcelData = async () => {
     if (!fileExcel) return alert("Pilih file Excel terlebih dahulu!");
     setIsUploadingExcel(true);
@@ -159,26 +170,54 @@ export default function PagePengaturanSertifikatRayon() {
         const sheetName = workbook.SheetNames[0];
         const json: any[] = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-        const batch = writeBatch(db);
+        // Ambil nilai kolom tanpa peduli besar/kecil huruf & spasi, dengan beberapa alternatif nama kolom.
+        // Selalu dikembalikan sebagai teks agar tidak ada field bertipe angka (penyebab error saat pencarian).
+        const ambilKolom = (row: any, ...kandidat: string[]) => {
+          const kunciBaris = Object.keys(row);
+          for (const kand of kandidat) {
+            const ketemu = kunciBaris.find(k => k.trim().toLowerCase() === kand.trim().toLowerCase());
+            if (ketemu && row[ketemu] !== undefined && row[ketemu] !== null && String(row[ketemu]).trim() !== '') {
+              return String(row[ketemu]).trim();
+            }
+          }
+          return '';
+        };
+
+        // Firestore membatasi 500 operasi per batch, jadi commit dipecah per 450 baris.
+        const UKURAN_BATCH = 450;
+        let batch = writeBatch(db);
+        let opsBatch = 0;
         let count = 0;
+        let dilewati = 0;
 
         for (const row of json) {
-          if (!row.NIM && !row.Nama) continue;
-          const nimKader = row.NIM ? row.NIM.toString() : '';
-          const certDocId = `${adminRayonId}_${nimKader}_${formJenjang}_${formAngkatan}`;
+          const nimKader = ambilKolom(row, 'NIM');
+          const namaKader = ambilKolom(row, 'Nama', 'Nama Lengkap');
+          const niaKader = ambilKolom(row, 'NIA');
+          if (!nimKader && !namaKader) { dilewati++; continue; }
+
+          // Kunci dokumen: NIM -> NIA -> nama. Dulu baris tanpa NIM memakai kunci kosong
+          // sehingga semuanya saling menimpa menjadi satu dokumen.
+          const kunci = (nimKader || niaKader || namaKader).replace(/[^a-zA-Z0-9_-]/g, '_');
+          const certDocId = `${adminRayonId}_${kunci}_${formJenjang}_${formAngkatan}`;
           const docRef = doc(db, "kader_sertifikat", certDocId);
 
           batch.set(docRef, {
             id_rayon: adminRayonId, jenjang: formJenjang, angkatan: formAngkatan,
-            nama: row.Nama || '', nim: nimKader, nik: row.NIK ? row.NIK.toString() : '',
-            ttl: row['Tempat, Tanggal Lahir'] || '', jurusan: row.Jurusan || '',
-            pt: row['Perguruan Tinggi'] || '', nomor_sertifikat: row['Nomor Sertifikat'] || '',
-            nia: row.NIA ? row.NIA.toString() : '', updatedAt: Date.now()
+            nama: namaKader, nim: nimKader, nik: ambilKolom(row, 'NIK'),
+            ttl: ambilKolom(row, 'Tempat, Tanggal Lahir', 'Tempat Tanggal Lahir', 'TTL', 'Tempat & Tanggal Lahir'),
+            jurusan: ambilKolom(row, 'Jurusan', 'Program Studi', 'Prodi'),
+            pt: ambilKolom(row, 'Perguruan Tinggi', 'PT', 'Universitas'),
+            nomor_sertifikat: ambilKolom(row, 'Nomor Sertifikat', 'No Sertifikat', 'No. Sertifikat', 'Nomor'),
+            nia: niaKader, updatedAt: Date.now()
           }, { merge: true });
-          count++;
+          count++; opsBatch++;
+
+          if (opsBatch >= UKURAN_BATCH) { await batch.commit(); batch = writeBatch(db); opsBatch = 0; }
         }
-        await batch.commit();
-        alert(`Berhasil mengimpor data sertifikat untuk ${count} kader pada jenjang ${formJenjang}!`);
+        if (opsBatch > 0) await batch.commit();
+        alert(`Berhasil mengimpor data sertifikat untuk ${count} kader pada jenjang ${formJenjang}!` + (dilewati > 0 ? `
+${dilewati} baris dilewati karena tidak punya NIM maupun Nama.` : ''));
         setFileExcel(null);
       } catch (error) { alert("Gagal memproses file Excel."); } finally { setIsUploadingExcel(false); }
     };
@@ -190,7 +229,8 @@ export default function PagePengaturanSertifikatRayon() {
     if (!selectedKaderEdit) return;
     try {
       const docRef = doc(db, "kader_sertifikat", selectedKaderEdit.id);
-      await setDoc(docRef, { ...selectedKaderEdit, updatedAt: Date.now() }, { merge: true });
+      const { id: _idDok, ...dataKader } = selectedKaderEdit; // 'id' hanya penanda lokal, jangan ikut tersimpan
+      await setDoc(docRef, { ...dataKader, updatedAt: Date.now() }, { merge: true });
       alert("Data kader berhasil diperbarui!");
       setModalEditOpen(false); setSelectedKaderEdit(null);
     } catch (err) { alert("Gagal memperbarui data kader."); }
@@ -204,10 +244,15 @@ export default function PagePengaturanSertifikatRayon() {
     } catch (err) { alert("Gagal menghapus data."); }
   };
 
-  const filteredKader = listKaderSertifikat.filter(k => 
-    k.nama?.toLowerCase().includes(searchTerm.toLowerCase()) || k.nim?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    k.nomor_sertifikat?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Dipaksa menjadi teks: data lama/impor Excel bisa menyimpan angka,
+  // dan angka tidak punya .toLowerCase() sehingga halaman jadi blank.
+  const keTeks = (v: any) => (v === undefined || v === null) ? '' : String(v);
+  const filteredKader = listKaderSertifikat.filter(k => {
+    const cari = searchTerm.toLowerCase();
+    return keTeks(k.nama).toLowerCase().includes(cari)
+      || keTeks(k.nim).toLowerCase().includes(cari)
+      || keTeks(k.nomor_sertifikat).toLowerCase().includes(cari);
+  });
 
   const canvasWidth = orientasi === 'portrait' ? 794 : 1123;
   const canvasHeight = orientasi === 'portrait' ? 1123 : 794;
@@ -319,8 +364,11 @@ export default function PagePengaturanSertifikatRayon() {
           <>
             <div className="card-panel">
               <h3 className="section-title">📥 Upload Data Kelengkapan (Excel) - {formJenjang} ({formAngkatan})</h3>
-              <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: '12px', lineHeight: '1.4' }}>Header kolom wajib: <b>Nama, NIM, NIK, Tempat, Tanggal Lahir, Jurusan, Perguruan Tinggi, Nomor Sertifikat, NIA</b>.</p>
+              <p style={{ fontSize: '0.78rem', color: '#666', marginBottom: '12px', lineHeight: '1.4' }}>Gunakan template di bawah agar nama kolom pasti sesuai. Header yang dikenali: <b>Nama, NIM, NIK, Tempat, Tanggal Lahir, Jurusan, Perguruan Tinggi, Nomor Sertifikat, NIA</b> (besar/kecil huruf diabaikan).</p>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button type="button" onClick={handleDownloadTemplateExcel} style={{ backgroundColor: '#fff', color: '#1e824c', border: '1px solid #1e824c', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.82rem', width: '100%', boxSizing: 'border-box' }}>
+                  📥 Unduh Template Excel
+                </button>
                 <input type="file" accept=".xlsx, .xls" onChange={(e) => setFileExcel(e.target.files ? e.target.files[0] : null)} style={{ padding: '6px', border: '1px dashed #bbb', borderRadius: '8px', backgroundColor: '#fafafa', fontSize: '0.8rem', flex: '1 1 220px', width: '100%', boxSizing: 'border-box' }} />
                 <button onClick={handleUploadExcelData} disabled={isUploadingExcel} style={{ backgroundColor: '#1e824c', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: isUploadingExcel ? 'not-allowed' : 'pointer', fontSize: '0.82rem', width: '100%', boxSizing: 'border-box' }}>
                   {isUploadingExcel ? 'Memproses...' : '📤 Proses & Simpan'}

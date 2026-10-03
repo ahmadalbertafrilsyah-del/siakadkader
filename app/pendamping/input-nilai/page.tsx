@@ -9,15 +9,15 @@ export default function PageInputNilaiPendamping() {
   const [profilPendamping, setProfilPendamping] = useState({ nama: '', username: '', id_rayon: '', jenjangTugas: 'MAPABA' });
   const [namaRayonInduk, setNamaRayonInduk] = useState('');
   const [pengaturanCetak, setPengaturanCetak] = useState({ kopSuratUrl: '', footerUrl: '' });
-  
+
   const [kaderBinaan, setKaderBinaan] = useState<any[]>([]);
   const [selectedKader, setSelectedKader] = useState('');
-  const [tabInput, setTabInput] = useState('materi'); 
-  
+  const [tabInput, setTabInput] = useState('materi');
+
   const [listKurikulum, setListKurikulum] = useState<Record<string, any[]>>({});
   const [kategoriBobot, setKategoriBobot] = useState<any[]>([]);
-  
-  const [nilaiKaderRealtime, setNilaiKaderRealtime] = useState<Record<string, string>>({}); 
+
+  const [nilaiKaderRealtime, setNilaiKaderRealtime] = useState<Record<string, string>>({});
   const [nilaiMentah, setNilaiMentah] = useState<Record<string, Record<string, number>>>({});
   const [catatanKeaktifan, setCatatanKeaktifan] = useState('');
   const [evaluasiKader, setEvaluasiKader] = useState<{ nilai_mentah?: any, catatan: string }>({ nilai_mentah: {}, catatan: '' });
@@ -76,7 +76,7 @@ export default function PageInputNilaiPendamping() {
               const data = d.data();
               let isBinaan = false;
               if (isPendampingSKP) {
-                  if (Array.isArray(data.pendamping_skp_id)) { if (data.pendamping_skp_id.includes(p.username)) isBinaan = true; } 
+                  if (Array.isArray(data.pendamping_skp_id)) { if (data.pendamping_skp_id.includes(p.username)) isBinaan = true; }
                   else if (data.pendamping_skp_id === p.username) isBinaan = true;
               } else {
                   const pMapaba = Array.isArray(data.pendamping_mapaba_id) ? data.pendamping_mapaba_id : (data.pendamping_mapaba_id ? [data.pendamping_mapaba_id] : []);
@@ -104,7 +104,7 @@ export default function PageInputNilaiPendamping() {
     let unsubs: (() => void)[] = [];
     if (!selectedKader) return;
     const jenjang = profilPendamping.jenjangTugas;
-    
+
     const unsub1 = onSnapshot(doc(db, "nilai_khs", selectedKader), (docSnap: any) => {
       if (docSnap.exists()) setNilaiKaderRealtime(docSnap.data()); else setNilaiKaderRealtime({});
     });
@@ -170,7 +170,7 @@ export default function PageInputNilaiPendamping() {
 
   const materiAktif = listKurikulum[profilPendamping.jenjangTugas] || [];
   let totalSks = 0; let totalBobotNilai = 0;
-  
+
   const barisRaportRender = materiAktif.map((materi, index) => {
     const mentah = evaluasiKader?.nilai_mentah?.[materi.kode];
     let nilaiHuruf = nilaiKaderRealtime[materi.kode] || "-";
@@ -180,163 +180,265 @@ export default function PageInputNilaiPendamping() {
       kategoriBobot.forEach((kat: any) => { angkaAkhir += (mentah[kat.nama] || 0) * (kat.persen / 100); });
       nilaiHuruf = getNilaiHuruf(angkaAkhir);
     }
-    
+
     const displayAngka = angkaAkhir > 0 ? parseFloat(angkaAkhir.toFixed(2)) : '-';
-    const angkaSkala4 = angkaAkhir > 0 ? (angkaAkhir / 25) : 0; 
+    const angkaSkala4 = angkaAkhir > 0 ? (angkaAkhir / 25) : 0;
     const sksKaliNilai = (materi.bobot || 0) * angkaSkala4;
-    totalSks += (materi.bobot || 0); 
+    totalSks += (materi.bobot || 0);
     if (angkaAkhir > 0) totalBobotNilai += sksKaliNilai;
 
     return (
-      <tr key={materi.kode}>
-        <td style={{ padding: '6px 10px', textAlign: 'center' }}>{index + 1}</td><td style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold' }}>{materi.kode}</td>
-        <td style={{ padding: '6px 10px', textAlign: 'left' }}>{materi.nama}</td><td style={{ padding: '6px 10px', textAlign: 'center' }}>{materi.bobot}</td>
-        <td style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: '#004a87' }}>{displayAngka}</td>
-        <td style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold', color: nilaiHuruf !== '-' ? '#27ae60' : '#555' }}>{nilaiHuruf}</td><td style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 'bold' }}>{sksKaliNilai > 0 ? sksKaliNilai.toFixed(2) : 0}</td>
+      <tr key={materi.kode} style={{ borderBottom: '1px solid #eee' }}>
+        <td style={{ padding: '15px 10px', textAlign: 'center', color: '#777' }}>{index + 1}</td>
+        <td style={{ padding: '15px 10px', textAlign: 'center', fontWeight: 'bold', color: '#0d1b2a' }}>{materi.kode}</td>
+        <td style={{ padding: '15px 10px', textAlign: 'left', color: '#333' }}>{materi.nama}</td>
+        <td style={{ padding: '15px 10px', textAlign: 'center' }}>{materi.bobot}</td>
+        <td style={{ padding: '15px 10px', textAlign: 'center', fontWeight: 'bold', color: '#004a87' }}>{displayAngka}</td>
+        <td style={{ padding: '15px 10px', textAlign: 'center', fontWeight: 'bold', color: nilaiHuruf !== '-' ? '#27ae60' : '#aaa' }}>{nilaiHuruf}</td>
+        <td style={{ padding: '15px 10px', textAlign: 'center', fontWeight: 'bold', color: '#1e824c' }}>{sksKaliNilai > 0 ? sksKaliNilai.toFixed(2) : '-'}</td>
       </tr>
     );
   });
-  
+
   const ipKader = totalSks > 0 ? parseFloat((totalBobotNilai / totalSks).toFixed(2)) : 0;
   const kaderDicetak = kaderBinaan.find(k => k.nim === selectedKader) || {};
 
   return (
     <>
       <style>{`
+        .mobile-padded { display: flex; flex-direction: column; gap: 20px; }
+
+        @media (max-width: 767px) {
+           body, html, .mobile-content-wrapper, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
+           ::-webkit-scrollbar { display: none; }
+           .mobile-padded { padding: 15px !important; }
+        }
+
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .modern-tab-container {
+           display: flex; background-color: #f0f2f5; padding: 4px; border-radius: 8px; width: fit-content; margin-bottom: 15px;
+        }
+        .modern-tab {
+           padding: 8px 12px; border-radius: 6px; border: none; background: transparent; color: #777; font-weight: bold; font-size: 0.75rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;
+        }
+        .modern-tab.active {
+           background-color: #fff; color: #0b5e4a; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        /* CETAK PDF DENGAN BACKGROUND KOP */
         @media print {
           @page { size: A4 portrait; margin: 0; }
-          main.no-print { display: block !important; }
-          .main-content { margin-left: 0 !important; }
-          header { display: none !important; }
-          .web-ui-container { display: none !important; }
-          body, html { background-color: transparent !important; margin: 0; padding: 0; height: auto !important; }
-          .print-layout-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; z-index: 9999 !important; background: white;}
-          .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; }
-          .bg-kertas-a4 img { width: 100% !important; height: 100% !important; object-fit: fill !important; display: block !important; }
+          body, html, .app-container, main, .main-content, .mobile-content-wrapper, .mobile-padded {
+            background-color: white !important; margin: 0 !important; padding: 0 !important; height: auto !important; min-height: 0 !important; overflow: visible !important; display: block !important; position: static !important;
+            -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+          }
+          .siakad-shell, .sk-main, .sk-content {
+            display: block !important; height: auto !important; min-height: 0 !important; overflow: visible !important; position: static !important; margin: 0 !important; padding: 0 !important;
+          }
+          .sk-sidebar, .sk-topbar, .sk-appbar, .sk-bottomnav { display: none !important; }
+          aside, header, nav, .web-ui-container, .mobile-only, .desktop-only { display: none !important; }
+
+          .print-layout-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; z-index: 9999 !important; background: white !important;}
+
+          .bg-kertas-a4 { position: fixed !important; top: 0; left: 0; width: 210mm !important; height: 297mm !important; z-index: -10 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          .bg-kertas-a4 img { width: 100% !important; height: 100% !important; object-fit: fill !important; display: block !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
           table.master-print-table { width: 100% !important; border: none !important; margin: 0 !important; padding: 0 !important; background-color: transparent !important; page-break-inside: auto !important; position: relative !important; z-index: 10 !important; }
           table.master-print-table > thead { display: table-header-group !important; }
           table.master-print-table > tfoot { display: table-footer-group !important; }
           table.master-print-table > tbody { display: table-row-group !important; }
           table.master-print-table td { border: none !important; padding: 0 !important; background-color: transparent !important; }
+
           .header-space { height: 55mm !important; }
           .footer-space { height: 35mm !important; }
-          .print-content-area { padding: 0 25mm !important; position: relative; z-index: 10; }
-          table.tabel-utama { width: 100% !important; border-collapse: collapse !important; }
-          table.tabel-utama th, table.tabel-utama td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; color: #000 !important; }
-          table.tabel-utama th { font-weight: bold !important; text-align: center !important; }
-          .tabel-biodata td { border: none !important; }
+          .print-content-area { padding: 0 25mm !important; position: relative; z-index: 10; margin-top: 0 !important; }
+
+          table.tabel-utama-print { width: 100% !important; border-collapse: collapse !important; margin-bottom: 20px; page-break-inside: auto !important; }
+          table.tabel-utama-print tr { page-break-inside: avoid !important; page-break-after: auto !important; }
+          table.tabel-utama-print th, table.tabel-utama-print td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; color: #000 !important; }
+          table.tabel-utama-print th { font-weight: bold !important; text-align: center !important; }
+          .tabel-biodata { margin-top: 0 !important; }
+          .tabel-biodata td { border: none !important; padding: 3px 0 !important; font-size: 11pt !important; color: #000 !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         @media screen { .print-layout-container { display: none !important; } }
       `}</style>
 
-      <div className="web-ui-container" style={{ background: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #ddd', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '10px 0', gap: '15px', borderBottom: '1px solid #ddd', flexWrap: 'wrap', marginBottom: '15px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#555' }}>Pilih Kader Binaan:</span>
-            <select value={selectedKader} onChange={(e) => setSelectedKader(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px', fontWeight: 'bold', minWidth: '180px', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
-              {kaderBinaan.length === 0 && <option value="">Tidak ada binaan</option>}
-              {kaderBinaan.map((k: any) => <option key={k.nim} value={k.nim}>{k.nama}</option>)}
-            </select>
-            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#555', marginLeft: '5px' }}>Jenjang:</span>
-            <div style={{ padding: '6px 15px', backgroundColor: '#eef2f3', borderRadius: '4px', fontWeight: 'bold', color: '#2c3e50', border: '1px solid #ccc', fontSize: '0.85rem' }}>{profilPendamping.jenjangTugas}</div>
-            
+      {/* TAMPILAN WEB NORMAL */}
+      <div className="web-ui-container mobile-padded">
+
+        {/* BARIS FILTER */}
+        <div style={{ background: 'white', padding: '15px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+
+            {/* Group Pilih Kader Binaan */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 220px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', whiteSpace: 'nowrap' }}>Pilih Kader Binaan:</span>
+              <select value={selectedKader} onChange={(e) => setSelectedKader(e.target.value)} style={{ padding: '8px 10px', border: '1px solid #eee', borderRadius: '8px', outline: 'none', backgroundColor: '#f8f9fa', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', width: '100%' }}>
+                {kaderBinaan.length === 0 && <option value="">Tidak ada binaan</option>}
+                {kaderBinaan.map((k: any) => <option key={k.nim} value={k.nim}>{k.nama}</option>)}
+              </select>
+            </div>
+
+            {/* Group Jenjang (tetap/tidak bisa diubah) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '0 1 auto' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', whiteSpace: 'nowrap' }}>Jenjang:</span>
+              <div style={{ padding: '8px 14px', backgroundColor: '#e8f5f0', borderRadius: '8px', fontWeight: 'bold', color: '#0b5e4a', border: '1px solid #cfe9e0', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{profilPendamping.jenjangTugas}</div>
+            </div>
+
+            {/* Tombol Cetak KHS */}
             {tabInput === 'materi' && selectedKader && (
-              <button onClick={() => window.print()} style={{ backgroundColor: '#f1c40f', color: '#0d1b2a', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', marginLeft: '5px', fontSize: '0.85rem' }}>🖨️ Cetak KHS</button>
+              <div style={{ marginLeft: 'auto' }}>
+                <button onClick={() => window.print()} style={{ backgroundColor: '#0b5e4a', color: '#f5c518', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', boxShadow: '0 2px 5px rgba(11,94,74,0.15)' }}>
+                  🖨️ Cetak KHS
+                </button>
+              </div>
             )}
           </div>
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '1px solid #ddd', padding: '0 20px', backgroundColor: '#fff', marginTop: '15px', flexWrap: 'wrap' }}>
-           <button onClick={() => setTabInput('materi')} style={{ padding: '5px 12px', border: 'none', background: tabInput === 'materi' ? '#fff' : 'transparent', color: tabInput === 'materi' ? '#007bff' : '#555', fontWeight: tabInput === 'materi' ? 'bold' : 'normal', borderTop: tabInput === 'materi' ? '3px solid #007bff' : '3px solid transparent', borderRight: '1px solid #ddd', borderLeft: '1px solid #ddd', cursor: 'pointer', marginBottom: '-1px', fontSize: '0.9rem' }}>Raport Kaderisasi</button>
-           <button onClick={() => setTabInput('keaktifan')} style={{ padding: '5px 12px', border: 'none', background: tabInput === 'keaktifan' ? '#fff' : 'transparent', color: tabInput === 'keaktifan' ? '#007bff' : '#555', fontWeight: tabInput === 'keaktifan' ? 'bold' : 'normal', borderTop: tabInput === 'keaktifan' ? '3px solid #007bff' : '3px solid transparent', borderRight: '1px solid #ddd', cursor: 'pointer', marginBottom: '-1px', fontSize: '0.9rem' }}>Persentase & Nilai Detail</button>
-        </div>
+        {/* KARTU KONTEN */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', padding: '15px', minHeight: '50vh' }}>
 
-        {tabInput === 'materi' && (
-          <div style={{ width: '100%', overflowX: 'auto', padding: '10px 0', boxSizing: 'border-box' }}>
-            <table className="tabel-utama" style={{ minWidth: '600px' }}>
-              <thead><tr><th style={{ width: '5%' }}>No</th><th style={{ width: '12%', textAlign: 'center' }}>Kode</th><th style={{ width: '53%', textAlign: 'center' }}>Nama Materi</th><th style={{ width: '8%' }}>SKS</th><th style={{ width: '8%' }}>Angka</th><th style={{ width: '8%' }}>Nilai Huruf</th><th style={{ width: '8%' }}>SKS x Nilai</th></tr></thead>
-              <tbody>
-                {materiAktif.length === 0 ? (<tr><td colSpan={7} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Kurikulum belum diatur.</td></tr>) : barisRaportRender}
-                <tr style={{ borderTop: '2px solid #ccc' }}><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalSks}</td><td colSpan={2}></td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalBobotNilai > 0 ? totalBobotNilai.toFixed(2) : 0}</td></tr>
-                <tr style={{ borderTop: '1px solid #ccc', borderBottom: '1px solid #ccc' }}><td colSpan={6} style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', fontSize: '0.95rem' }}>IPK (Indeks Prestasi Kader)</td><td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}>{ipKader}</td></tr>
-              </tbody>
-            </table>
+          <div className="modern-tab-container hide-scroll" style={{ maxWidth: '100%', overflowX: 'auto' }}>
+            <button onClick={() => setTabInput('materi')} className={`modern-tab ${tabInput === 'materi' ? 'active' : ''}`}>Kartu Hasil Studi</button>
+            <button onClick={() => setTabInput('keaktifan')} className={`modern-tab ${tabInput === 'keaktifan' ? 'active' : ''}`}>Rincian &amp; Bobot Nilai</button>
           </div>
-        )}
 
-        {tabInput === 'keaktifan' && (
-          <div style={{ backgroundColor: '#fafafa', padding: '20px', border: '1px solid #ddd', borderRadius: '4px' }}>
-            <div style={{ marginBottom: '20px', background: '#eef2f3', padding: '15px', borderRadius: '6px', border: '1px dashed #b2c2cf' }}>
-              <h4 style={{ margin: '0 0 10px 0', color: '#0d1b2a', fontSize: '0.85rem' }}>📌 Kategori & Bobot Penilaian (Ditetapkan Instansi)</h4>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                {kategoriBobot.length === 0 ? <span style={{ fontSize: '0.8rem', color: '#e74c3c' }}>Belum ada bobot penilaian yang ditetapkan.</span> : 
-                  kategoriBobot.map(kat => (
-                    <div key={kat.id} style={{ backgroundColor: '#fff', padding: '4px 10px', borderRadius: '20px', border: '1px solid #ccc', fontSize: '0.75rem', fontWeight: 'bold', color: '#333' }}>
-                      {kat.nama}: <span style={{ color: '#27ae60' }}>{kat.persen}%</span>
-                    </div>
-                  ))
-                }
-              </div>
-            </div>
-
-            <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
-              <table className="tabel-utama" style={{ textAlign: 'center', minWidth: '900px', fontSize: '0.85rem', backgroundColor: '#fff' }}>
+          {tabInput === 'materi' && (
+            <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '760px', fontSize: '0.85rem' }}>
                 <thead>
-                  <tr>
-                    <th rowSpan={2} style={{ width: '3%' }}>No</th><th rowSpan={2} style={{ width: '8%', textAlign: 'center' }}>Kode</th><th rowSpan={2} style={{ width: '35%', textAlign: 'center' }}>Nama Materi</th>
-                    {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
-                    <th rowSpan={2} style={{ width: '5%' }}>SKS</th><th colSpan={2} style={{ borderBottom: '1px solid #ddd', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th><th rowSpan={2} style={{ width: '8%' }}>SKS x Nilai</th>
-                  </tr>
-                  <tr>
-                    {kategoriBobot.map(kat => <th key={kat.id} style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#1e824c', backgroundColor: '#f0fbf4' }}>{kat.nama} <br/><span style={{color: '#e74c3c'}}>{kat.persen}%</span></th>)}
-                    <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', backgroundColor: '#eaf4fc' }}>Angka</th><th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', backgroundColor: '#eaf4fc' }}>Huruf</th>
+                  <tr style={{ backgroundColor: '#f0f4f8', color: '#555' }}>
+                    <th style={{ padding: '12px 10px', borderRadius: '8px 0 0 8px', textAlign: 'center' }}>No</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'center' }}>Kode</th>
+                    <th style={{ padding: '12px 10px' }}>Materi Kurikulum</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'center' }}>SKS</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'center' }}>Angka</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'center' }}>Nilai</th>
+                    <th style={{ padding: '12px 10px', borderRadius: '0 8px 8px 0', textAlign: 'center' }}>SKS x Nilai</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {materiAktif.length === 0 ? (
-                    <tr><td colSpan={7 + kategoriBobot.length} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada materi.</td></tr>
-                  ) : (
-                    materiAktif.map((materi, index) => {
-                      let angkaAkhir = 0;
-                      kategoriBobot.forEach(kat => { const score = nilaiMentah[materi.kode]?.[kat.nama] || 0; angkaAkhir += (score * (kat.persen / 100)); });
-                      const hurufAkhir = getNilaiHuruf(angkaAkhir);
-                      const displayAngka = angkaAkhir > 0 ? parseFloat(angkaAkhir.toFixed(2)) : '-';
-                      const angkaSkala4 = angkaAkhir > 0 ? (angkaAkhir / 25) : 0;
-                      const sksKaliNilai = (materi.bobot || 0) * angkaSkala4;
-
-                      return (
-                        <tr key={`rinci-${materi.kode}`}>
-                          <td>{index + 1}</td><td style={{ textAlign: 'left' }}>{materi.kode}</td><td style={{ textAlign: 'left', fontWeight: 'bold' }}>{materi.nama}</td>
-                          {kategoriBobot.map((kat) => (
-                            <td key={kat.id} style={{ backgroundColor: '#fcfcfc' }}>
-                              <input type="number" min="0" max="100" placeholder="0"
-                                value={nilaiMentah[materi.kode]?.[kat.nama] === 0 ? '' : (nilaiMentah[materi.kode]?.[kat.nama] || '')}
-                                onChange={(e) => handleInputNilaiMentah(materi.kode, kat.nama, e.target.value)} onBlur={() => handleAutoSaveNilaiDetail(materi.kode)}
-                                style={{ width: '50px', padding: '6px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center', fontSize: '0.85rem', outline: 'none' }} />
-                            </td>
-                          ))}
-                          <td>{materi.bobot}</td>
-                          <td style={{ fontWeight: 'bold', color: '#004a87', backgroundColor: '#f4f9fd' }}>{displayAngka}</td>
-                          <td style={{ fontWeight: 'bold', color: hurufAkhir !== '-' ? '#27ae60' : '#999', backgroundColor: '#f4f9fd', fontSize: '1rem' }}>{hurufAkhir}</td>
-                          <td style={{ fontWeight: 'bold' }}>{sksKaliNilai > 0 ? sksKaliNilai.toFixed(2) : 0}</td>
-                        </tr>
-                      )
-                    })
-                  )}
-                  <tr><td colSpan={3 + kategoriBobot.length} style={{ textAlign: 'center', fontWeight: 'bold' }}>Jumlah SKS & Nilai</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalSks}</td><td colSpan={2}></td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalBobotNilai > 0 ? totalBobotNilai.toFixed(2) : 0}</td></tr>
-                  <tr><td colSpan={4 + kategoriBobot.length} style={{ textAlign: 'center', fontWeight: 'bold' }}>IPK (Indeks Prestasi Kader)</td><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}>{ipKader}</td></tr>
+                  {materiAktif.length === 0 ? (<tr><td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#999' }}>Materi kurikulum jenjang ini belum tersedia.</td></tr>) : barisRaportRender}
+                  <tr style={{ borderTop: '2px dashed #ddd' }}>
+                    <td colSpan={3} style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#555' }}>Total SKS</td>
+                    <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1rem' }}>{totalSks}</td>
+                    <td colSpan={2}></td>
+                    <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1rem' }}>{totalBobotNilai > 0 ? totalBobotNilai.toFixed(2) : 0}</td>
+                  </tr>
+                  <tr>
+                    <td colSpan={7}>
+                      <div style={{ backgroundColor: '#eaf4fc', borderRadius: '8px', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #cce5ff', marginTop: '10px', gap: '10px', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 'bold', color: '#004a87', fontSize: '1rem' }}>Indeks Prestasi Kader (IPK)</span>
+                        <span style={{ fontWeight: '900', color: '#0000af', fontSize: '1.5rem' }}>{ipKader}</span>
+                      </div>
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
-            <div style={{ marginTop: '20px' }}>
-              <label style={{display: 'block', fontWeight: 'bold', marginBottom: '8px', fontSize: '0.85rem'}}>Catatan / Pesan Pendamping untuk Kader:</label>
-              <textarea rows={4} value={catatanKeaktifan} onChange={e => handleSimpanCatatan(e.target.value)} placeholder="Tuliskan evaluasi etika, saran pengembangan..." style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical', boxSizing: 'border-box', outline: 'none' }} />
+          )}
+
+          {tabInput === 'keaktifan' && (
+            <div>
+              <div style={{ marginBottom: '20px', background: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #eee' }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '0.85rem' }}>📌 Kategori &amp; Bobot Penilaian (Ditetapkan Instansi)</h4>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {kategoriBobot.length === 0 ? <span style={{ fontSize: '0.75rem', color: '#e74c3c' }}>Belum ada bobot penilaian yang ditetapkan.</span> :
+                    kategoriBobot.map(kat => (
+                      <div key={kat.id} style={{ backgroundColor: '#fff', padding: '5px 12px', borderRadius: '20px', border: '1px solid #139070', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 'bold', color: '#2c3e50' }}>{kat.nama}:</span>
+                        <span style={{ fontWeight: 'bold', color: '#0b5e4a' }}>{kat.persen}%</span>
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+
+              {/* Wrapper scroll khusus untuk tabel saja agar bagian atas tidak ikut bergeser */}
+              <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto', overflowY: 'visible' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', minWidth: '900px', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr>
+                      <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555', borderRadius: '8px 0 0 0' }}>No</th>
+                      <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555' }}>Kode</th>
+                      <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555', textAlign: 'left' }}>Nama Materi</th>
+                      {kategoriBobot.length > 0 && <th colSpan={kategoriBobot.length} style={{ padding: '8px', backgroundColor: '#e8f5e9', color: '#1e824c', borderBottom: '1px solid #fff' }}>Input Nilai Detail (0-100)</th>}
+                      <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555' }}>SKS</th>
+                      <th colSpan={2} style={{ padding: '8px', backgroundColor: '#eaf4fc', color: '#004a87', borderBottom: '1px solid #fff' }}>Hasil Akhir</th>
+                      <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555', borderRadius: '0 8px 0 0' }}>SKS x Nilai</th>
+                    </tr>
+                    <tr>
+                      {kategoriBobot.map(kat => <th key={kat.id} style={{ padding: '6px', backgroundColor: '#e8f5e9', color: '#1e824c', fontSize: '0.7rem' }}>{kat.nama} ({kat.persen}%)</th>)}
+                      <th style={{ padding: '6px', backgroundColor: '#eaf4fc', color: '#004a87', fontSize: '0.7rem' }}>Angka</th>
+                      <th style={{ padding: '6px', backgroundColor: '#eaf4fc', color: '#004a87', fontSize: '0.7rem' }}>Huruf</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {materiAktif.length === 0 ? (
+                      <tr><td colSpan={7 + kategoriBobot.length} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Belum ada rincian nilai.</td></tr>
+                    ) : (
+                      materiAktif.map((materi, index) => {
+                        let angkaAkhir = 0;
+                        kategoriBobot.forEach(kat => { const score = nilaiMentah[materi.kode]?.[kat.nama] || 0; angkaAkhir += (score * (kat.persen / 100)); });
+                        const hurufAkhir = getNilaiHuruf(angkaAkhir);
+                        const displayAngka = angkaAkhir > 0 ? parseFloat(angkaAkhir.toFixed(2)) : '-';
+                        const angkaSkala4 = angkaAkhir > 0 ? (angkaAkhir / 25) : 0;
+                        const sksKaliNilai = (materi.bobot || 0) * angkaSkala4;
+
+                        return (
+                          <tr key={`rinci-${materi.kode}`} style={{ borderBottom: '1px solid #eee' }}>
+                            <td style={{ padding: '10px' }}>{index + 1}</td>
+                            <td style={{ padding: '10px' }}>{materi.kode}</td>
+                            <td style={{ padding: '10px', textAlign: 'left', fontWeight: 'bold', color: '#333' }}>{materi.nama}</td>
+                            {kategoriBobot.map((kat) => (
+                              <td key={kat.id} style={{ backgroundColor: '#fafafa' }}>
+                                <input type="number" min="0" max="100" placeholder="0"
+                                  value={nilaiMentah[materi.kode]?.[kat.nama] === 0 ? '' : (nilaiMentah[materi.kode]?.[kat.nama] || '')}
+                                  onChange={(e) => handleInputNilaiMentah(materi.kode, kat.nama, e.target.value)} onBlur={() => handleAutoSaveNilaiDetail(materi.kode)}
+                                  style={{ width: '60px', padding: '6px', border: '1px solid #ccc', borderRadius: '6px', textAlign: 'center', fontSize: '0.75rem', outline: 'none', boxSizing: 'border-box' }} />
+                              </td>
+                            ))}
+                            <td style={{ padding: '10px' }}>{materi.bobot}</td>
+                            <td style={{ padding: '10px', fontWeight: 'bold', color: '#004a87', backgroundColor: '#fcfcfc' }}>{displayAngka}</td>
+                            <td style={{ padding: '10px', fontWeight: 'bold', color: hurufAkhir !== '-' ? '#27ae60' : '#999', backgroundColor: '#fcfcfc', fontSize: '0.9rem' }}>{hurufAkhir}</td>
+                            <td style={{ padding: '10px', fontWeight: 'bold', color: '#1e824c' }}>{sksKaliNilai > 0 ? sksKaliNilai.toFixed(2) : 0}</td>
+                          </tr>
+                        )
+                      })
+                    )}
+                    <tr style={{ borderTop: '2px dashed #ddd' }}>
+                      <td colSpan={3 + kategoriBobot.length} style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#555' }}>Jumlah SKS &amp; Nilai</td>
+                      <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1rem' }}>{totalSks}</td>
+                      <td colSpan={2}></td>
+                      <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1rem' }}>{totalBobotNilai > 0 ? totalBobotNilai.toFixed(2) : 0}</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={7 + kategoriBobot.length}>
+                        <div style={{ backgroundColor: '#eaf4fc', borderRadius: '8px', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #cce5ff', marginTop: '10px', gap: '10px', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 'bold', color: '#004a87', fontSize: '1rem' }}>Indeks Prestasi Kader (IPK)</span>
+                          <span style={{ fontWeight: '900', color: '#0000af', fontSize: '1.5rem' }}>{ipKader}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', fontSize: '0.85rem', color: '#333' }}>Catatan / Pesan Pendamping untuk Kader:</label>
+                <textarea rows={4} value={catatanKeaktifan} onChange={e => handleSimpanCatatan(e.target.value)} placeholder="Tuliskan evaluasi etika, saran pengembangan..." style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', resize: 'vertical', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+        <div style={{ height: '80px' }} className="mobile-only"></div>
       </div>
 
-      {/* PRINT CONTAINER */}
+      {/* PRINT CONTAINER KHUSUS CETAK A4 PDF DENGAN BACKGROUND KOP */}
       <div className="print-layout-container">
         {pengaturanCetak.kopSuratUrl && <div className="bg-kertas-a4"><img src={pengaturanCetak.kopSuratUrl} alt="Background A4" /></div>}
         <table className="master-print-table">
@@ -345,24 +447,31 @@ export default function PageInputNilaiPendamping() {
             <tr>
               <td>
                 <div className="print-content-area">
-                  <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '0 0 15px 0', fontSize: '12pt' }}>RAPORT KADERISASI</h3>
-                  <table className="tabel-biodata">
+                  <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '0 0 15px 0', fontSize: '12pt' }}>KARTU HASIL STUDI (KHS) KADERISASI</h3>
+                  <table className="tabel-biodata" style={{ width: '100%', marginBottom: '15px' }}>
                     <tbody>
                       <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{kaderDicetak?.nim || '...........................'}</td></tr>
                       <tr><td>Nama Mahasiswa</td><td>:</td><td>{kaderDicetak?.nama || '...........................'}</td></tr>
-                      <tr><td>Pelaksana</td><td>:</td><td>{namaRayonInduk}</td></tr>
-                      <tr><td>Angkatan</td><td>:</td><td>{kaderDicetak?.angkatan || (kaderDicetak?.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '...........................')}</td></tr>
-                      <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{profilPendamping.jenjangTugas}</td></tr>
+                      <tr><td>Pelaksana Instansi</td><td>:</td><td>{namaRayonInduk}</td></tr>
+                      <tr><td>Tahun Angkatan</td><td>:</td><td>{kaderDicetak?.angkatan || (kaderDicetak?.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '...........................')}</td></tr>
+                      <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{profilPendamping.jenjangTugas === 'SKP' ? 'SKP (Sekolah Kader Putri)' : profilPendamping.jenjangTugas}</td></tr>
                     </tbody>
                   </table>
-                  <table className="tabel-utama">
-                    <thead><tr><th style={{ width: '5%' }}>No</th><th style={{ width: '12%' }}>Kode</th><th style={{ width: '53%' }}>Nama Materi</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Angka</th><th style={{ width: '10%' }}>Nilai</th><th style={{ width: '10%' }}>SKS x Nilai</th></tr></thead>
+                  <table className="tabel-utama-print">
+                    <thead><tr><th style={{ width: '5%' }}>No</th><th style={{ width: '12%' }}>Kode Materi</th><th style={{ width: '45%' }}>Nama Materi Kurikulum</th><th style={{ width: '8%' }}>SKS</th><th style={{ width: '10%' }}>Angka</th><th style={{ width: '8%' }}>Nilai Huruf</th><th style={{ width: '12%' }}>SKS x Nilai</th></tr></thead>
                     <tbody>
                       {materiAktif.length === 0 ? (<tr><td colSpan={7} style={{ padding: '30px', textAlign: 'center' }}>Kurikulum belum diatur oleh Pengurus.</td></tr>) : barisRaportRender}
                       <tr><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalSks}</td><td colSpan={2}></td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{totalBobotNilai > 0 ? totalBobotNilai.toFixed(2) : 0}</td></tr>
-                      <tr><td colSpan={6} style={{ textAlign: 'center', fontWeight: 'bold' }}>IPK (Indeks Prestasi Kaderisasi)</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ipKader}</td></tr>
+                      <tr><td colSpan={6} style={{ textAlign: 'center', fontWeight: 'bold' }}>Indeks Prestasi Kaderisasi (IPK)</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ipKader}</td></tr>
                     </tbody>
                   </table>
+
+                  {catatanKeaktifan && (
+                    <div style={{ marginTop: '20px' }}>
+                      <strong style={{ fontSize: '11pt' }}>Catatan Evaluasi Pendamping:</strong>
+                      <p style={{ marginTop: '5px', fontSize: '11pt', fontStyle: 'italic' }}>"{catatanKeaktifan}"</p>
+                    </div>
+                  )}
                 </div>
               </td>
             </tr>

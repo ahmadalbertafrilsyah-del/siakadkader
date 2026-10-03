@@ -233,11 +233,12 @@ body {
     display: flex; position: fixed; top: 0; left: 0; right: 0; z-index: 70;
     align-items: center; justify-content: space-between;
     min-height: var(--sk-appbar-h);
-    padding: 14px 18px;
+    padding: 14px 16px;
     color: #fff;
     background: linear-gradient(135deg, var(--sk-primary) 0%, var(--sk-primary-2) 100%);
-    border-radius: 0 0 24px 24px;
-    box-shadow: 0 10px 28px rgba(17,17,80,.28);
+    /* Rata (tanpa lengkung/bayangan) supaya konten di bawahnya menempel mulus */
+    border-radius: 0;
+    box-shadow: none;
   }
   .sk-ab-profile { display: flex; align-items: center; gap: 12px; min-width: 0; }
   .sk-ab-profile img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex: none; border: 2px solid var(--sk-accent); background: #fff; }
@@ -246,8 +247,16 @@ body {
   .sk-ab-action { position: relative; width: 42px; height: 42px; flex: none; display: grid; place-items: center; background: rgba(255,255,255,.15); border-radius: 13px; cursor: pointer; font-size: 1.3rem; }
   .sk-ab-badge { position: absolute; top: -3px; right: -3px; background: #ef4444; color: #fff; font-size: .6rem; font-weight: 800; min-width: 18px; height: 18px; border-radius: 999px; display: grid; place-items: center; padding: 0 4px; border: 2px solid var(--sk-primary); }
 
-  /* ruang untuk app bar (atas) & bottom nav (bawah) */
-  .sk-content { padding: calc(var(--sk-appbar-h) + 16px) 14px 104px 14px; }
+  /* Menempel tepat di bawah app bar (tanpa celah), sisi lebih ramping */
+  .sk-content { padding: var(--sk-appbar-h) 12px 96px 12px; }
+
+  /* Halaman yang sudah punya padding sendiri jangan sampai dobel margin */
+  .sk-content > .mobile-padded,
+  .sk-content > .mobile-view,
+  .sk-content > .web-ui-container { padding-left: 0 !important; padding-right: 0 !important; }
+
+  /* Blok edge-to-edge (header melengkung pada beranda) */
+  .sk-bleed { margin-left: -12px !important; margin-right: -12px !important; }
 
   .sk-bottomnav {
     display: flex; position: fixed; bottom: 14px; left: 14px; right: 14px; z-index: 70;
@@ -270,9 +279,24 @@ body {
 }
 
 @media print {
+  @page { margin: 0; }
+  /* Sembunyikan seluruh chrome aplikasi */
   .sk-sidebar, .sk-topbar, .sk-appbar, .sk-bottomnav { display: none !important; }
-  .sk-main { margin-left: 0 !important; }
-  .sk-content { padding: 0 !important; overflow: visible !important; }
+
+  /* PENTING: shell memakai height:100dvh + overflow:hidden untuk tampilan layar.
+     Saat mencetak semua itu harus dilepas agar konten TIDAK terpotong 1 halaman. */
+  html, body, .siakad-shell, .sk-main, .sk-content {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
 
 @media (prefers-color-scheme: dark) {

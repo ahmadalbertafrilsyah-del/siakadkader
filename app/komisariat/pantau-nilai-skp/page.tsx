@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 
 export default function PageRaportSKP() {
   const [databaseKader, setDatabaseKader] = useState<any[]>([]);
+  const [dataRayon, setDataRayon] = useState<any[]>([]);
   const [masterKurikulum, setMasterKurikulum] = useState<any[]>([]);
   const [selectedKaderNilai, setSelectedKaderNilai] = useState('');
   
@@ -45,9 +46,13 @@ export default function PageRaportSKP() {
   // --- FETCH DATA AWAL ---
   useEffect(() => {
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
-      const listKader: any[] = [];
-      snap.forEach((doc) => { if (doc.data().role === 'kader') listKader.push({ id: doc.id, ...doc.data() }); });
-      setDatabaseKader(listKader);
+      const listKader: any[] = []; const listRayon: any[] = [];
+      snap.forEach((doc) => {
+        const d = doc.data();
+        if (d.role === 'kader') listKader.push({ id: doc.id, ...d });
+        else if (d.role === 'rayon') listRayon.push({ id: doc.id, ...d });
+      });
+      setDatabaseKader(listKader); setDataRayon(listRayon);
       const kaderSKP = listKader.filter(k => k.jenjang === 'SKP');
       if (kaderSKP.length > 0 && !selectedKaderNilai) setSelectedKaderNilai(kaderSKP[0].nim);
     });
@@ -84,18 +89,61 @@ export default function PageRaportSKP() {
     return () => { unsubscribeNilai(); unsubscribeKeaktifan(); };
   }, [selectedKaderNilai]);
 
-  const kaderDicetak = databaseKader.find(k => k.nim === selectedKaderNilai) || {};
+  const kaderDicetak: any = databaseKader.find(k => k.nim === selectedKaderNilai) || {};
+
+  // Materi SKP selalu terurut agar tampilan web dan hasil cetak identik
+  const materiSKP = masterKurikulum
+    .filter(m => m.jenjang === 'SKP')
+    .sort((a, b) => String(a.kode).localeCompare(String(b.kode), undefined, { numeric: true }));
+
+  // Delegasi luar komisariat: id_rayon berisi nama rayon yang diketik manual saat buat akun
+  const getAsalRayon = (k: any) => {
+    const asal = k?.id_rayon;
+    if (!asal) return '-';
+    if (asal === 'Komisariat' || asal === 'Pusat Komisariat') return 'Pusat Komisariat';
+    const cocok = dataRayon.find((r: any) =>
+      r.username === asal || r.id_rayon === asal || r.id === asal ||
+      (r.nama && String(r.nama).toLowerCase() === String(asal).toLowerCase())
+    );
+    return cocok ? (cocok.nama || asal) : asal;
+  };
 
   return (
     <>
       {/* CSS KHUSUS PDF CETAK (OVERRIDE LAYOUT) */}
       <style>{`
+        .mobile-padded { display: flex; flex-direction: column; gap: 20px; }
+
+        @media (max-width: 767px) {
+           .mobile-padded { padding: 0 !important; }
+        }
+
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .modern-tab-container {
+           display: flex; background-color: #f0f2f5; padding: 4px; border-radius: 8px; width: fit-content; margin-bottom: 15px; max-width: 100%; overflow-x: auto;
+        }
+        .modern-tab {
+           padding: 8px 12px; border-radius: 6px; border: none; background: transparent; color: #777; font-weight: bold; font-size: 0.75rem; cursor: pointer; transition: all 0.3s; white-space: nowrap;
+        }
+        .modern-tab.active {
+           background-color: #fff; color: #0000af; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
         @media print {
           @page { size: A4 portrait; margin: 0; }
           /* 1. MENGATASI OVERRIDE DARI LAYOUT.TSX */
           main.no-print { display: block !important; }
-          .main-content { margin-left: 0 !important; }
           header { display: none !important; }
+          /* Shell aplikasi memakai height:100dvh + overflow:hidden -> harus dilepas saat cetak
+             agar KHS tidak terpotong di satu halaman. */
+          .sk-sidebar, .sk-topbar, .sk-appbar, .sk-bottomnav { display: none !important; }
+          html, body, .siakad-shell, .sk-main, .sk-content, .main-content {
+            display: block !important; height: auto !important; min-height: 0 !important;
+            max-height: none !important; overflow: visible !important; position: static !important;
+            margin: 0 !important; padding: 0 !important; background: #fff !important;
+          }
           
           /* 2. SEMBUNYIKAN TAMPILAN WEB */
           .web-ui-container { display: none !important; }
@@ -121,10 +169,16 @@ export default function PageRaportSKP() {
 
           .print-content-area { padding: 0 25mm !important; position: relative; z-index: 10; }
 
-          table.tabel-utama { width: 100% !important; border-collapse: collapse !important; }
-          table.tabel-utama th, table.tabel-utama td { border: 1px solid #000 !important; padding: 4px 6px !important; font-size: 11pt !important; color: #000 !important; }
-          table.tabel-utama th { font-weight: bold !important; text-align: center !important; }
-          .tabel-biodata td { border: none !important; }
+          /* Tabel cetak resmi: hitam-putih, bergaris tegas, tanpa warna gradient layar */
+          table.tabel-utama-print { width: 100% !important; border-collapse: collapse !important; margin-bottom: 20px; page-break-inside: auto !important; }
+          table.tabel-utama-print tr { page-break-inside: avoid !important; page-break-after: auto !important; }
+          table.tabel-utama-print th, table.tabel-utama-print td {
+            border: 1px solid #000 !important; padding: 5px 7px !important;
+            font-size: 11pt !important; color: #000 !important; background: #fff !important;
+          }
+          table.tabel-utama-print th { font-weight: bold !important; text-align: center !important; background: #fff !important; }
+          .tabel-biodata { margin-top: 0 !important; }
+          .tabel-biodata td { border: none !important; padding: 3px 0 !important; font-size: 11pt !important; color: #000 !important; background: #fff !important; }
         }
         @media screen { .print-layout-container { display: none !important; } }
       `}</style>
@@ -132,47 +186,83 @@ export default function PageRaportSKP() {
       {/* ======================================================== */}
       {/* TAMPILAN WEB NORMAL (DIBUNGKUS CLASS web-ui-container)   */}
       {/* ======================================================== */}
-      <div className="web-ui-container" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', maxWidth: '100%', overflow: 'hidden', boxSizing: 'border-box' }}>
-        
-        {/* HEADER & DESKRIPSI */}
-        <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '15px' }}>
-          <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.1rem' }}>Raport & Penilaian Peserta SKP</h3>
-          <p style={{ fontSize: '0.8rem', color: '#777', margin: '5px 0 0 0' }}>Kelola nilai, bobot matriks, dan cetak Kartu Hasil Studi kader SKP.</p>
-        </div>
+      <div className="web-ui-container mobile-padded">
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', padding: '10px 0', gap: '15px', borderBottom: '1px solid #ddd', flexWrap: 'wrap', marginBottom: '15px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#555' }}>Pilih Kader SKP:</span>
-            <select value={selectedKaderNilai} onChange={(e) => setSelectedKaderNilai(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: '4px', fontWeight: 'bold', minWidth: '180px', outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}>
-              {databaseKader.filter(k => k.jenjang === 'SKP').length === 0 && <option value="">Tidak ada peserta SKP</option>}
-              {databaseKader.filter(k => k.jenjang === 'SKP').map(k => <option key={k.nim} value={k.nim}>{k.nama}</option>)}
-            </select>
-            
+        {/* KARTU FILTER: PILIH KADER + CETAK */}
+        <div style={{ background: 'white', padding: '15px', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ marginBottom: '12px' }}>
+            <h3 style={{ color: '#0f1b2e', margin: 0, fontSize: '1rem' }}>Raport &amp; Penilaian Peserta SKP</h3>
+            <p style={{ fontSize: '0.75rem', color: '#888', margin: '4px 0 0 0' }}>Kelola nilai, bobot matriks, dan cetak Kartu Hasil Studi kader SKP.</p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 240px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#555', whiteSpace: 'nowrap' }}>Pilih Kader SKP:</span>
+              <select value={selectedKaderNilai} onChange={(e) => setSelectedKaderNilai(e.target.value)} style={{ padding: '8px 10px', border: '1px solid #eee', borderRadius: '8px', outline: 'none', backgroundColor: '#f8f9fa', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold', color: '#0f1b2e', width: '100%' }}>
+                {databaseKader.filter(k => k.jenjang === 'SKP').length === 0 && <option value="">Tidak ada peserta SKP</option>}
+                {databaseKader.filter(k => k.jenjang === 'SKP').map(k => <option key={k.nim} value={k.nim}>{k.nama}</option>)}
+              </select>
+            </div>
+
             {tabRaportAdmin === 'raport' && selectedKaderNilai && (
-              <button onClick={() => window.print()} style={{ backgroundColor: '#f1c40f', color: '#0d1b2a', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', marginLeft: '5px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem' }}>🖨️ Cetak KHS SKP</button>
+              <div style={{ marginLeft: 'auto' }}>
+                <button onClick={() => window.print()} style={{ backgroundColor: '#f5c518', color: '#0f1b2e', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', boxShadow: '0 2px 5px rgba(245,197,24,0.25)' }}>
+                  🖨️ Cetak KHS SKP
+                </button>
+              </div>
             )}
           </div>
-        </div>
-        
-        {/* TABS NAVIGASI */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #ddd', marginBottom: '0px', flexWrap: 'wrap' }}>
-          <button onClick={() => setTabRaportAdmin('raport')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'raport' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'raport' ? '#fff' : 'transparent', color: tabRaportAdmin === 'raport' ? '#555' : '#0000af', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>Raport Kaderisasi</button>
-          <button onClick={() => setTabRaportAdmin('persentase')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'persentase' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'persentase' ? '#fff' : 'transparent', color: tabRaportAdmin === 'persentase' ? '#555' : '#0000af', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', fontSize: '0.85rem' }}>Persentase & Nilai</button>
-          <button onClick={() => setTabRaportAdmin('pengaturan')} style={{ padding: '10px 15px', border: '1px solid', borderColor: tabRaportAdmin === 'pengaturan' ? '#ddd #ddd transparent #ddd' : 'transparent', background: tabRaportAdmin === 'pengaturan' ? '#fff' : 'transparent', color: tabRaportAdmin === 'pengaturan' ? '#555' : '#e67e22', fontWeight: 'bold', cursor: 'pointer', marginBottom: '-1px', borderRadius: '4px 4px 0 0', marginLeft: 'auto', fontSize: '0.85rem' }}>⚙️ Pengaturan Cetak</button>
+
+          {/* IDENTITAS RINGKAS PESERTA SKP */}
+          {selectedKaderNilai && (
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
+              <div style={{ background: '#f8f9fa', border: '1px solid #eee', borderRadius: '8px', padding: '8px 12px', flex: '1 1 160px' }}>
+                <div style={{ fontSize: '0.65rem', color: '#999', fontWeight: 'bold', textTransform: 'uppercase' }}>NIM</div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#0f1b2e' }}>{kaderDicetak.nim || '-'}</div>
+              </div>
+              <div style={{ background: '#f8f9fa', border: '1px solid #eee', borderRadius: '8px', padding: '8px 12px', flex: '1 1 160px' }}>
+                <div style={{ fontSize: '0.65rem', color: '#999', fontWeight: 'bold', textTransform: 'uppercase' }}>Asal Rayon</div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#28395a' }}>{getAsalRayon(kaderDicetak)}</div>
+              </div>
+              <div style={{ background: '#f8f9fa', border: '1px solid #eee', borderRadius: '8px', padding: '8px 12px', flex: '1 1 120px' }}>
+                <div style={{ fontSize: '0.65rem', color: '#999', fontWeight: 'bold', textTransform: 'uppercase' }}>Angkatan</div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#0f1b2e' }}>{kaderDicetak.angkatan || (kaderDicetak.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '-')}</div>
+              </div>
+              <div style={{ background: '#f8f9fa', border: '1px solid #eee', borderRadius: '8px', padding: '8px 12px', flex: '1 1 120px' }}>
+                <div style={{ fontSize: '0.65rem', color: '#999', fontWeight: 'bold', textTransform: 'uppercase' }}>Jenjang</div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#0000af' }}>SKP</div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* TAB 1: RAPORT KADERISASI */}
+        {/* KARTU KONTEN TAB */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #eaeaea', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', padding: '15px', minHeight: '50vh' }}>
+
+        {/* TABS NAVIGASI */}
+        <div className="modern-tab-container hide-scroll">
+          <button onClick={() => setTabRaportAdmin('raport')} className={`modern-tab ${tabRaportAdmin === 'raport' ? 'active' : ''}`}>Kartu Hasil Studi</button>
+          <button onClick={() => setTabRaportAdmin('persentase')} className={`modern-tab ${tabRaportAdmin === 'persentase' ? 'active' : ''}`}>Rincian &amp; Bobot Nilai</button>
+          <button onClick={() => setTabRaportAdmin('pengaturan')} className={`modern-tab ${tabRaportAdmin === 'pengaturan' ? 'active' : ''}`} style={{ color: tabRaportAdmin === 'pengaturan' ? '#e67e22' : '#777' }}>⚙️ Pengaturan Cetak</button>
+        </div>
+
+        {/* TAB 1: KARTU HASIL STUDI */}
         {tabRaportAdmin === 'raport' && (
-          <div style={{ width: '100%', overflowX: 'auto', padding: '15px 0 0px 0' }}>
-            <table className="tabel-utama" style={{ minWidth: '600px' }}>
-              <thead>
-                <tr>
-                  <th style={{ width: '5%' }}>No</th><th style={{ width: '12%', textAlign: 'center' }}>Kode</th><th style={{ width: '53%', textAlign: 'center' }}>Nama Materi SKP</th>
-                  <th style={{ width: '8%' }}>SKS</th><th style={{ width: '8%' }}>Nilai Huruf</th><th style={{ width: '8%' }}>SKS x Nilai</th>
-                </tr>
-              </thead>
-              <tbody>
-                {masterKurikulum.filter(m => m.jenjang === 'SKP').length === 0 ? (<tr><td colSpan={6} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Kurikulum SKP belum diatur.</td></tr>) : masterKurikulum.filter(m => m.jenjang === 'SKP').sort((a,b)=>a.kode.localeCompare(b.kode, undefined, {numeric: true})).map((materi, index) => {
+          <div>
+            <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f0f4f8', color: '#555' }}>
+                    <th style={{ padding: '12px 10px', borderRadius: '8px 0 0 8px', textAlign: 'center' }}>No</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'center' }}>Kode</th>
+                    <th style={{ padding: '12px 10px' }}>Nama Materi SKP</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'center' }}>SKS</th>
+                    <th style={{ padding: '12px 10px', textAlign: 'center' }}>Nilai</th>
+                    <th style={{ padding: '12px 10px', borderRadius: '0 8px 8px 0', textAlign: 'center' }}>SKS x Nilai</th>
+                  </tr>
+                </thead>
+                <tbody>
+                {materiSKP.length === 0 ? (<tr><td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#999' }}>Kurikulum SKP belum diatur.</td></tr>) : materiSKP.map((materi, index) => {
                     let angkaAkhir = 0;
                     (kategoriBobotGlobal['SKP'] || []).forEach((kat: any) => {
                       const score = evaluasiKader?.nilai_mentah?.[materi.kode]?.[kat.nama] || 0;
@@ -182,36 +272,52 @@ export default function PageRaportSKP() {
                     const angka = huruf === 'A' ? 4 : huruf === 'B' ? 3 : huruf === 'C' ? 2 : huruf === 'D' ? 1 : 0;
                     const sksKali = materi.bobot * angka;
                     return (
-                      <tr key={materi.kode}>
-                        <td style={{ textAlign: 'center' }}>{index + 1}</td><td style={{ textAlign: 'center' }}>{materi.kode}</td><td style={{ fontWeight: 'bold' }}>{materi.nama}</td>
-                        <td style={{ textAlign: 'center' }}>{materi.bobot}</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: huruf !== '-' ? '#27ae60' : '#999' }}>{huruf}</td><td style={{ textAlign: 'center' }}>{huruf !== '-' ? sksKali : 0}</td>
+                      <tr key={materi.kode} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '15px 10px', textAlign: 'center', color: '#777' }}>{index + 1}</td>
+                        <td style={{ padding: '15px 10px', textAlign: 'center', fontWeight: 'bold', color: '#0f1b2e' }}>{materi.kode}</td>
+                        <td style={{ padding: '15px 10px', textAlign: 'left', color: '#333' }}>{materi.nama}</td>
+                        <td style={{ padding: '15px 10px', textAlign: 'center' }}>{materi.bobot}</td>
+                        <td style={{ padding: '15px 10px', textAlign: 'center', fontWeight: 'bold', color: huruf !== '-' ? '#27ae60' : '#aaa' }}>{huruf}</td>
+                        <td style={{ padding: '15px 10px', textAlign: 'center', fontWeight: 'bold', color: '#1e824c' }}>{huruf !== '-' ? sksKali : 0}</td>
                       </tr>
                     )
                 })}
-                <tr><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{masterKurikulum.filter(m=>m.jenjang==='SKP').reduce((sum,m)=>sum+m.bobot,0)}</td><td></td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{masterKurikulum.filter(m=>m.jenjang==='SKP').reduce((sum,m)=>{
+                <tr style={{ borderTop: '2px dashed #ddd' }}>
+                  <td colSpan={3} style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#555' }}>Total SKS</td>
+                  <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1rem' }}>{materiSKP.reduce((sum,m)=>sum+m.bobot,0)}</td>
+                  <td></td>
+                  <td style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#333', fontSize: '1rem' }}>{materiSKP.reduce((sum,m)=>{
                     let angkaAkhir=0; (kategoriBobotGlobal['SKP']||[]).forEach((kat:any)=>{const score=evaluasiKader?.nilai_mentah?.[m.kode]?.[kat.nama]||0; angkaAkhir+=(score*(kat.persen/100));});
                     const huruf = angkaAkhir >= 76 ? 'A' : angkaAkhir >= 51 ? 'B' : angkaAkhir >= 26 ? 'C' : angkaAkhir >= 10 ? 'D' : angkaAkhir > 0 ? 'E' : '-';
                     const angka = huruf === 'A' ? 4 : huruf === 'B' ? 3 : huruf === 'C' ? 2 : huruf === 'D' ? 1 : 0;
                     return sum + (m.bobot * angka);
                 },0)}</td></tr>
-                <tr><td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>IPK (Indeks Prestasi Kader)</td><td style={{ textAlign: 'center', fontWeight: 'bold', color: '#333' }}>{masterKurikulum.filter(m=>m.jenjang==='SKP').reduce((sum,m)=>sum+m.bobot,0) > 0 ? (masterKurikulum.filter(m=>m.jenjang==='SKP').reduce((sum,m)=>{
+                <tr>
+                  <td colSpan={6}>
+                    <div style={{ backgroundColor: '#eaf4fc', borderRadius: '8px', padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #cce5ff', marginTop: '10px' }}>
+                      <span style={{ fontWeight: 'bold', color: '#004a87', fontSize: '1rem' }}>Indeks Prestasi Kader (IPK)</span>
+                      <span style={{ fontWeight: 900, color: '#0000af', fontSize: '1.5rem' }}>{materiSKP.reduce((sum,m)=>sum+m.bobot,0) > 0 ? (materiSKP.reduce((sum,m)=>{
                     let angkaAkhir=0; (kategoriBobotGlobal['SKP']||[]).forEach((kat:any)=>{const score=evaluasiKader?.nilai_mentah?.[m.kode]?.[kat.nama]||0; angkaAkhir+=(score*(kat.persen/100));});
                     const huruf = angkaAkhir >= 76 ? 'A' : angkaAkhir >= 51 ? 'B' : angkaAkhir >= 26 ? 'C' : angkaAkhir >= 10 ? 'D' : angkaAkhir > 0 ? 'E' : '-';
                     const angka = huruf === 'A' ? 4 : huruf === 'B' ? 3 : huruf === 'C' ? 2 : huruf === 'D' ? 1 : 0;
                     return sum + (m.bobot * angka);
-            },0) / masterKurikulum.filter(m=>m.jenjang==='SKP').reduce((sum,m)=>sum+m.bobot,0)).toFixed(2) : "0.00"}</td></tr>
-              </tbody>
-            </table>
-            <p style={{fontSize: '0.75rem', color: '#888', marginTop: '15px', fontStyle: 'italic'}}>*Catatan: Nilai Huruf terisi otomatis berdasarkan perhitungan Matriks di tab "Persentase & Nilai".</p>
+            },0) / materiSKP.reduce((sum,m)=>sum+m.bobot,0)).toFixed(2) : "0.00"}</span>
+                    </div>
+                  </td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+            <p style={{fontSize: '0.75rem', color: '#888', marginTop: '15px', fontStyle: 'italic'}}>*Catatan: Nilai Huruf terisi otomatis berdasarkan perhitungan Matriks di tab "Rincian &amp; Bobot Nilai".</p>
           </div>
         )}
 
         {/* TAB 2: PERSENTASE & NILAI */}
         {tabRaportAdmin === 'persentase' && (
-          <div style={{ width: '100%', overflowX: 'auto', padding: '10px 0' }}>
-            <div style={{ marginBottom: '15px', background: '#fdfdfd', padding: '15px', borderRadius: '6px', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '15px' }}>
+          <div style={{ width: '100%' }}>
+            <div style={{ marginBottom: '20px', background: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '15px' }}>
               <div>
-                <h4 style={{ margin: '0 0 10px 0', color: '#1e824c', fontSize: '0.9rem' }}>⚙️ Kategori & Bobot Penilaian SKP</h4>
+                <h4 style={{ margin: '0 0 10px 0', color: '#1e824c', fontSize: '0.85rem' }}>⚙️ Kategori & Bobot Penilaian SKP</h4>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   {(kategoriBobotGlobal['SKP'] || []).map((kat: any) => (
                     <div key={kat.id} style={{ backgroundColor: '#eaf4fc', padding: '5px 10px', borderRadius: '20px', border: '1px solid #3498db', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -248,29 +354,30 @@ export default function PageRaportSKP() {
               </form>
             </div>
 
-            <table className="tabel-utama" style={{ textAlign: 'center', minWidth: '900px', fontSize: '0.85rem' }}>
+            <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto', overflowY: 'visible' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', minWidth: '900px', fontSize: '0.8rem' }}>
               <thead>
                 <tr>
-                  <th rowSpan={2} style={{ width: '3%', textAlign: 'center' }}>No</th>
-                  <th rowSpan={2} style={{ width: '10%', textAlign: 'center' }}>Kode</th>
-                  <th rowSpan={2} style={{ width: '25%', textAlign: 'center' }}>Nama Materi</th>
-                  {(kategoriBobotGlobal['SKP'] || []).length > 0 && <th colSpan={(kategoriBobotGlobal['SKP'] || []).length} style={{ borderBottom: '1px solid #ddd', textAlign: 'center', backgroundColor: '#f0fbf4' }}>Input Nilai Detail (0-100)</th>}
-                  <th rowSpan={2} style={{ width: '5%', textAlign: 'center' }}>SKS</th>
-                  <th colSpan={2} style={{ borderBottom: '1px solid #ddd', textAlign: 'center', backgroundColor: '#eaf4fc' }}>Hasil Akhir</th>
+                  <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555', borderRadius: '8px 0 0 0' }}>No</th>
+                  <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555' }}>Kode</th>
+                  <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555', textAlign: 'left' }}>Nama Materi</th>
+                  {(kategoriBobotGlobal['SKP'] || []).length > 0 && <th colSpan={(kategoriBobotGlobal['SKP'] || []).length} style={{ padding: '8px', borderBottom: '1px solid #fff', textAlign: 'center', backgroundColor: '#e8f5e9', color: '#27ae60' }}>Nilai Mentah (0-100)</th>}
+                  <th rowSpan={2} style={{ padding: '8px', backgroundColor: '#f0f4f8', color: '#555' }}>SKS</th>
+                  <th colSpan={2} style={{ padding: '8px', borderBottom: '1px solid #fff', textAlign: 'center', backgroundColor: '#eaf4fc', color: '#004a87', borderRadius: '0 8px 0 0' }}>Hasil Akhir</th>
                 </tr>
                 <tr>
                   {(kategoriBobotGlobal['SKP'] || []).map((kat: any) => (
-                    <th key={kat.id} style={{ fontSize: '0.75rem', textAlign: 'center', padding: '6px 5px', color: '#1e824c', backgroundColor: '#f0fbf4' }}>{kat.nama} <br/><span style={{color: '#e74c3c'}}>{kat.persen}%</span></th>
+                    <th key={kat.id} style={{ fontSize: '0.7rem', textAlign: 'center', padding: '6px', color: '#1e824c', backgroundColor: '#e8f5e9' }}>{kat.nama} ({kat.persen}%)</th>
                   ))}
-                  <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', textAlign: 'center', backgroundColor: '#eaf4fc' }}>Angka</th>
-                  <th style={{ fontSize: '0.75rem', padding: '6px 5px', color: '#004a87', textAlign: 'center', backgroundColor: '#eaf4fc' }}>Huruf</th>
+                  <th style={{ fontSize: '0.7rem', padding: '6px', color: '#004a87', textAlign: 'center', backgroundColor: '#eaf4fc' }}>Angka</th>
+                  <th style={{ fontSize: '0.7rem', padding: '6px', color: '#004a87', textAlign: 'center', backgroundColor: '#eaf4fc' }}>Huruf</th>
                 </tr>
               </thead>
               <tbody>
-                {masterKurikulum.filter(m => m.jenjang === 'SKP').length === 0 ? (
-                  <tr><td colSpan={7 + (kategoriBobotGlobal['SKP'] || []).length} style={{ padding: '20px', textAlign: 'center', color: '#999' }}>Belum ada materi SKP.</td></tr>
+                {materiSKP.length === 0 ? (
+                  <tr><td colSpan={7 + (kategoriBobotGlobal['SKP'] || []).length} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>Belum ada materi SKP.</td></tr>
                 ) : (
-                  masterKurikulum.filter(m => m.jenjang === 'SKP').map((materi, index) => {
+                  materiSKP.map((materi, index) => {
                     let angkaAkhir = 0;
                     (kategoriBobotGlobal['SKP'] || []).forEach((kat: any) => {
                         const score = nilaiMentah[materi.kode]?.[kat.nama] || 0;
@@ -279,10 +386,10 @@ export default function PageRaportSKP() {
                     const hurufAkhir = angkaAkhir >= 76 ? 'A' : angkaAkhir >= 51 ? 'B' : angkaAkhir >= 26 ? 'C' : angkaAkhir >= 10 ? 'D' : angkaAkhir > 0 ? 'E' : '-';
 
                     return (
-                      <tr key={`rinci-${materi.kode}`}>
-                        <td>{index + 1}</td><td style={{ textAlign: 'left' }}>{materi.kode}</td><td style={{ textAlign: 'left', fontWeight: 'bold' }}>{materi.nama}</td>
+                      <tr key={`rinci-${materi.kode}`} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '10px' }}>{index + 1}</td><td style={{ padding: '10px' }}>{materi.kode}</td><td style={{ padding: '10px', textAlign: 'left', fontWeight: 'bold', color: '#333' }}>{materi.nama}</td>
                         {(kategoriBobotGlobal['SKP'] || []).map((kat: any) => (
-                          <td key={kat.id} style={{ backgroundColor: '#fcfcfc' }}>
+                          <td key={kat.id} style={{ backgroundColor: '#fafafa' }}>
                             <input type="number" min="0" max="100" placeholder="0" value={nilaiMentah[materi.kode]?.[kat.nama] === 0 ? '' : (nilaiMentah[materi.kode]?.[kat.nama] || '')} 
                               onChange={(e) => {
                                   let valNum = Number(e.target.value); if (valNum > 100) valNum = 100; if (valNum < 0) valNum = 0;
@@ -298,20 +405,21 @@ export default function PageRaportSKP() {
                                     await setDoc(doc(db, "nilai_khs", selectedKaderNilai), { [materi.kode]: hurufAkhir, terakhirDiubah: Date.now(), diubahOleh: "Admin Komisariat" }, { merge: true });
                                   } catch (error) {}
                               }} 
-                              style={{ width: '50px', padding: '6px', border: '1px solid #ccc', borderRadius: '4px', textAlign: 'center', fontSize: '0.85rem', fontWeight: 'bold', outline: 'none' }} />
+                              style={{ width: '60px', padding: '6px', border: '1px solid #ccc', borderRadius: '6px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 'bold', outline: 'none', boxSizing: 'border-box' }} />
                           </td>
                         ))}
-                        <td>{materi.bobot}</td>
-                        <td style={{ fontWeight: 'bold', color: '#004a87', backgroundColor: '#f4f9fd' }}>{angkaAkhir > 0 ? angkaAkhir.toFixed(1) : '-'}</td>
-                        <td style={{ fontWeight: 'bold', color: hurufAkhir !== '-' ? '#27ae60' : '#999', backgroundColor: '#f4f9fd', fontSize: '1rem' }}>{hurufAkhir}</td>
+                        <td style={{ padding: '10px' }}>{materi.bobot}</td>
+                        <td style={{ padding: '10px', fontWeight: 'bold', color: '#004a87', backgroundColor: '#fcfcfc' }}>{angkaAkhir > 0 ? angkaAkhir.toFixed(1) : '-'}</td>
+                        <td style={{ padding: '10px', fontWeight: 'bold', color: hurufAkhir !== '-' ? '#27ae60' : '#999', backgroundColor: '#fcfcfc', fontSize: '0.9rem' }}>{hurufAkhir}</td>
                       </tr>
                     )
                   })
                 )}
               </tbody>
             </table>
+            </div>
             <div style={{ marginTop: '20px' }}>
-              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', fontSize: '0.85rem' }}>Catatan Evaluasi SKP:</label>
+              <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '8px', fontSize: '0.85rem', color: '#333' }}>Catatan Evaluasi SKP:</label>
               <textarea value={evaluasiKader.catatan} onChange={async e => {
                   setEvaluasiKader({ ...evaluasiKader, catatan: e.target.value });
                   try {
@@ -319,14 +427,14 @@ export default function PageRaportSKP() {
                     const jenjangData = currentEvaluasi['SKP'] || { nilai_mentah: {}, catatan: '' };
                     await setDoc(doc(db, "evaluasi_kader", selectedKaderNilai), { ...currentEvaluasi, ['SKP']: { ...jenjangData, catatan: e.target.value } }, { merge: true });
                   } catch (error) {}
-              }} style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', height: '60px', resize: 'vertical', fontSize: '0.85rem', boxSizing: 'border-box' }} placeholder="Tulis catatan perkembangan kader disini..." />
+              }} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', height: '70px', resize: 'vertical', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} placeholder="Tulis catatan perkembangan kader disini..." />
             </div>
           </div>
         )}
 
         {/* TAB 3: PENGATURAN CETAK */}
         {tabRaportAdmin === 'pengaturan' && (
-          <div style={{ backgroundColor: '#fafafa', border: '1px solid #ddd', borderRadius: '4px', padding: '20px' }}>
+          <div style={{ backgroundColor: '#fafafa', border: '1px solid #ddd', borderRadius: '8px', padding: '20px' }}>
             <form onSubmit={async (e) => {
                 e.preventDefault(); setIsSavingPengaturan(true);
                 try {
@@ -337,16 +445,18 @@ export default function PageRaportSKP() {
                   alert("Pengaturan Kop berhasil disimpan!"); setFileKop(null);
                 } catch (error) {} finally { setIsSavingPengaturan(false); }
             }} style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '500px' }}>
-              <div style={{ backgroundColor: '#fff3cd', padding: '10px', borderRadius: '4px', borderLeft: '4px solid #f1c40f', fontSize: '0.8rem', color: '#856404', lineHeight: '1.4' }}><b>PENTING:</b> Gunakan Gambar <b>Ukuran Kertas A4 (PNG/JPG)</b> yang berisi desain KOP SURAT di bagian atas dan TANDA TANGAN di bagian bawah. Gambar ini akan menjadi background pada saat cetak PDF SKP.</div>
+              <div style={{ backgroundColor: '#fff3cd', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #f5c518', fontSize: '0.8rem', color: '#856404', lineHeight: '1.5' }}><b>PENTING:</b> Gunakan Gambar <b>Ukuran Kertas A4 (PNG/JPG)</b> yang berisi desain KOP SURAT di bagian atas dan TANDA TANGAN di bagian bawah. Gambar ini akan menjadi background pada saat cetak PDF SKP.</div>
               <div>
                 <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', color: '#333', fontSize: '0.85rem' }}>Upload Template Background A4 (Komisariat)</label>
-                {pengaturanCetak.kopSuratUrl && <img src={pengaturanCetak.kopSuratUrl} alt="Kop Saat Ini" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '10px', border: '1px solid #ccc', backgroundColor: '#fff', padding: '5px' }} />}
-                <input type="file" accept="image/png, image/jpeg" onChange={(e) => setFileKop(e.target.files ? e.target.files[0] : null)} style={{ padding: '8px', border: '1px dashed #ccc', width: '100%', backgroundColor: '#fff', boxSizing: 'border-box', fontSize: '0.8rem' }} />
+                {pengaturanCetak.kopSuratUrl && <img src={pengaturanCetak.kopSuratUrl} alt="Kop Saat Ini" style={{ width: '100%', maxHeight: '200px', objectFit: 'contain', marginBottom: '15px', border: '1px solid #ccc', backgroundColor: '#fff', padding: '5px', borderRadius: '8px' }} />}
+                <input type="file" accept="image/png, image/jpeg" onChange={(e) => setFileKop(e.target.files ? e.target.files[0] : null)} style={{ padding: '12px', border: '2px dashed #28395a', borderRadius: '8px', width: '100%', backgroundColor: '#fff', boxSizing: 'border-box', fontSize: '0.85rem', outline: 'none' }} />
               </div>
-              <button type="submit" disabled={isSavingPengaturan} style={{ backgroundColor: '#1e824c', color: 'white', padding: '10px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: isSavingPengaturan ? 'not-allowed' : 'pointer', fontSize: '0.9rem' }}>{isSavingPengaturan ? 'Mengupload...' : '💾 Simpan Template A4'}</button>
+              <button type="submit" disabled={isSavingPengaturan} style={{ backgroundColor: '#1e824c', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: isSavingPengaturan ? 'not-allowed' : 'pointer', fontSize: '0.85rem', width: '200px' }}>{isSavingPengaturan ? 'Mengupload...' : '💾 Simpan Template A4'}</button>
             </form>
           </div>
         )}
+        </div>
+        <div style={{ height: '80px' }} className="mobile-only"></div>
       </div>
 
       {/* ======================================================== */}
@@ -367,21 +477,23 @@ export default function PageRaportSKP() {
                 <div className="print-content-area">
                   {tabRaportAdmin === 'raport' && selectedKaderNilai && (
                     <>
-                      <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '0 0 15px 0', fontSize: '12pt' }}>RAPORT KADERISASI SKP</h3>
-                      <table className="tabel-biodata">
+                      <h3 style={{ textAlign: 'center', fontWeight: 'bold', margin: '0 0 15px 0', fontSize: '12pt', textTransform: 'uppercase' }}>Kartu Hasil Studi (KHS) Sekolah Kader Putri</h3>
+                      <table className="tabel-biodata" style={{ width: '100%', marginBottom: '15px' }}>
                         <tbody>
                           <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{kaderDicetak.nim || '...........................'}</td></tr>
                           <tr><td>Nama Mahasiswa</td><td>:</td><td>{kaderDicetak.nama || '...........................'}</td></tr>
-                          <tr><td>Angkatan</td><td>:</td><td>{kaderDicetak.angkatan || (kaderDicetak.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '...........................')}</td></tr>
+                          <tr><td>Pelaksana Instansi</td><td>:</td><td>Pusat Komisariat</td></tr>
+                          <tr><td>Asal Rayon</td><td>:</td><td>{getAsalRayon(kaderDicetak)}</td></tr>
+                          <tr><td>Tahun Angkatan</td><td>:</td><td>{kaderDicetak.angkatan || (kaderDicetak.createdAt ? new Date(kaderDicetak.createdAt).getFullYear() : '...........................')}</td></tr>
                           <tr><td>Jenjang Kaderisasi</td><td>:</td><td>SKP (Sekolah Kader Putri)</td></tr>
                         </tbody>
                       </table>
-                      <table className="tabel-utama">
+                      <table className="tabel-utama-print">
                         <thead>
-                          <tr><th>No</th><th>Kode</th><th>Nama Materi</th><th>SKS</th><th>Nilai</th><th>SKS x Nilai</th></tr>
+                          <tr><th style={{ width: '5%' }}>No</th><th style={{ width: '15%' }}>Kode Materi</th><th style={{ width: '45%' }}>Nama Materi Kurikulum</th><th style={{ width: '10%' }}>SKS</th><th style={{ width: '10%' }}>Nilai Huruf</th><th style={{ width: '15%' }}>SKS x Nilai</th></tr>
                         </thead>
                         <tbody>
-                          {masterKurikulum.filter(m => m.jenjang === 'SKP').map((materi, index) => {
+                          {materiSKP.map((materi, index) => {
                             let angkaAkhir = 0;
                             (kategoriBobotGlobal['SKP'] || []).forEach((kat: any) => {
                               const score = evaluasiKader?.nilai_mentah?.[materi.kode]?.[kat.nama] || 0;
@@ -396,20 +508,27 @@ export default function PageRaportSKP() {
                                 </tr>
                             )
                           })}
-                          <tr><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{masterKurikulum.filter(m=>m.jenjang==='SKP').reduce((sum,m)=>sum+m.bobot,0)}</td><td></td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{masterKurikulum.filter(m=>m.jenjang==='SKP').reduce((sum,m)=>{
+                          <tr><td colSpan={3} style={{ textAlign: 'center', fontWeight: 'bold' }}>Jumlah</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{materiSKP.reduce((sum,m)=>sum+m.bobot,0)}</td><td></td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{materiSKP.reduce((sum,m)=>{
                               let angkaAkhir=0; (kategoriBobotGlobal['SKP']||[]).forEach((kat:any)=>{const score=evaluasiKader?.nilai_mentah?.[m.kode]?.[kat.nama]||0; angkaAkhir+=(score*(kat.persen/100));});
                               const huruf = angkaAkhir >= 76 ? 'A' : angkaAkhir >= 51 ? 'B' : angkaAkhir >= 26 ? 'C' : angkaAkhir >= 10 ? 'D' : angkaAkhir > 0 ? 'E' : '-';
                               const angka = huruf === 'A' ? 4 : huruf === 'B' ? 3 : huruf === 'C' ? 2 : huruf === 'D' ? 1 : 0;
                               return sum + (m.bobot * angka);
                           },0)}</td></tr>
-                          <tr><td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold' }}>IPK (Indeks Prestasi Kader)</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{masterKurikulum.filter(m=>m.jenjang==='SKP').reduce((sum,m)=>sum+m.bobot,0) > 0 ? (masterKurikulum.filter(m=>m.jenjang==='SKP').reduce((sum,m)=>{
+                          <tr><td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold' }}>IPK (Indeks Prestasi Kader)</td><td style={{ textAlign: 'center', fontWeight: 'bold' }}>{materiSKP.reduce((sum,m)=>sum+m.bobot,0) > 0 ? (materiSKP.reduce((sum,m)=>{
                               let angkaAkhir=0; (kategoriBobotGlobal['SKP']||[]).forEach((kat:any)=>{const score=evaluasiKader?.nilai_mentah?.[m.kode]?.[kat.nama]||0; angkaAkhir+=(score*(kat.persen/100));});
                               const huruf = angkaAkhir >= 76 ? 'A' : angkaAkhir >= 51 ? 'B' : angkaAkhir >= 26 ? 'C' : angkaAkhir >= 10 ? 'D' : angkaAkhir > 0 ? 'E' : '-';
                               const angka = huruf === 'A' ? 4 : huruf === 'B' ? 3 : huruf === 'C' ? 2 : huruf === 'D' ? 1 : 0;
                               return sum + (m.bobot * angka);
-                      },0) / masterKurikulum.filter(m=>m.jenjang==='SKP').reduce((sum,m)=>sum+m.bobot,0)).toFixed(2) : "0.00"}</td></tr>
+                      },0) / materiSKP.reduce((sum,m)=>sum+m.bobot,0)).toFixed(2) : "0.00"}</td></tr>
                         </tbody>
                       </table>
+
+                      {evaluasiKader?.catatan && (
+                        <div style={{ marginTop: '20px' }}>
+                          <strong style={{ fontSize: '11pt' }}>Catatan Evaluasi Pendamping:</strong>
+                          <p style={{ marginTop: '5px', fontSize: '11pt', fontStyle: 'italic' }}>"{evaluasiKader.catatan}"</p>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

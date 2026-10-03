@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
+
+// Template sertifikat hanya disediakan Komisariat untuk MAPABA & PKD.
+const JENJANG_SERTIFIKAT = ['MAPABA', 'PKD'];
 
 export default function PageSertifikatKader() {
   const [profilKader, setProfilKader] = useState<any>({ nama: '', nim: '', nia: '', id_rayon: '', angkatan: '' });
@@ -66,7 +69,9 @@ export default function PageSertifikatKader() {
               nama: p.nama || '', nim: p.nim || '', nia: p.nia || '', 
               id_rayon: p.id_rayon || '', angkatan: p.angkatan || new Date().getFullYear().toString()
             });
-            if (p.jenjang) setSelectedJenjang(p.jenjang);
+            // Jangan memaksakan jenjang yang tidak ada opsinya di dropdown (SIG/SKP),
+            // karena membuat tampilan dropdown dan data yang dimuat tidak sinkron.
+            if (p.jenjang && JENJANG_SERTIFIKAT.includes(p.jenjang)) setSelectedJenjang(p.jenjang);
           }
         });
         unsubs.push(unsubRole);
@@ -102,28 +107,29 @@ export default function PageSertifikatKader() {
     unsubs.push(unsubMaster);
 
     if (profilKader.id_rayon) {
-      const fetchKaderSertifikatData = async () => {
-        try {
-          const kaderQuery = query(
-            collection(db, "kader_sertifikat"),
-            where("id_rayon", "==", profilKader.id_rayon),
-            where("jenjang", "==", selectedJenjang),
-            where("angkatan", "==", profilKader.angkatan)
-          );
-          const snap = await getDocs(kaderQuery);
-          let foundData = null;
-          snap.forEach(d => {
-            const data = d.data();
-            if ((profilKader.nim && data.nim === profilKader.nim) || (profilKader.nia && data.nia === profilKader.nia)) {
-              foundData = data;
-            }
-          });
-          setDataSertifikatKader(foundData);
-        } catch (err) {
-          console.error("Gagal memuat data sertifikat kader:", err);
-        }
-      };
-      fetchKaderSertifikatData();
+      // Realtime: kalau Admin Rayon memperbaiki data sertifikat, kader langsung melihatnya
+      // tanpa harus memuat ulang halaman.
+      const kaderQuery = query(
+        collection(db, "kader_sertifikat"),
+        where("id_rayon", "==", profilKader.id_rayon),
+        where("jenjang", "==", selectedJenjang),
+        where("angkatan", "==", profilKader.angkatan)
+      );
+      const samaTeks = (a: any, b: any) =>
+        a !== undefined && a !== null && b !== undefined && b !== null &&
+        String(a).trim() !== '' && String(a).trim() === String(b).trim();
+
+      const unsubKaderCert = onSnapshot(kaderQuery, (snap) => {
+        let foundData: any = null;
+        snap.forEach(d => {
+          const data = d.data();
+          if (samaTeks(profilKader.nim, data.nim) || samaTeks(profilKader.nia, data.nia)) {
+            foundData = data;
+          }
+        });
+        setDataSertifikatKader(foundData);
+      }, (err) => console.error("Gagal memuat data sertifikat kader:", err));
+      unsubs.push(unsubKaderCert);
     }
 
     if (profilKader.id_rayon) {
@@ -219,6 +225,8 @@ export default function PageSertifikatKader() {
           @page { size: A4 ${settings.orientasi}; margin: 0; }
           body, html { background-color: white !important; margin: 0; padding: 0; height: 100vh !important; width: 100vw !important; overflow: hidden !important; }
           aside, header, nav, .web-ui-container { display: none !important; }
+          .sk-sidebar, .sk-topbar, .sk-appbar, .sk-bottomnav { display: none !important; }
+          .siakad-shell, .sk-main, .sk-content { display: block !important; height: auto !important; min-height: 0 !important; overflow: visible !important; position: static !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
           main.no-print { display: block !important; margin: 0 !important; padding: 0 !important; }
           .print-layout-container { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: ${settings.orientasi === 'portrait' ? '210mm' : '297mm'} !important; height: ${settings.orientasi === 'portrait' ? '297mm' : '210mm'} !important; z-index: 9999 !important; background: white !important; }
           .bg-sertifikat { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }

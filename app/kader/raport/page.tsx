@@ -9,6 +9,8 @@ export default function PageRaportKader() {
   const [profilKader, setProfilKader] = useState({ nama: '', nim: '', id_rayon: '', jenjang: 'MAPABA', angkatan: '' });
   const [namaRayonInduk, setNamaRayonInduk] = useState('');
   const [pengaturanCetak, setPengaturanCetak] = useState({ kopSuratUrl: '', footerUrl: '' });
+  // KOP milik Pusat Komisariat (dipakai untuk KHS jenjang SKP)
+  const [kopKomisariat, setKopKomisariat] = useState({ kopSuratUrl: '', footerUrl: '' });
   
   const [selectedJenjang, setSelectedJenjang] = useState('MAPABA');
   const [tabAktif, setTabAktif] = useState('raport');
@@ -42,6 +44,7 @@ export default function PageRaportKader() {
                 if (docSnap.exists()) {
                   const d = docSnap.data();
                   setPengaturanCetak({ kopSuratUrl: d.kopSuratUrl || '', footerUrl: d.footerUrl || '' });
+                  setKopKomisariat({ kopSuratUrl: d.kopSuratUrl || '', footerUrl: d.footerUrl || '' });
                   if (d.bobot_penilaian) {
                       setSemuaBobot(d.bobot_penilaian);
                       setKategoriBobotKomisariat(d.bobot_penilaian);
@@ -67,6 +70,9 @@ export default function PageRaportKader() {
                   const rData = rayonSnap.data();
                   setNamaRayonInduk(rData.nama || p.id_rayon);
                   setPengaturanCetak({ kopSuratUrl: rData.kopSuratUrl || '', footerUrl: rData.footerUrl || '' });
+                } else {
+                  // Delegasi luar komisariat: nama rayon ditulis manual saat pembuatan akun
+                  setNamaRayonInduk(p.id_rayon);
                 }
               });
               unsubs.push(unsub3);
@@ -79,7 +85,10 @@ export default function PageRaportKader() {
               unsubs.push(unsub4);
 
               const unsubKomisariatSettings = onSnapshot(doc(db, "pengaturan_sistem", "komisariat_settings"), (docSnap: any) => {
-                if (docSnap.exists() && docSnap.data().bobot_penilaian) setKategoriBobotKomisariat(docSnap.data().bobot_penilaian);
+                if (!docSnap.exists()) return;
+                const dk = docSnap.data();
+                if (dk.bobot_penilaian) setKategoriBobotKomisariat(dk.bobot_penilaian);
+                setKopKomisariat({ kopSuratUrl: dk.kopSuratUrl || '', footerUrl: dk.footerUrl || '' });
               });
               unsubs.push(unsubKomisariatSettings);
 
@@ -120,6 +129,14 @@ export default function PageRaportKader() {
   const getNilaiHuruf = (angka: number) => {
     if (angka >= 76) return "A"; if (angka >= 51) return "B"; if (angka >= 26) return "C"; if (angka >= 10) return "D"; if (angka > 0) return "E"; return "-";
   };
+
+  // Jenjang SKP dikelola Pusat Komisariat: KOP cetak & instansi pelaksana ikut Komisariat
+  const ikutKomisariat = selectedJenjang === 'SKP';
+  const cetakAktif = (ikutKomisariat && kopKomisariat.kopSuratUrl) ? kopKomisariat : pengaturanCetak;
+  const instansiPelaksana = ikutKomisariat ? 'Pusat Komisariat' : (namaRayonInduk || profilKader.id_rayon);
+
+  // SKP = Sekolah Kader Putri (ditulis lengkap pada dokumen cetak)
+  const labelJenjang = (j: string) => (j === 'SKP' ? 'SKP (Sekolah Kader Putri)' : j);
 
   const materiAktif = listKurikulumAll[selectedJenjang] || [];
   const kategoriBobotAktif = selectedJenjang === 'SKP' ? (kategoriBobotKomisariat['SKP'] || []) : (semuaBobot[selectedJenjang] || (semuaBobot['MAPABA'] || []));
@@ -348,7 +365,7 @@ export default function PageRaportKader() {
 
       {/* PRINT CONTAINER KHUSUS CETAK A4 PDF DENGAN BACKGROUND KOP */}
       <div className="print-layout-container">
-        {pengaturanCetak.kopSuratUrl && <div className="bg-kertas-a4"><img src={pengaturanCetak.kopSuratUrl} alt="Background A4" /></div>}
+        {cetakAktif.kopSuratUrl && <div className="bg-kertas-a4"><img src={cetakAktif.kopSuratUrl} alt="Background A4" /></div>}
         <table className="master-print-table">
           <thead><tr><td><div className="header-space"></div></td></tr></thead>
           <tbody>
@@ -360,9 +377,10 @@ export default function PageRaportKader() {
                     <tbody>
                       <tr><td style={{width: '200px'}}>Nomor Induk Mahasiswa</td><td style={{width: '15px'}}>:</td><td>{profilKader.nim}</td></tr>
                       <tr><td>Nama Mahasiswa</td><td>:</td><td>{profilKader.nama}</td></tr>
-                      <tr><td>Pelaksana Instansi</td><td>:</td><td>{namaRayonInduk}</td></tr>
+                      <tr><td>Pelaksana Instansi</td><td>:</td><td>{instansiPelaksana}</td></tr>
+                      {ikutKomisariat && <tr><td>Asal Rayon</td><td>:</td><td>{namaRayonInduk || profilKader.id_rayon}</td></tr>}
                       <tr><td>Tahun Angkatan</td><td>:</td><td>{profilKader.angkatan}</td></tr>
-                      <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{selectedJenjang}</td></tr>
+                      <tr><td>Jenjang Kaderisasi</td><td>:</td><td>{labelJenjang(selectedJenjang)}</td></tr>
                     </tbody>
                   </table>
                   <table className="tabel-utama-print">

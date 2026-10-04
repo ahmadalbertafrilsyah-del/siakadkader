@@ -15,7 +15,7 @@ export default function PageLogAktivitas() {
   }, []);
 
   return (
-    <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+    <div className="web-ui-container" style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
       <div style={{ borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
         <h3 style={{ color: '#0d1b2a', margin: 0, fontSize: '1.2rem' }}>🕵️ Log Aktivitas Sistem Pusat</h3>
         <p style={{ fontSize: '0.85rem', color: '#777', margin: '5px 0 0 0' }}>Rekaman aktivitas dan riwayat perubahan data (Menampilkan 50 aktivitas terbaru).</p>

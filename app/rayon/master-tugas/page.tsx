@@ -141,8 +141,8 @@ export default function PageMasterTugasRayon() {
         }
       `}</style>
 
-      <div className="page-wrapper">
-        
+      <div className="page-wrapper mobile-padded">
+
         {/* HEADER */}
         <div className="header-card">
           <h3 style={{ color: '#0d1b2a', margin: '0 0 6px 0', fontSize: '1.25rem', fontWeight: '700' }}>📋 Manajemen & Verifikasi Tugas Rayon</h3>

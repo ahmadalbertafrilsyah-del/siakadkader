@@ -59,8 +59,14 @@ export default function PageBroadcastPendamping() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+    <>
+      <style>{`
+        @media (max-width: 767px) {
+          .bc-card { padding: 15px !important; }
+        }
+      `}</style>
+      <div className="mobile-padded" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="bc-card" style={{ background: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <h3 style={{ color: '#0d1b2a', margin: '0 0 10px 0', fontSize: '1.2rem' }}>📡 Pusat Pengumuman Binaan</h3>
         <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '20px', borderBottom: '1px solid #eee', paddingBottom: '15px' }}>Kirimkan instruksi tugas atau pesan mendesak. Pengumuman ini <b>HANYA</b> akan dibaca oleh kader binaan Anda.</p>
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
@@ -92,6 +98,7 @@ export default function PageBroadcastPendamping() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

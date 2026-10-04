@@ -138,12 +138,12 @@ export default function PageProfilRayon() {
         @media (max-width: 768px) {
            body, html, .app-container { overflow-x: hidden !important; -ms-overflow-style: none; scrollbar-width: none; width: 100%; margin: 0; padding: 0; }
            ::-webkit-scrollbar { display: none; }
-           .page-wrapper { padding: 12px; box-sizing: border-box; overflow-x: hidden; }
-           .profile-container { grid-template-columns: 1fr; padding: 20px; gap: 20px; }
+           .page-wrapper { padding: 12px 0; box-sizing: border-box; overflow-x: hidden; }
+           .profile-container { grid-template-columns: 1fr; padding: 16px; gap: 16px; }
         }
       `}</style>
 
-      <div className="page-wrapper hide-scroll">
+      <div className="web-ui-container page-wrapper hide-scroll">
         
         {/* HEADER */}
         <div className="header-card">

@@ -338,7 +338,7 @@ ${dilewati} baris dilewati karena tidak punya NIM maupun Nama.` : ''));
         }
       `}</style>
 
-      <div className="pengaturan-sertifikat-wrapper">
+      <div className="pengaturan-sertifikat-wrapper mobile-padded">
         <div className="card-panel" style={{ padding: '12px 16px', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#0d1b2a', marginRight: '6px' }}>📁 Menu:</span>
           <button className={`tab-btn ${activeTab === 'pengaturan' ? 'active' : ''}`} onClick={() => setActiveTab('pengaturan')}>Pengaturan</button>

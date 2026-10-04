@@ -66,8 +66,14 @@ export default function PageKalenderPendamping() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+    <>
+      <style>{`
+        @media (max-width: 767px) {
+          .kln-card { padding: 15px !important; }
+        }
+      `}</style>
+      <div className="mobile-padded" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div className="kln-card" style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
         <h3 style={{ color: '#0d1b2a', margin: '0 0 15px 0', fontSize: '1.1rem' }}>📅 Buat Jadwal Mentoring</h3>
         <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 250px', backgroundColor: '#fdfdfd', padding: '20px', border: '1px solid #eee', borderRadius: '8px', alignSelf: 'flex-start' }}>
@@ -109,6 +115,7 @@ export default function PageKalenderPendamping() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

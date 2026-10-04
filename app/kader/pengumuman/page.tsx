@@ -126,8 +126,8 @@ export default function PagePengumumanKader() {
         }
       `}</style>
 
-      <div className="page-wrapper">
-        
+      <div className="page-wrapper mobile-padded">
+
         {/* HEADER */}
         <div className="header-card">
           <div className="header-title-container">

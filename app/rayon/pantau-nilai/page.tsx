@@ -338,6 +338,9 @@ export default function PagePantauNilaiRayon() {
                     Kurikulum, bobot penilaian, dan KOP cetak untuk SKP mengikuti Pusat Komisariat sehingga tidak dapat diubah dari Rayon.
                     Perubahan bobot di bawah ini hanya berlaku untuk jenjang selain SKP.
                   </p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '0.7rem', color: '#b45309', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                    [DEBUG] bobotKomisariat.SKP: {JSON.stringify(bobotKomisariat['SKP'] || [])} | kategoriBobotAktif: {JSON.stringify(kategoriBobotAktif)} | kurikulumSKPPusat: {kurikulumSKPPusat.length} materi
+                  </p>
                 </div>
               )}
 

@@ -143,8 +143,8 @@ export default function PageTesPemahamanKader() {
         }
       `}</style>
 
-      <div className="page-wrapper">
-        
+      <div className="page-wrapper mobile-padded">
+
         {/* HEADER */}
         {!selectedTes && (
           <div className="header-card">

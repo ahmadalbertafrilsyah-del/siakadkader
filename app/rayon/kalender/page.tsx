@@ -152,8 +152,8 @@ export default function PageKalenderRayon() {
         }
       `}</style>
 
-      <div className="page-wrapper">
-        
+      <div className="page-wrapper mobile-padded">
+
         {/* HEADER */}
         <div className="header-card">
           <h3 style={{ color: '#0d1b2a', margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>Kalender & Jadwal Rayon</h3>

@@ -73,59 +73,80 @@ export default function PageProfilPendamping() {
   };
 
   return (
-    <div style={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #ddd', overflow: 'hidden' }}>
-      <div style={{ backgroundColor: '#4a637d', padding: '15px 20px', color: 'white', fontWeight: 'bold' }}>PROFIL SAYA</div>
-      <div style={{ padding: '30px', display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
-        <div style={{ flex: '0 0 180px', textAlign: 'center' }}>
-          <img src={profilPendamping.fotoUrl} alt="Foto Pendamping" style={{ width: '100%', height: '230px', objectFit: 'cover', borderRadius: '8px', border: '4px solid #eee' }} />
-          {isEditingProfil && (
-            <div style={{ marginTop: '10px', textAlign: 'left' }}>
-              <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Unggah Foto Baru:</label>
-              <input type="file" accept="image/*" onChange={(e) => {
-                 if (e.target.files && e.target.files[0]) {
-                   setFotoFile(e.target.files[0]);
-                   setProfilPendamping({ ...profilPendamping, fotoUrl: URL.createObjectURL(e.target.files[0]) });
-                 }
-              }} style={{ marginTop: '5px', fontSize: '0.7rem', width: '100%' }} />
-            </div>
-          )}
-          <button 
-            onClick={() => isEditingProfil ? handleSimpanProfil() : setIsEditingProfil(true)} 
-            disabled={isSavingProfil} 
-            style={{ marginTop: '15px', width: '100%', padding: '10px', backgroundColor: isEditingProfil ? '#2ecc71' : '#1e824c', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
-            {isSavingProfil ? 'Menyimpan...' : isEditingProfil ? '💾 Simpan Profil' : '📝 Ubah Profil Saya'}
-          </button>
-        </div>
-        
-        <div style={{ flex: '1 1 350px' }}>
-          <div style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', color: '#333', minWidth: '400px' }}>
-              <tbody>
-                <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', width: '35%', borderBottom: '1px solid #eee' }}>Username</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>{profilPendamping.username}</td></tr>
-                <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Nama Lengkap</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>{profilPendamping.nama}</td></tr>
-                <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Tugas Pendampingan</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}><span style={{ color: '#e67e22', fontWeight: 'bold', backgroundColor: '#fff3cd', padding: '4px 8px', borderRadius: '4px' }}>{profilPendamping.jenjangTugas}</span></td></tr>
-                <tr>
-                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Nomor WhatsApp</td>
-                  <td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
-                    {isEditingProfil ? (
-                      <input type="text" value={profilPendamping.noHp} onChange={e => setProfilPendamping({...profilPendamping, noHp: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-                    ) : (profilPendamping.noHp || '-')}
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Alamat / Domisili</td>
-                  <td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
-                    {isEditingProfil ? (
-                      <input type="text" value={profilPendamping.alamat} onChange={e => setProfilPendamping({...profilPendamping, alamat: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
-                    ) : (profilPendamping.alamat || '-')}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+    <>
+      <style>{`
+        .pp-card { background-color: #fff; border-radius: 8px; border: 1px solid #ddd; overflow: hidden; }
+        .pp-body { padding: 30px; display: flex; gap: 40px; flex-wrap: wrap; box-sizing: border-box; }
+        .pp-photo-col { flex: 0 0 180px; text-align: center; }
+        .pp-photo-col img { width: 100%; height: 230px; object-fit: cover; border-radius: 8px; border: 4px solid #eee; }
+        .pp-info-col { flex: 1 1 350px; min-width: 0; }
+        .pp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; color: #333; }
+
+        @media (max-width: 767px) {
+          body, html, .app-container { overflow-x: hidden; -ms-overflow-style: none; scrollbar-width: none; }
+          ::-webkit-scrollbar { display: none; }
+          .pp-body { padding: 16px; gap: 16px; }
+          .pp-photo-col { flex: 0 0 auto; }
+          .pp-photo-col img { height: 190px; }
+          .pp-table { min-width: 0; font-size: 0.8rem; }
+          .pp-table td { padding: 8px !important; }
+        }
+      `}</style>
+
+      <div className="web-ui-container pp-card">
+        <div style={{ backgroundColor: '#4a637d', padding: '15px 20px', color: 'white', fontWeight: 'bold' }}>PROFIL SAYA</div>
+        <div className="pp-body">
+          <div className="pp-photo-col">
+            <img src={profilPendamping.fotoUrl} alt="Foto Pendamping" />
+            {isEditingProfil && (
+              <div style={{ marginTop: '10px', textAlign: 'left' }}>
+                <label style={{ fontSize: '0.75rem', color: '#555', fontWeight: 'bold' }}>Unggah Foto Baru:</label>
+                <input type="file" accept="image/*" onChange={(e) => {
+                   if (e.target.files && e.target.files[0]) {
+                     setFotoFile(e.target.files[0]);
+                     setProfilPendamping({ ...profilPendamping, fotoUrl: URL.createObjectURL(e.target.files[0]) });
+                   }
+                }} style={{ marginTop: '5px', fontSize: '0.7rem', width: '100%' }} />
+              </div>
+            )}
+            <button
+              onClick={() => isEditingProfil ? handleSimpanProfil() : setIsEditingProfil(true)}
+              disabled={isSavingProfil}
+              style={{ marginTop: '15px', width: '100%', padding: '10px', backgroundColor: isEditingProfil ? '#2ecc71' : '#1e824c', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '0.85rem' }}>
+              {isSavingProfil ? 'Menyimpan...' : isEditingProfil ? '💾 Simpan Profil' : '📝 Ubah Profil Saya'}
+            </button>
           </div>
-          {isEditingProfil && <p style={{ fontSize: '0.75rem', color: '#e74c3c', marginTop: '10px' }}>*Nama, Username, dan Jenjang Tugas hanya bisa diubah oleh Pengurus Instansi Atas.</p>}
+
+          <div className="pp-info-col">
+            <div className="hide-scroll" style={{ width: '100%', overflowX: 'auto', boxSizing: 'border-box' }}>
+              <table className="pp-table">
+                <tbody>
+                  <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', width: '35%', borderBottom: '1px solid #eee' }}>Username</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>{profilPendamping.username}</td></tr>
+                  <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Nama Lengkap</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>{profilPendamping.nama}</td></tr>
+                  <tr><td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Tugas Pendampingan</td><td style={{ padding: '10px', borderBottom: '1px solid #eee' }}><span style={{ color: '#e67e22', fontWeight: 'bold', backgroundColor: '#fff3cd', padding: '4px 8px', borderRadius: '4px' }}>{profilPendamping.jenjangTugas}</span></td></tr>
+                  <tr>
+                    <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Nomor WhatsApp</td>
+                    <td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
+                      {isEditingProfil ? (
+                        <input type="text" value={profilPendamping.noHp} onChange={e => setProfilPendamping({...profilPendamping, noHp: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
+                      ) : (profilPendamping.noHp || '-')}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '10px', fontWeight: 'bold', color: '#555', borderBottom: '1px solid #eee' }}>Alamat / Domisili</td>
+                    <td style={{ padding: '10px', borderBottom: '1px solid #eee' }}>
+                      {isEditingProfil ? (
+                        <input type="text" value={profilPendamping.alamat} onChange={e => setProfilPendamping({...profilPendamping, alamat: e.target.value})} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} />
+                      ) : (profilPendamping.alamat || '-')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {isEditingProfil && <p style={{ fontSize: '0.75rem', color: '#e74c3c', marginTop: '10px' }}>*Nama, Username, dan Jenjang Tugas hanya bisa diubah oleh Pengurus Instansi Atas.</p>}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

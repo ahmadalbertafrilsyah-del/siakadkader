@@ -159,16 +159,19 @@ export default function PageKurikulumRayon() {
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 
+        .kurikulum-split-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
+
         @media (max-width: 767px) {
            .page-wrapper { gap: 20px; padding: 24px 16px 90px 16px !important; }
            .header-card { padding: 20px; }
            .card-panel { padding: 20px; }
            .btn-tab { padding: 8px 16px; }
+           .kurikulum-split-grid { grid-template-columns: 1fr; gap: 16px; }
         }
       `}</style>
 
-      <div className="page-wrapper">
-        
+      <div className="page-wrapper mobile-padded">
+
         {/* HEADER */}
         <div className="header-card">
           <h3 style={{ margin: '0 0 6px 0', color: 'var(--text-main)', fontSize: '1.25rem', fontWeight: '700' }}>📚 Kurikulum Kaderisasi</h3>
@@ -185,7 +188,7 @@ export default function PageKurikulumRayon() {
         </div>
 
         {/* BUNGKUSAN GRID (TARIK MATERI & TAMBAH LOKAL) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+        <div className="kurikulum-split-grid">
           
           {/* KOLOM TARIK MATERI PUSAT */}
           <div className="card-panel">
